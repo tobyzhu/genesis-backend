@@ -24,7 +24,9 @@ def cal_emplarchivement_yiren(company,storecode, fromdate,todate):
 
     transuuids = Expvstoll.objects.filter(company=company,valiflag='Y',storecode=storecode).filter(vsdate__gte=fromdate,vsdate__lte=todate).order_by('storecode','vsdate','vstime')
     ttypes = ['S','G']
+    print(1)
     for transuuid in transuuids:
+        print(2)
         cardinfo_stype='N'
         print('transuuid.ccode',transuuid.ccode)
         if len(transuuid.ccode)>0 :
@@ -64,9 +66,9 @@ def cal_emplarchivement_yiren(company,storecode, fromdate,todate):
 
         if totalamount ==0 :
             cashratio=1
-            cardratio=1
-            sendratio=1
-            otherratio=1
+            cardratio=0
+            sendratio=0
+            otherratio=0
         else:
             cashratio = round(Decimal(cashamount / totalamount),4)
             cardratio = round(Decimal(cardamount / totalamount),4)
@@ -291,7 +293,7 @@ def cal_emplarchivement_yiren(company,storecode, fromdate,todate):
 
                         transitem.exp_thrbasenum = transitem.s_mount * Decimal(transitem.thrguideperc) * Decimal(cardratio + cashratio)+ \
                                                    transitem.s_mount * Decimal(transitem.thrguideperc) * Decimal(sendratio) * Decimal(0.5)
-
+                        print('before save',transitem.cardratio,transitem.cashratio,transitem.sendratio)
                         transitem.save()
 
 
@@ -307,10 +309,19 @@ def cal_emplarchivement_yiren(company,storecode, fromdate,todate):
                     print(item.gcode,item.gname)
                     if item.pmpoint == None:
                         pmpoint = 0
+                    else:
+                        pmpoint = item.pmpoint
+
                     if item.secpoint == None:
                         secpoint = 0
+                    else:
+                        secpoint = item.secpoint
+
                     if item.thrpoint == None:
                         thrpoint = 0
+                    else:
+                        thrpoint = item.thrpoint
+
                     if transitem.s_qty == None:
                         transitem.s_qty = 0
 
@@ -378,7 +389,7 @@ def cal_emplarchivement_yiren(company,storecode, fromdate,todate):
                         transitem.pmperc = pmratio
                         transitem.secperc = secratio
                         transitem.thprec = thrratio
-
+                        # 商品流水
                         transitem.exp_basenum = transitem.s_mount * Decimal(pmratio)*Decimal(cardratio + cashratio)
                         transitem.exp_secbasenum= transitem.s_mount * Decimal(secratio)*Decimal(cardratio + cashratio)
                         transitem.exp_thrbasenum = transitem.s_mount * Decimal(thrratio)*Decimal(cardratio + cashratio)
@@ -386,14 +397,15 @@ def cal_emplarchivement_yiren(company,storecode, fromdate,todate):
                         transitem.pmamount =transitem.s_mount * Decimal(cashratio) * Decimal(pmratio)
                         transitem.secamount = transitem.s_mount * Decimal(cashratio) * Decimal(secratio)
                         transitem.thramount = transitem.s_mount * Decimal(cashratio) * Decimal(thrratio)
-
+                        print('5')
                         transitem.pmpoint = transitem.s_qty * Decimal(pmpoint)
                         transitem.secpoint = transitem.s_qty * Decimal(secpoint)
                         transitem.thrpoint = transitem.s_qty * Decimal(thrpoint)
-
+                        print('before save')
                         transitem.save()
-                except:
-                    print('skipped',transitem.exptxserno,transitem.srvcode,len(transitem.srvcode))
+                        print('before6',transitem.cashratio)
+                except Exception as e:
+                    print('skipped',transitem.exptxserno,transitem.srvcode,len(transitem.srvcode), e)
 
             if transitem.ttype in ('C','I'):
                 print(transitem.ttype,transitem.exptxserno,transitem.srvcode,transitem.stype)
@@ -415,7 +427,6 @@ def cal_emplarchivement_yiren(company,storecode, fromdate,todate):
 
                 try:
                     cardinfo = Cardinfo.objects.filter(company=company).filter(ccode=transitem.srvcode).last()
-                    print(cardinfo.ccode)
                     if cardinfo.cardtype==None:
                         cardtype=''
                     else:

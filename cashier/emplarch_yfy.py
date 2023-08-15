@@ -21,11 +21,20 @@ import common.constants
 SUPTYPE10LIST=['101','102','103','104','110','111','112','113','114','115','116','120','121','311']
 # 产品卡
 GOODS_CARDTYPELIST = ['201', '203', '301','302','CPHD001','AZM008','AZM009','AZM010','AZM011']
+
 # 肝胆卡py
 GOODS_CARDTYPELIST_1 = ['201', '203', '301']
 GOODS_CARDTYPELIST_2 = ['302']
 
 SPEC_CARDLIST1 =['306']
+
+# 勒泰卡及类似  1. 5/5  50/35/15
+LETAI_CARDTYPELIST=['LT002','LT003','LT005','LT006','MA002','STYZQ003','MY013','LT007']
+# 勒泰特惠卡
+LETAI_CARDTYPELIST2=['LT003']
+# 勒泰产品卡
+LETAI_CARDTYPELIST3=['LT002','LT005','LT006']
+
 
 def cal_empalarch_yfy_daily(request):
     fromdate = request.GET['fromdate']
@@ -496,7 +505,7 @@ def set_exp_basenum_yfy(storecode, fromdate,todate):
 #   4、从产品卡，保健品卡、肝胆卡 够产品不算积点
 #   5、从储值卡购买产品卡、保健品卡，肝胆卡 算积点
 #   6，pmguideperc 顾问实耗计算比例    secguideperc thrguideperc 美疗师实耗计算比例
-def set_exp_basenum_yfy_01(storecode, fromdate,todate):
+def set_exp_basenum_yfy_01(storecode, fromdate, todate, 计算积点=None):
     company='yfy'
     transuuids = Expvstoll.objects.filter(company=company,valiflag='Y',storecode=storecode).filter(vsdate__gte=fromdate,vsdate__lte=todate).order_by('storecode','vsdate','vstime')
     ttypes = ['S','G']
@@ -544,7 +553,7 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
                 transitem.s_qty=0
 
             # 纹绣，手术算积点
-            if transitem.ttype =='S':
+            if transitem.ttype == 'S':
                 item = Serviece.objects.filter(company=company, flag='Y').filter(svrcdoe=transitem.srvcode).last()
 
                 if item.pmpoint == None:
@@ -621,8 +630,8 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
                     print(transuuid.cardtype, item.topcode)
 
                     # 只有主卡卡付 手术计算积点
-                    if item.topcode in ('400','500'):
-                        if transitem.stype=='N':
+                    if item.topcode in ('400' , '500'):
+                        if transitem.stype == 'N':
                             pmratio = 1
                             secratio = 0
                             thrratio = 0
@@ -659,7 +668,7 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
                         transitem.save()
 
                     # 只有主卡卡付 纹绣计算积点   只计顾问纹绣积点，美容师不计积点
-                    if transuuid.storecode=='01' and item.topcode in ('400'):
+                    if transuuid.storecode =='01' and item.topcode in ('400'):
                         if transitem.stype=='N':
                             pmratio = 1
                             secratio = 0
@@ -696,6 +705,36 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
                         transitem.exp_thrbasenum = transitem.s_mount * Decimal(thrratio)*Decimal(cardratio)
                         transitem.save()
                 # except:
+
+                elif transuuid.cardtype in LETAI_CARDTYPELIST2:
+                    # 只有泰勒特惠卡卡付 纹绣(400)、手术(500)计算积点
+                    if item.topcode in ('400','500'):
+                        if transitem.stype=='N':
+                            pmratio = 1
+                            secratio = 0
+                            thrratio = 0
+
+                            # if len(transitem.asscode1.strip()) > 0:
+                            #     pmratio = 0.5
+                            #     secratio = 0.5
+                            #     thrratio = 0
+                            #
+                            # if len(transitem.asscode2.strip()) > 0:
+                            #     pmratio = 0.5
+                            #     secratio = 0.35
+                            #     thrratio = 0.15
+                        else:
+                            transitem.exp_basenum = 0
+                            transitem.exp_secbasenum = 0
+                            transitem.exp_thrbasenum = 0
+
+                        transitem.exp_basenum = transitem.s_mount * Decimal(pmratio)*Decimal(cardratio)
+                        transitem.exp_secbasenum = transitem.s_mount * Decimal(secratio)*Decimal(cardratio)
+                        transitem.exp_thrbasenum = transitem.s_mount * Decimal(thrratio)*Decimal(cardratio)
+
+                        print(item.topcode,transuuid.cardtype, transitem.exptxserno, pmratio, secratio, thrratio, cardratio, transitem.exp_basenum)
+                        transitem.save()
+
                 else:
                     transitem.exp_basenum=0
                     transitem.exp_secbasenum=0
@@ -713,7 +752,7 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
                 #
                 #     transitem.save()
 
-            # 划储值卡购买产品、保健品算积点
+            # 划储值卡、勒泰特惠卡购买产品、保健品算积点，比例不一样
             if transitem.ttype =='G':
                 print(transitem.exptxserno,transitem.srvcode,len(transitem.srvcode))
                 try:
@@ -796,6 +835,21 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
                                 secratio = 0.2
                                 thrratio = 0.2
 
+                        # 勒泰特惠卡 购买商品 计算积点
+                        if transuuid.cardtype in LETAI_CARDTYPELIST2:
+                            pmratio = 1
+                            secratio = 0
+                            thrratio = 0
+
+                            if len(transitem.asscode1.strip()) > 0:
+                                pmratio = 0.5
+                                secratio = 0.5
+                                thrratio = 0
+
+                            if len(transitem.asscode2.strip()) > 0:
+                                pmratio = 0.5
+                                secratio = 0.35
+                                thrratio = 0.15
                     except:
                         pmratio =0
                         secratio =0
@@ -813,34 +867,6 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
             # 购买产品卡、保健品卡 肝胆卡 算积点
             if transitem.ttype in ('C','I'):
                 print(transitem.ttype,transitem.exptxserno,transitem.srvcode,transitem.stype)
-                # item=Goods.objects.get(company=company,flag='Y').filter(gcode=transuuid.srvcode)
-                # try:
-                #     cardinfo = Cardinfo.objects.filter(company=company).filter(ccode=transitem.srvcode).last()
-                #     print(cardinfo.ccode)
-                #     if cardinfo.cardtype==None:
-                #         cardtype=''
-                #     else:
-                #         cardtype=cardinfo.cardtype
-                # except:
-                #     print(transitem.exptxserno,transitem.ttype,transitem.srvcode)
-                #     cardtype=''
-                #
-                # try:
-                #     item = Cardtype.objects.filter(company=company,flag='Y',cardtype=cardtype).last()
-                #     if item.pmpoint == None:
-                #         item.pmpoint = 0
-                #     if item.secpoint == None:
-                #         item.secpoint = 0
-                #     if item.thrpoint == None:
-                #         item.thrpoint = 0
-                #     if transitem.s_qty == None:
-                #         transitem.s_qty = 0
-                # except:
-                #     print(cardinfo,transitem.srvcode,transuuid.exptxserno)
-                #     item.pmpoint=0
-                #     item.secpoint=0
-                #     item.thrpoint=0
-
                 pmratio = 0
                 secratio = 0
                 thrratio = 0
@@ -849,13 +875,6 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
                     pmratio = 0
                     secratio = 0
                     thrratio = 0
-
-                #     transitem.exp_basenum=0
-                #     transitem.exp_secbasenum=0
-                #     transitem.exp_thrbasenum=0
-                #     transitem.pmpoint=item.pmpoint * transitem.s_qty
-                #     transitem.secpoint= item.secpoint * transitem.s_qty
-                #     transitem.thrpoint = item.thrpoint * transitem.s_qty
 
                 if transitem.stype=='N':
                     try:
@@ -895,10 +914,25 @@ def set_exp_basenum_yfy_01(storecode, fromdate,todate):
                                 pmratio = 0.6
                                 secratio =0.2
                                 thrratio =0.2
+                        elif cardinfo.cardtype in LETAI_CARDTYPELIST:
+                            pmratio = 1
+                            secratio = 0
+                            thrratio = 0
+
+                            if len(transitem.asscode1.strip()) > 0:
+                                pmratio = 0.5
+                                secratio = 0.5
+                                thrratio = 0
+
+                            if len(transitem.asscode2.strip()) > 0:
+                                pmratio = 0.5
+                                secratio = 0.35
+                                thrratio = 0.15
                         else:
                             pmratio =0
                             secratio =0
                             thrratio = 0
+
                     except:
                         pmratio = 0
                         secratio = 0
@@ -2917,7 +2951,7 @@ def set_exp_xamount_yfy_01(fromdate,todate):
     # fromdate = request.GET['fromdate']
     # todate = request.GET['todate']
     storecode='01'
-    transuuids = Expvstoll.objects.filter(company=company, valiflag='Y').filter(vsdate__gte=fromdate).filter(
+    transuuids = Expvstoll.objects.filter(flag='Y',company=company, valiflag='Y').filter(vsdate__gte=fromdate).filter(
         vsdate__lte=todate,storecode=storecode).order_by('storecode','vsdate','vstime')
     goods_cardtypelist=['201','202','203','204']
     # ttypes = ['S', 'G']
@@ -2943,7 +2977,7 @@ def set_exp_xamount_yfy_01(fromdate,todate):
         else:
             cashratio = cashamount / totalamount
 
-        print(transuuid.storecode,transuuid.uuid,transuuid.exptxserno, transuuid.vsdate,transuuid.exptxserno,totalamount,cashamount,cashratio)
+        print(transuuid.storecode,transuuid.exptxserno, transuuid.vsdate,totalamount,cashamount,cashratio)
 
         for transitem in transitems:
             if transitem.s_mount==None:
@@ -3011,6 +3045,8 @@ def set_exp_xamount_yfy_01(fromdate,todate):
 
             if transitem.ttype in ('C','I'):
                 transitem.transitem_cardtype()
+                cardinfo = Cardinfo.objects.get(flag='Y',status='O',company=company, storecode=storecode, ccode=transitem.srvcode)
+                print('cardinfo 1',cardinfo.ccode,cardinfo.cardtype)
                 if transitem.stype == 'P':
                     # transitem.exp_basenum = 0
                     # transitem.exp_secbasenum = 0
@@ -3025,11 +3061,14 @@ def set_exp_xamount_yfy_01(fromdate,todate):
                     # print('transitem:',transitem.asscode1,transitem.asscode1.strip(),len(transitem.asscode1.strip()))
                     if len(transitem.asscode1.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            # cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.6
                                 secratio = 0.4
                                 thrratio =0
+                            elif cardinfo.cardtype in LETAI_CARDTYPELIST:
+                                pmratio = 0.5
+                                secratio =0.5
                             else:
                                 pmratio = 0.8
                                 secratio = 0.2
@@ -3041,11 +3080,17 @@ def set_exp_xamount_yfy_01(fromdate,todate):
 
                     if len(transitem.asscode2.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.filter(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            # cardinfo = Cardinfo.objects.filter(company=company,storecode=storecode,ccode=transitem.srvcode)
+                            print('cardinfo.cardtype 2',cardinfo.cardtype,LETAI_CARDTYPELIST)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.6
                                 secratio = 0.2
                                 thrratio =0.2
+                            elif cardinfo.cardtype in LETAI_CARDTYPELIST:
+                                print('332',cardinfo.cardtype)
+                                pmratio=0.5
+                                secratio=0.35
+                                thrratio=0.15
                             else:
                                 pmratio = 0.8
                                 secratio = 0.1
@@ -3058,7 +3103,7 @@ def set_exp_xamount_yfy_01(fromdate,todate):
                     transitem.pmamount = transitem.s_mount * Decimal(cashratio) * Decimal(pmratio)
                     transitem.secamount = transitem.s_mount * Decimal(cashratio) * Decimal(secratio)
                     transitem.thramount = transitem.s_mount * Decimal(cashratio) * Decimal(thrratio)
-                    print('transitem:',transitem.asscode1,'cashratio:',cashratio,' secratio=',secratio)
+                    print('transitem3:',transitem.exptxserno, transitem.asscode1,'cashratio:',cashratio,' secratio=',secratio)
 
                     cardtype = Cardinfo.objects.filter(company=company,status='O',storecode='01',)
 
@@ -3177,7 +3222,7 @@ def set_exp_xamount_yfy_02(fromdate,todate):
                     print('transitem:',transitem.asscode1,transitem.asscode1.strip(),len(transitem.asscode1.strip()))
                     if len(transitem.asscode1.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.5
                                 secratio = 0.5
@@ -3193,7 +3238,7 @@ def set_exp_xamount_yfy_02(fromdate,todate):
 
                     if len(transitem.asscode2.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.5
                                 secratio = 0.25
@@ -3224,7 +3269,7 @@ def set_exp_xamount_yfy_02(fromdate,todate):
 
 
 def set_exp_xamount_yfy_03(fromdate,todate):
-    company = common.constants.COMPANYID
+    # company = common.constants.COMPANYID
     # fromdate = request.GET['fromdate']
     # todate = request.GET['todate']
     company='yfy'
@@ -3331,7 +3376,7 @@ def set_exp_xamount_yfy_03(fromdate,todate):
                     print('transitem:',transitem.asscode1,transitem.asscode1.strip(),len(transitem.asscode1.strip()))
                     if len(transitem.asscode1.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.5
                                 secratio = 0.5
@@ -3347,7 +3392,7 @@ def set_exp_xamount_yfy_03(fromdate,todate):
 
                     if len(transitem.asscode2.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.5
                                 secratio = 0.25
@@ -3485,7 +3530,7 @@ def set_exp_xamount_yfy_04(fromdate,todate):
                     print('transitem:',transitem.asscode1,transitem.asscode1.strip(),len(transitem.asscode1.strip()))
                     if len(transitem.asscode1.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.5
                                 secratio = 0.5
@@ -3501,7 +3546,7 @@ def set_exp_xamount_yfy_04(fromdate,todate):
 
                     if len(transitem.asscode2.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.5
                                 secratio = 0.25
@@ -3638,7 +3683,7 @@ def set_exp_xamount_yfy_05(fromdate,todate):
                     print('transitem:',transitem.asscode1,transitem.asscode1.strip(),len(transitem.asscode1.strip()))
                     if len(transitem.asscode1.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.5
                                 secratio = 0.5
@@ -3654,7 +3699,7 @@ def set_exp_xamount_yfy_05(fromdate,todate):
 
                     if len(transitem.asscode2.strip()) > 0:
                         try:
-                            cardinfo = Cardinfo.objects.get(company=common.constants.COMPANYID,storecode=storecode,ccode=transitem.srvcode)
+                            cardinfo = Cardinfo.objects.get(company=company,storecode=storecode,ccode=transitem.srvcode)
                             if cardinfo.cardtype in GOODS_CARDTYPELIST:
                                 pmratio = 0.5
                                 secratio = 0.25
