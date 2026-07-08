@@ -1,0 +1,18 @@
+<view   class="page" xmlns:wx="http://www.w3.org/1999/xhtml">
+    <view class="page__hd">
+        <view class="page__title">网络检测</view>
+        <view class="page__desc"></view>
+    </view>
+
+    <view class="page__bd">
+        <!-- <view class="weui-toptips weui-toptips_warn" wx:if="{{showTopTips}}">{{errormsg}}</view> -->
+
+        <view >           
+            <view wx:if="{{!wifi_flag}}&&{{!bssid_flag}}||{{!isDev}}"> 
+                <button class="weui-btn" bindtap="bindCheckNetWork" type="warn">重新检测网络</button>
+            </view>
+
+        </view>
+    </view>
+
+</view>

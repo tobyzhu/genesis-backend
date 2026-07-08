@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "会员搜索",
+  "usingComponents": {
+    "mp-searchbar": "weui-miniprogram/searchbar/searchbar"  
+  }
+}

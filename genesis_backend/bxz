@@ -1,0 +1,2 @@
+#!/bin/bash
+cd ~/Documents/AI/coding/genesis/genesis_backend && .venv/bin/python ~/Documents/Codex/2026-06-30/n-h-2/outputs/bxz_tool.py "$@"

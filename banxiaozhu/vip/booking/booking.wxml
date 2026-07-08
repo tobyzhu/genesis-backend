@@ -1,0 +1,130 @@
+<!--vip/booking/booking.wxml-->
+
+<view class="page" xmlns:wx="http://www.w3.org/1999/xhtml">
+  <view class='page__hd'>
+        <view class="page__title">预约</view>
+        <view class="page__desc">{{vip.vname}}-{{vip.vcode}}-{{vcode.mtcode}}</view>  
+  </view>
+  <view class='page__bd'>
+      <view class='weui-cells weui-cells_after-title'>
+            <view class="weui-cell weui-cell_input">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">日期</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <picker mode="date" value="{{bookingdate}}" start="2019-03-01" end="2029-12-31" bindchange="bindBookingDateChange">
+                        <view class="weui-input">{{bookingdate}}</view>
+                    </picker>
+                </view>
+            </view>
+
+            <block name="empltime">
+                <view class="weui-cell weui-cell_select">
+                      <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                          <view class="weui-label">员工</view>
+                      </view>            
+                      <view class="weui-cell__bd">
+                          <picker bindchange="bindEmplChange" value="{{emplIndex}}" range="{{empllist}}" range-key='ename'>
+                              <view class="weui-select">{{empllist[emplIndex].ename}}</view>
+                          </picker>
+                      </view>
+                </view>
+
+                <view class="weui-cell weui-cell_input">
+                    <view class="weui-cell__hd">
+                        <view class="weui-label">时间</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <picker mode="time" value="{{bookingstarttime}}" start="09:00" end="21:00" bindchange="bindSTimeChange">
+                            <view class="weui-input">{{bookingstarttime}}</view>
+                        </picker>
+                    </view>
+                    <view class="weui-cell__hd">
+                        <view class="weui-label">到</view>
+                    </view>
+                   <view class="weui-cell__bd">
+                        <picker mode="time" value="{{bookingendtime}}" start="09:00" end="21:00" bindchange="bindEndTimeChange">
+                            <view class="weui-input">{{bookingendtime}}</view>
+                        </picker>
+                    </view>
+                </view>
+ 
+            </block>           
+ 
+  
+            <block name="roomtime">
+                <view class="weui-cell weui-cell_select">
+                    <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                        <view class="weui-label">房间</view>
+                    </view>            
+                    <view class="weui-cell__bd">
+                        <picker bindchange="bindRoomChange" value="{{roomIndex}}" range="{{roomlist}}" range-key='roomname'>
+                            <view class="weui-select">{{roomlist[roomIndex].roomname}}</view>
+                        </picker>
+                    </view>
+                </view>
+                <view class="weui-cell weui-cell_input">
+                    <view class="weui-cell__hd">
+                        <view class="weui-label">时间</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <picker mode="time" value="{{roomstarttime}}" start="09:00" end="21:00" bindchange="bindRoomSTimeChange">
+                            <view class="weui-input">{{roomstarttime}}</view>
+                        </picker>
+                    </view>
+                    <view class="weui-cell__hd">
+                        <view class="weui-label">到</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <picker mode="time" value="{{roomendtime}}" start="09:00" end="21:00" bindchange="bindRoomEndTimeChange">
+                            <view class="weui-input">{{roomendtime}}</view>
+                        </picker>
+                    </view>
+                </view>
+            </block>
+            <block name="instrumenttime">
+                <view class="weui-cell weui-cell_select">
+                    <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                        <view class="weui-label">仪器</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <picker bindchange="bindInstrumentChange" value="{{instrumentIndex}}" range="{{instrumentlist}}" range-key='instrumentname'>
+                            <view class="weui-select weui-select_in-select-after">{{instrumentlist[instrumentIndex].instrumentname}}</view>
+                        </picker>
+                    </view>
+                </view>
+                    <view class="weui-cell weui-cell_input">
+                        <view class="weui-cell__hd">
+                            <view class="weui-label">开始时间</view>
+                        </view>
+                        <view class="weui-cell__bd">
+                            <picker mode="time" value="{{instrumentstarttime}}" start="09:00" end="21:00" bindchange="bindInstrumentSTimeChange">
+                                <view class="weui-input">{{instrumentstarttime}}</view>
+                            </picker>
+                        </view>
+                        <view class="weui-cell__hd">
+                            <view class="weui-label">到</view>
+                        </view>
+                        <view class="weui-cell__bd">
+                            <picker mode="time" value="{{instrumentendtime}}" start="09:00" end="21:00" bindchange="bindInstrumentEndTimeChange">
+                                <view class="weui-input">{{instrumentendtime}}</view>
+                            </picker>
+                        </view>
+                    </view>
+            </block>
+            <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell">
+                    <view class="weui-cell__bd">
+                        <textarea bindchange="bindBookingDetailChange"  class="weui-textarea" placeholder="如有备注请输入" style="height: 2.0em" />
+                        <view class="weui-textarea-counter">0/200</view>
+                    </view>
+                </view>
+            </view>
+        </view>
+        <view class="weui-btn-area">
+            <button class="weui-btn" type="primary" bindtap="addBookingEvent">确定</button>
+        </view>        
+      </view>
+  <!-- </view>  -->
+</view>
+

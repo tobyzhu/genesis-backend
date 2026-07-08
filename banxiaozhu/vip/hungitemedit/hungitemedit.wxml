@@ -1,0 +1,168 @@
+
+
+<view class="page" style="{{ pageStyle }}">
+    <view class="page__bd">
+        <view class="weui-cells weui-cells_after-title">
+            <view class="weui-cell">
+                <view class="weui-cell__bd">项目</view>
+                <view class="weui-cell__ft">{{itemname}}</view>             
+            </view>
+
+            <view class="weui-cell weui-cell_switch">
+                <view class="weui-cell__bd">是否退</view>
+                <view class="weui-cell__ft">
+                    <switch bindchange="bindBackflagChange" checked='{{backflagChecked}}'>{{backflagName}}  </switch>
+                </view>                
+            </view>
+
+            <view class="weui-cell weui-cell_input">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">数量</view>
+                </view>
+                <view class="weui-cell__ft">
+                    <input class="weui-input" type='digit' bindinput='bindQtyChange' value='{{qty}}' />
+                </view>
+            </view>
+
+            <view class="weui-cell weui-cell_input">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">单价</view>
+                </view>
+                <view class="weui-cell__ft">
+                    <input class="weui-input" type='digit' bindinput='bindPriceChange' value='{{price}}' />
+                </view>
+            </view>
+
+            <view class="weui-cell">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">折扣率</view>
+                </view>
+                <view class="weui-cell__ft">{{secdisc}}
+                    <!-- <input class="weui-input" type='digit' bindinput='secdiscChange' value='{{secdisc}}' /> -->
+                </view>
+            </view>
+
+            <view class="weui-cell">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">免单金额</view>
+                </view>
+                <view class="weui-cell__ft">{{mondisc}}
+                    <!-- <input class="weui-input" type='digit' bindinput='mondiscChange' value='{{mondisc}}' /> -->
+                </view> 
+            </view>
+
+            <view class="weui-cell">
+                <view class="weui-cell__bd">实付金额</view>
+                <view class="weui-cell__ft">{{amount}}</view>             
+            </view>
+        </view>
+
+        <view class="weui-cell weui-cell_select">
+          <view class="weui-cell__hd weui-cell__hd_in-select-after">
+              <view class="weui-label">交易分类</view>
+          </view>
+          <view class="weui-cell__bd">
+              <picker bindchange="bindStypeChange" value="{{stypeindex}}" range="{{stypelist}}" range-key='itemvalues'>
+                <view class="weui-select weui-select_in-select-after">{{stypelist[stypeindex].itemvalues}}</view>
+              </picker>
+          </view>
+        </view>
+
+        <view wx:if="{{ttype == 'G'}}" class="weui-cell weui-cell_select">
+          <view class="weui-cell__hd weui-cell__hd_in-select-after">
+              <view class="weui-label">是否存院</view>
+          </view>
+          <view class="weui-cell__bd">
+              <picker bindchange="bindDepositeflagChange" value="{{depositeflaglistindex}}" range="{{depositeflaglist}}" range-key='depositeflagname'>
+                <view class="weui-select weui-select_in-select-after">{{depositeflaglist[depositeflagindex].depositeflagname}}</view>
+              </picker>
+          </view>
+        </view>
+
+        <block wx:if="{{earnestflag}}">
+          <view class="weui-cell">
+            <view class="weui-cell__hd">
+              <view class="weui-label">定金金额</view>
+            </view>
+            <view class="weui-cell__ft">
+              <input class="weui-input" type='digit' bindinput='bindPayedAmountChange' value='{{payedamount}}' />
+            </view> 
+          </view>  
+          <view class="weui-cell">
+            <view class="weui-cell__hd">
+              <view class="weui-label">欠款金额</view>
+            </view>
+            <view class="weui-cell__ft">
+              <input class="weui-input" type='digit' bindinput='bindOweAmountChanged' value='{{oweamount}}' />
+            </view> 
+          </view>          
+        </block>        
+       
+        <view  class="weui-cell weui-cell_select">
+            <view class="weui-cell__hd weui-cell__hd_in-select-after">
+              <view class="weui-label">付款卡号</view>
+            </view>
+            <view class="weui-cell__bd">
+              <!-- <picker bindchange="bindPaycardChange" value="{{paycardindex}}" range="{{paycardlist}}" range-key='carddesc'> -->
+                <view class="weui-select weui-select_in-select-after">{{paycardlist[paycardindex].carddesc}}</view>
+              <!-- </picker> -->
+            </view>
+        </view> 
+
+        <view class="weui-cell weui-cell_select">
+            <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                <view class="weui-label">顾问</view>
+            </view>
+            <view class="weui-cell__bd">
+                <picker bindchange="bindPmcodeChange" value="{{pmcodeindex}}" range="{{pmcodelist}}" range-key='ename'>
+                    <view class="weui-select weui-select_in-select-after">{{pmcodelist[pmcodeindex].ename}}</view>
+                </picker>
+            </view>
+        </view>
+        <view class="weui-cell weui-cell_select">
+            <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                <view class="weui-label">美疗师</view>
+            </view>
+            <view class="weui-cell__bd">
+                <picker bindchange="bindSeccodeChange" value="{{seccodeindex}}" range="{{seccodelist}}" range-key='ename'>
+                    <view class="weui-select weui-select_in-select-after">{{seccodelist[seccodeindex].ename}}</view>
+                </picker>
+            </view>
+        </view>
+        <view class="weui-cell weui-cell_select">
+            <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                <view class="weui-label">美疗师</view>
+            </view>
+            <view class="weui-cell__bd">
+                <picker bindchange="bindThrcodeChange" value="{{thrcodeindex}}" range="{{thrcodelist}}" range-key='ename'>
+                    <view class="weui-select weui-select_in-select-after">{{thrcodelist[thrcodeindex].ename}}</view>
+                </picker>
+            </view>
+        </view>
+
+        <view class="weui-cell weui-cell_input">
+            <view class="weui-cell__hd">
+                <view class="weui-label">备注</view>
+            </view>
+            <view class="weui-cell__bd">
+                <input bindinput="bindRemarkChanged" value="{{remark}}"  class="weui-input" placeholder="请输入备注信息" />
+            </view>
+        </view>  
+
+        <view class="weui-cell">
+            <view class="weui-cell__bd">当前状态</view>
+            <view class="weui-cell__ft">{{psstatuslist[psstatusindex].itemvalues}}</view>             
+        </view>        
+  
+        <view class="button-foot card-add  weui-flex">
+            <view class="weui-flex__item">
+                <button class="weui-btn" disabled="{{!modifiedflag}}" type="default" bindtap="bindDelHungItem">作废</button>
+            </view>
+            <view class="weui-flex__item">
+                <button class="weui-btn" type="primary" bindtap="bindModifyHungItem">修改</button>
+            </view>
+        </view>       
+
+    </view>
+</view>
+

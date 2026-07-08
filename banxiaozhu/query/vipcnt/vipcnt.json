@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "每日到店客数",
+  "usingComponents": {
+    "wux-icon": "../../wux/packages/lib/icon/index",
+    "wux-timeline": "../../wux/packages/lib/timeline/index",
+    "wux-timeline-item": "../../wux/packages/lib/timeline-item/index",
+    "wux-navbar": "../../wux/packages/lib/navbar/index"
+  }
+}

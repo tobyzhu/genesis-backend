@@ -1,0 +1,69 @@
+@import "../../weui/style/weui.wxss";
+
+page {
+  background-color: #f8f8f8;
+  min-height: 100%;
+}
+
+.instore-section {
+  padding: 24rpx 25px 40rpx;
+}
+.instore-scroll {
+  max-height: none;
+}
+.instore-item {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+.instore-row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+.instore-name {
+  font-size: 30rpx;
+  color: #333;
+  font-weight: 500;
+}
+.instore-code {
+  font-size: 26rpx;
+  color: #888;
+}
+.instore-row2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.instore-subrow {
+  margin-top: 6rpx;
+}
+.instore-meta {
+  font-size: 24rpx;
+  color: #576b95;
+}
+.instore-amount {
+  font-size: 28rpx;
+  color: #e64340;
+  font-weight: 500;
+}
+/* 与金额行同字号字重，非金额用正文色 */
+.instore-amount--plain {
+  color: #333;
+}
+.instore-row3 {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+.instore-empty {
+  padding: 80rpx 40rpx;
+}
+.instore-empty-tip {
+  font-size: 28rpx;
+  color: #999;
+  text-align: center;
+}

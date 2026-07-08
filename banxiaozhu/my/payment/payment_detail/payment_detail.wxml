@@ -1,0 +1,18 @@
+<view class="page">
+    <!-- <view class="page__hd">
+        <view class="page__title">List</view>
+        <view class="page__desc">列表</view>
+    </view> -->
+    <view class="page__bd">
+        <!-- <view class="weui-cells__title">带说明的列表项</view> -->
+        <view class="weui-cells weui-cells_after-title">
+          <block wx:for="{{payment_detail}}" wx:key="id">
+              <view class="weui-cell">
+                  <view class="weui-cell__bd">{{item.payed_datetime}}</view>
+                  <view class="weui-cell__ft">{{item.order_amount}}</view>
+              </view>        
+          </block>
+
+        </view>
+    </view>
+</view>

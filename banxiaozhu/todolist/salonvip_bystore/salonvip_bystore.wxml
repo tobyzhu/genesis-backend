@@ -1,0 +1,55 @@
+<view class='page'>
+  <view class='page__hd'> 
+    <view class="page__title">门店沙龙活动</view>
+    <view class="page__desc">查询、删除客户沙龙活动记录</view>
+  </view>
+  <view class='page__bd  page__bd_spacing'>
+      <view class="page__bd section">
+        <!-- <view class="section__title">沙龙活动</view> -->
+        <picker bindchange="bindSalonChange" value="{{salonlist[salonlistindex].uuid}}" range="{{salonlist}}"  range-key="salon_name">
+          <view class="picker">
+            选择沙龙活动：{{salonlist[salonlistindex].salon_name}}
+          </view>
+        </picker>
+      </view>
+
+      <wux-cell-group>
+        <!-- <view class="sub-title">服务项目清单</view> -->
+        <!-- <view class="body" wx:if="{{item_s_list.length==0}}">购物车里面没有服务项目</view> -->
+        <block wx:for="{{salonviplist}}" wx:key="uuid">
+          <wux-swipe-action autoClose right="{{ right }}" id="{{item.uuid}}" bind:click="onSalonVipClick" >
+            <wux-wing-blank size="default">
+              <wux-card title="{{item.guest_name}}" extra="{{item.v_code}}">
+                  <view slot="header">{{item.salon_name}} + {{item.salon_code}}</view>
+                  <view slot="body">沙龙活动: {{item.salon_name}}({{item.salon_code}}) </view>
+                  <view slot="body">参加人数: {{item.vipcnt}} ßß</view>
+                  <view slot="body">邀约日期: {{item.inviter_date}} </view>                      
+                  <view slot="body">邀约情况: {{item.description}} </view>  
+                  <view slot="body">活动总结: {{item.summary}} </view>                   
+                  <view slot="footer">{{item.status}}  </view>
+              </wux-card>
+          </wux-wing-blank>
+        </wux-swipe-action>                
+      </block>
+    </wux-cell-group>      
+
+      <!-- <view class="weui-cells weui-cells_after-title">
+        <block wx:for="{{salonviplist}}"  wx:key="uuid">
+          <navigator url="../salonvip_edit/salonvip_edit?salonvip_uuid={{item.uuid}}" hover-class="weui-cell_active">
+            <view class="weui-cells weui-cells_after-title weui-form-preview">
+              <view class="weui-form-preview__bd">
+                <view class="weui-form-preview__item">
+                  <view class="weui-form-preview__label">{{item.salon_name}}</view>
+                  <view class="weui-form-preview__value">{{item.guest_name}}+{{item.description}}+{{item.status}}</view>
+                </view>
+              </view>
+            </view>
+          </navigator>
+        </block>
+      </view> -->
+  </view>
+
+  <!-- <view class='button-foot'>
+      <button class="weui-btn" bindtap='bindNewSalonVip' type="primary">新建沙龙活动记录</button>
+  </view> -->
+</view>

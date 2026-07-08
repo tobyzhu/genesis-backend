@@ -1,0 +1,36 @@
+<view class='page'>
+  <view class="page__bd ">
+    <view class="page-section page-section-spacing swiper">
+          <swiper
+            indicator-dots="{{indicatorDots}}"
+            autoplay="{{autoplay}}"
+            interval="{{interval}}"
+            duration="{{duration}}"
+            >
+            <block wx:for="{{imgUrls}}" wx:key="*this">
+              <swiper-item>
+                <image src="{{item}}" class="slide-image" mode="scaleToFill" width="{{width}}" />
+              </swiper-item>
+            </block>
+          </swiper>  
+      </view>
+  </view>
+
+  <view class="page__bd page__bd_spacing">
+      <view class="weui-grids">
+          <block wx:for="{{grids}}" wx:key="id">
+              <navigator url="{{item.url}}" class="weui-grid" hover-class="weui-grid_active">
+                  <image class="weui-grid__icon" src="{{item.image}}" />
+                  <view class="weui-grid__label">{{item.text}}</view>
+              </navigator>
+          </block>
+      </view>
+  </view>
+
+    <!-- <button bindtap="changeIndicatorDots">indicator-dots</button>
+    <button bindtap="changeAutoplay">autoplay</button>
+    <slider bindchange="intervalChange" show-value min="500" max="2000" />
+    <slider bindchange="durationChange" show-value min="1000" max="10000" /> -->
+
+</view>
+

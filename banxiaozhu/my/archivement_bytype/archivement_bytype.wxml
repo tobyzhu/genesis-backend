@@ -1,0 +1,28 @@
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">当前用户</view>
+        <view class="page__desc">{{company}}-{{storecode}}-{{ecode}}</view>
+    </view>
+    <view class="page__bd">
+          <view class="weui-flex">
+              <view class="weui-flex__item" ><view class="placeholder">客数/客次</view></view>
+              <view class="weui-flex__item"><view class="placeholder">业绩</view></view>
+              <view class="weui-flex__item"><view class="placeholder">实耗/实操</view></view>
+          </view>
+
+        <block wx:for="{{emplarch}}" wx:key="*this" >
+            <view class="weui-cells__title">{{item.level2}}-{{item.level3}}-{{item.brand}}</view>
+
+          <view class="weui-flex">
+              <view class="weui-flex__item" ><view class="placeholder">{{item.vipcnt}}/{{item.viptimes}}</view></view>
+              <view class="weui-flex__item" values="{{item.yejiamount}}"><view class="placeholder">{{item.yejiamount}}</view></view>
+              <view class="weui-flex__item"><view class="placeholder">{{item.shihao}}/{{item.shichao}}</view></view>
+          </view>
+
+
+        </block>
+
+
+
+    </view>
+</view>

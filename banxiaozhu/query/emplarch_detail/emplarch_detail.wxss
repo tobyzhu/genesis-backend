@@ -1,0 +1,4 @@
+/* query/empl_archivement/empl_archivement.wxss */
+.weui-form-preview{
+  margin-bottom: 25px;
+}

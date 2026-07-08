@@ -1,0 +1,7 @@
+{
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "navigationBarTitleText": "服务开单",
+  "usingComponents": {
+  }
+}

@@ -1,0 +1,303 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static report_format %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .card-balance-filters {
+    background: var(--body-bg, #fff);
+    border: 1px solid var(--hairline-color, #ddd);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .card-balance-filters .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    align-items: flex-end;
+    margin-bottom: 8px;
+  }
+  .card-balance-filters label {
+    display: block;
+    font-size: 12px;
+    color: var(--body-quiet-color, #666);
+    margin-bottom: 4px;
+  }
+  .card-balance-filters select,
+  .card-balance-filters input[type="text"] {
+    min-width: 140px;
+    padding: 6px 8px;
+  }
+  .card-balance-totals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 16px 0 24px;
+  }
+  .card-balance-totals .stat-box {
+    border: 1px solid var(--hairline-color, #ddd);
+    border-radius: 4px;
+    padding: 12px 16px;
+    min-width: 160px;
+    background: var(--darkened-bg, #f8f8f8);
+  }
+  .card-balance-totals .stat-box strong {
+    display: block;
+    font-size: 18px;
+    margin-top: 4px;
+  }
+  .card-balance-totals .stat-label {
+    font-size: 12px;
+    color: var(--body-quiet-color, #666);
+  }
+  table.card-balance-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+  }
+  table.card-balance-table th,
+  table.card-balance-table td {
+    border: 1px solid var(--hairline-color, #ddd);
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+  #content-main table.card-balance-table thead th {
+    background-color: var(--darkened-bg, #f8f8f8);
+    color: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  #content-main table.card-balance-table thead th.group-normal,
+  #content-main table.card-balance-table thead th.group-gift {
+    text-align: center;
+  }
+  table.card-balance-table .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+  table.card-balance-table tr.total-row td {
+    font-weight: 600;
+  }
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--primary, #417690);
+  }
+  .empty-tip {
+    color: var(--body-quiet-color, #666);
+    padding: 24px;
+    text-align: center;
+    border: 1px dashed var(--hairline-color, #ccc);
+    border-radius: 4px;
+  }
+  .toolbar-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .error-panel {
+    border: 1px solid #ba2121;
+    background: #fff0f0;
+    color: #ba2121;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+  .hint-box {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 12px;
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <h1>{{ title }} <small style="font-weight:normal;color:#666;">（公司：{{ company }}）</small></h1>
+
+  <form method="get" class="card-balance-filters">
+    <input type="hidden" name="q" value="1">
+    <div class="form-row">
+      {% if company_choices %}
+      <div>
+        <label for="id_company">公司</label>
+        <select name="company" id="id_company">
+          {% for c in company_choices %}
+          <option value="{{ c }}" {% if company == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div>
+        <label for="id_storecode">门店</label>
+        <select name="storecode" id="id_storecode">
+          <option value="">全部门店</option>
+          {% for code, name in store_choices %}
+          <option value="{{ code }}" {% if params.storecode == code %}selected{% endif %}>{{ code }} {{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="id_suptype">卡大类</label>
+        <select name="suptype" id="id_suptype">
+          <option value="">全部</option>
+          {% for code, name in suptype_choices %}
+          <option value="{{ code }}" {% if params.suptype == code %}selected{% endif %}>{{ code }} {{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="id_comptype">消费模式</label>
+        <select name="comptype" id="id_comptype">
+          <option value="">全部</option>
+          {% for code, label in comptype_choices %}
+          <option value="{{ code }}" {% if params.comptype == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="id_nature">stype 性质</label>
+        <select name="nature" id="id_nature">
+          <option value="">全部</option>
+          {% for code, label in nature_choices %}
+          <option value="{{ code }}" {% if params.nature == code %}selected{% endif %}>{{ label }}（{% if code == '正常' %}N{% else %}P{% endif %}）</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="id_keyword">卡类名称</label>
+        <input type="text" name="keyword" id="id_keyword" value="{{ params.keyword }}" placeholder="卡类编号/名称">
+      </div>
+      <div>
+        <label for="id_only_with_balance">仅有余额/余次</label>
+        <select name="only_with_balance" id="id_only_with_balance">
+          <option value="1" {% if params.only_with_balance %}selected{% endif %}>是</option>
+          <option value="0" {% if not params.only_with_balance %}selected{% endif %}>否</option>
+        </select>
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      <input type="submit" value="查询" class="default">
+      <a href="?" class="button">重置</a>
+      {% if has_filters %}
+      <a href="?q=1&amp;export=csv&amp;company={{ company|urlencode }}&amp;storecode={{ params.storecode|urlencode }}&amp;suptype={{ params.suptype|urlencode }}&amp;comptype={{ params.comptype|urlencode }}&amp;nature={{ params.nature|urlencode }}&amp;keyword={{ params.keyword|urlencode }}&amp;only_with_balance={% if params.only_with_balance %}1{% else %}0{% endif %}" class="button">导出 CSV</a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if not has_filters %}
+  <div class="empty-tip">请选择条件后点击「查询」。</div>
+  {% else %}
+
+  {% if report_error %}
+  <div class="error-panel"><strong>查询出错：</strong>{{ report_error }}</div>
+  {% endif %}
+
+  {% if report %}
+  <div class="card-balance-totals">
+    <div class="stat-box">
+      <span class="stat-label">卡张数</span>
+      <strong>{{ report.grand_totals.card_count }}</strong>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">正常 · 余额(leftmoney)</span>
+      <strong>{{ report.grand_totals.normal_amount|fmt_amount }}</strong>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">赠送 · 余额(leftmoney)</span>
+      <strong>{{ report.grand_totals.gift_amount|fmt_amount }}</strong>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">正常 · 剩余次数(leftqty)</span>
+      <strong>{{ report.grand_totals.normal_times|fmt_qty }}</strong>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">赠送 · 剩余次数(leftqty)</span>
+      <strong>{{ report.grand_totals.gift_times|fmt_qty }}</strong>
+    </div>
+  </div>
+
+  <div class="section-title">卡类汇总</div>
+  <p class="hint-box">有效卡：<strong>flag=Y</strong> 且 <strong>status=O</strong>；stype：<strong>N</strong>=正常，<strong>P</strong>=赠送；余额 = <strong>Cardinfo.leftmoney</strong>；疗程余次 = <strong>Cardinfo.leftqty</strong>；张数仅统计有余额/余次的有效卡（储值卡 leftmoney&gt;0，计次卡 leftqty&gt;0）。</p>
+
+  {% if report.summary_rows %}
+  <table class="card-balance-table">
+    <thead>
+      <tr>
+        <th rowspan="2">序号</th>
+        <th rowspan="2">卡类编号</th>
+        <th rowspan="2">卡类名称</th>
+        <th rowspan="2">卡大类</th>
+        <th rowspan="2">消费模式</th>
+        <th rowspan="2">品牌</th>
+        <th colspan="3" class="group-normal">正常（stype=N）</th>
+        <th colspan="3" class="group-gift">赠送（stype=P）</th>
+        <th colspan="3">合计</th>
+      </tr>
+      <tr>
+        <th class="num group-normal">张数</th>
+        <th class="num group-normal">余额</th>
+        <th class="num group-normal">余次</th>
+        <th class="num group-gift">张数</th>
+        <th class="num group-gift">余额</th>
+        <th class="num group-gift">余次</th>
+        <th class="num">张数</th>
+        <th class="num">余额</th>
+        <th class="num">余次</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in report.summary_rows %}
+      <tr>
+        <td class="num">{{ forloop.counter }}</td>
+        <td>{{ row.cardtype_code }}</td>
+        <td>{{ row.cardtype_name }}</td>
+        <td>{{ row.suptype_name }}</td>
+        <td>{{ row.comptype_label }}</td>
+        <td>{{ row.brand }}</td>
+        <td class="num col-normal">{{ row.normal_count }}</td>
+        <td class="num col-normal">{{ row.normal_leftmoney|fmt_amount }}</td>
+        <td class="num col-normal">{% if row.comptype == 'times' %}{{ row.normal_leftqty|fmt_qty }}{% else %}—{% endif %}</td>
+        <td class="num col-gift">{{ row.gift_count }}</td>
+        <td class="num col-gift">{{ row.gift_leftmoney|fmt_amount }}</td>
+        <td class="num col-gift">{% if row.comptype == 'times' %}{{ row.gift_leftqty|fmt_qty }}{% else %}—{% endif %}</td>
+        <td class="num">{{ row.total_count }}</td>
+        <td class="num">{{ row.total_leftmoney|fmt_amount }}</td>
+        <td class="num">{% if row.comptype == 'times' %}{{ row.total_leftqty|fmt_qty }}{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total-row">
+        <td colspan="6">合计</td>
+        <td class="num col-normal">—</td>
+        <td class="num col-normal">{{ report.grand_totals.normal_amount|fmt_amount }}</td>
+        <td class="num col-normal">{{ report.grand_totals.normal_times|fmt_qty }}</td>
+        <td class="num col-gift">—</td>
+        <td class="num col-gift">{{ report.grand_totals.gift_amount|fmt_amount }}</td>
+        <td class="num col-gift">{{ report.grand_totals.gift_times|fmt_qty }}</td>
+        <td class="num">{{ report.grand_totals.card_count }}</td>
+        <td class="num">{{ report.grand_totals.total_amount|fmt_amount }}</td>
+        <td class="num">{{ report.grand_totals.total_times|fmt_qty }}</td>
+      </tr>
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-tip">当前条件下无汇总数据。</div>
+  {% endif %}
+  {% else %}
+  <div class="empty-tip">查询未返回结果。</div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

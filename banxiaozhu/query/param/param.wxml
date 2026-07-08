@@ -1,0 +1,36 @@
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">查询条件</view>
+    </view>
+    <view class="page__bd page__bd_spacing">
+        <view class="weui-cells__title">日期范围</view>
+        <view class="weui-cell weui-cell_input">
+            <view class="weui-cell__hd">
+                <view class="weui-label">开始日期:</view>
+            </view>
+            <view class="weui-cell__bd">
+                <picker mode="date" value="{{fromdate}}" start="2024-01-01" end="2099-12-31" bindchange="bindFromDateChange">
+                    <view class="weui-input">{{fromdate}}</view>
+                </picker>
+            </view>
+        </view>
+
+        <view class="weui-cell weui-cell_input">
+            <view class="weui-cell__hd">
+                <view class="weui-label">截止日期:</view>
+            </view>
+            <view class="weui-cell__bd">
+                <picker mode="date" value="{{todate}}" start="2024-01-01" end="2099-12-31" bindchange="bindToDateChange">
+                    <view class="weui-input">{{todate}}</view>
+                </picker>
+            </view>
+        </view>
+
+        <view class="button-sp-area weui-flex">
+            <button class="weui-btn mini-btn weui-flex__item" bindtap='yesterday' type="default" size="mini">昨天</button>
+            <button class="weui-btn mini-btn weui-flex__item" bindtap="lastmonth" type="default" size="mini">上月</button>
+            <button class="weui-btn mini-btn weui-flex__item" bindtap="thismonth" type="default" size="mini">本月</button>  
+        </view>        
+        <button class="weui-btn" bindtap="clickQuery" type="primary">查询</button>
+    </view>
+</view>

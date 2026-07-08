@@ -1,0 +1,60 @@
+<view class="page" xmlns:wx="http://www.w3.org/1999/xhtml">
+    <view class="page__hd">
+        <view class="page__title">查询条件</view>
+        <!-- <view class="page__desc">表单输入</view> -->
+    </view>
+    <view class="page__bd">
+        <view wx:if="{{crmrptid==1 || crmrptid==2 || crmrptid==3 || crmrptid==4|| crmrptid==8 || crmrptid==9 || crmrptid==10}}">
+            <view class="weui-cells__title">日期范围</view>
+            <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell weui-cell_input">
+                    <view class="weui-cell__hd">
+                        <view class="weui-label">起始日期</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <picker mode="date" value="{{fromdate}}" start="2018-01-01" end="2039-12-31" bindchange="bindFromDateChange">
+                            <view class="weui-input">{{fromdate}}</view>
+                        </picker>
+                    </view>
+                </view>
+
+                <view class="weui-cell weui-cell_input">
+                    <view class="weui-cell__hd">
+                        <view class="weui-label">截止日期</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <picker mode="date" value="{{todate}}" start="2018-01-01" end="2039-12-31" bindchange="bindToDateChange">
+                            <view class="weui-input">{{todate}}</view>
+                        </picker>
+                    </view>
+                </view>
+            </view>
+        </view>
+
+        <view wx:if="{{crmrptid==5}}">
+            <view class="weui-cells__title">余额范围</view>
+            <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell weui-cell_input">
+                    <view class="weui-cell__hd">
+                        <view class="weui-label">最小余额</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <input  class="weui-input" type="digit" bindinput='bindMiniLeftmoneyChange' placeholder="请输入最小余额" value="{{minileftmoney}}" >{{minileftmoney}}</input>
+                    </view>
+                </view>
+
+                <view class="weui-cell weui-cell_input">
+                    <view class="weui-cell__hd">
+                        <view class="weui-label">最大余额</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <input class="weui-input" type="digit" bindinput='bindMaxLeftmoneyChange' placeholder="请输入最大余额" value="{{maxleftmoney}}">{{maxleftmoney}}</input>
+                    </view>
+                </view>
+            </view>
+        </view>
+
+        <button class="weui-btn" bindtap="bindQuery" type="primary" >查询</button>
+
+    </view>
+</view>

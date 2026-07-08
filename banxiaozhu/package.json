@@ -1,0 +1,12 @@
+{
+  "name": "banxiaozhu",
+  "private": true,
+  "description": "Genesis 帮小主微信小程序",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

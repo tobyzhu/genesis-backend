@@ -1,0 +1,60 @@
+<view class='page'>
+  <view class='page__hd'> 
+    <view class="page__title">业绩明细</view>
+    <view class="page__desc">工号:{{param.ecode}} </view>
+    <view class="page__desc">开始日期:{{param.fromdate}}  截止日期:{{param.todate}}</view>
+  </view>
+  <view class='page__bd  page__bd_spacing'>
+      <view class="page__bd section">
+          <view class="weui-flex">
+            <view class="weui-flex__item">
+              <picker bindchange="bindTtypeChange" value="{{ttypelist[ttypelistindex].ttype}}" range="{{ttypelist}}"  range-key="ttypename">
+                <view class="picker">
+                  交易类型：{{ttypelist[ttypelistindex].ttypename}}
+                </view>
+              </picker>
+            </view>
+            <!-- <view class="weui-flex__item">
+              <picker bindchange="bindStypeChange" value="{{stypelist[stypelistindex].itemname}}" range="{{stypelist}}"  range-key="itemvalues">
+                <view class="picker">
+                  是否赠送：{{stypelist[stypelistindex].itemname}}
+                </view>
+              </picker>             
+            </view> -->
+ 
+        </view>
+     
+      </view>
+
+      <wux-cell-group>
+        <!-- <view class="sub-title">服务项目清单</view> -->
+        <!-- <view class="body" wx:if="{{item_s_list.length==0}}">购物车里面没有服务项目</view> -->
+        <block wx:for="{{filtered_detail}}" wx:key="txserno">
+          <wux-swipe-action autoClose right="{{ right }}" id="{{item.txserno}}" bind:click="onSalonVipClick" >
+            <wux-wing-blank size="default">
+              <wux-card title="{{item.vname}}" extra="{{item.vsdate}}">
+                  <view slot="header">{{item.vname}} + {{item.vsdate}} + {{item.serno}}</view>
+                  <view slot="body">{{item.ttype}}-{{item.stype}}-{{item.srvname}}</view>
+                  <view slot="body">价格: {{item.s_qty}}*{{item.s_price}}={{item.s_mount}} </view>
+                  <view slot="body">资金流水: {{item.xamount}} </view>         
+                  <view wx:if="{{item.ttype == '服务'}}" slot="body">{{item.ttype}}流水: {{item.s_basenum}}</view>    
+                  <view wx:if="{{item.ttype == '充值' }}" slot="body">{{item.ttype}}流水: {{item.c20_basenum}} {{item.c25_basenum}}</view>
+                  <view wx:if="{{item.ttype == '商品'}}" slot="body">{{item.ttype}}流水: {{item.g_basenum}}</view>                
+                  <view wx:if="{{item.ttype == '售卡'}}" slot="body">{{item.ttype}}流水: {{item.c20_basenum}} </view>  
+                  <view slot="body">项次: {{item.cnt}} </view>  
+                  <view slot="body">固定提成: {{item.point}} </view>  
+                                            
+                  <view slot="footer">{{item.status}}  </view>
+              </wux-card>
+          </wux-wing-blank>
+        </wux-swipe-action>                
+      </block>
+    </wux-cell-group>      
+
+ 
+  </view>
+
+  <!-- <view class='button-foot'>
+      <button class="weui-btn" bindtap='bindNewSalonVip' type="primary">新建沙龙活动记录</button>
+  </view> -->
+</view>

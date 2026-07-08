@@ -1,0 +1,129 @@
+<view class="page" xmlns:wx="http://www.w3.org/1999/xhtml">
+    <view class="page__hd">
+        <view class="page__title">{{vip.vname}}</view>
+        <view class="page__desc">沙龙活动信息</view>
+    </view>
+    <view class="page__bd">
+        <view class="weui-toptips weui-toptips_warn" wx:if="{{showTopTips}}">错误提示</view>
+
+        <view class="weui-cells weui-cells_after-title">
+
+          <view class="weui-cell weui-cell_select">
+                  <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                      <view class="weui-label">活动</view>
+                  </view>            
+                  <view class="weui-cell__bd">
+                      <picker bindchange="bindSalonChange" value="{{salonlistindex}}" range="{{salonlist}}" range-key='salon_name'>
+                          <view class="weui-select">{{salonlist[salonlistindex].salon_name}}</view>
+                      </picker>
+                  </view>
+            </view>
+
+            <view class="weui-cell weui-cell_input">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">邀约日期</view>
+                </view>
+                <view class="weui-cell__bd">
+                      <picker mode="date" value="{{inviter_date}}" start="2019-03-01" end="2029-12-31" bindchange="bindInviterDateChange">
+                        <view class="weui-input">{{inviter_date}}</view>
+                    </picker>
+                </view>
+            </view>
+
+            <view class="weui-cell weui-cell_select">
+                  <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                      <view class="weui-label">邀约员工</view>
+                  </view>            
+                  <view class="weui-cell__bd">
+                      <picker bindchange="bindInviterEmplChange" value="{{inviter_ecode_index}}" range="{{empllist}}" range-key='ename'  required >
+                          <view class="weui-select">{{empllist[inviter_ecode_index].ename}}</view>
+                      </picker>
+                  </view>
+            </view>
+
+            <view class="weui-cell weui-cell_input">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">客人姓名</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <input class="weui-input" type="text" bindinput="bindGuestNameChange" value="{{guest_name}}" placeholder="请输入姓名"/>
+                </view>
+            </view>
+
+            <view class="weui-cells weui-cells_after-title">      
+                <view class="weui-cell weui-cell_select">
+                    <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                        <view class="weui-label">参加人数</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <picker bindchange="bindVipcntChange" value="{{vipcnt}}" range="{{vipcntlist}}">
+                            <view class="weui-select weui-select_in-select-after">{{vipcntlist[vipcntlistindex]}}</view>
+                        </picker>
+                    </view>
+                </view>
+            </view>           
+
+            <!-- <view class="weui-cell weui-cell_input weui-cell_vcode">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">手机号</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <input class="weui-input" text="number" bindinput='bindGuestMobileChange' value="{{guest_mobile}}" placeholder="请输入手机号" />
+                </view>
+            </view> -->
+
+            <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell">
+                    <view class='weui-cell__hd'>
+                       <view class="weui-label">邀约情况</view>                 
+                    </view>
+                    <view class="weui-cell__bd">
+                        <textarea class="weui-textarea" placeholder="请输入详情" bindinput="bindDescriptionChange" style="height: 3.3em" value="{{description}}"/>
+                        <view class="weui-textarea-counter">0/200</view>
+                    </view>
+                </view>
+            </view>
+
+            <!-- <button type="default">客户类型</button> -->
+            <view class="weui-cell weui-cell_input">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">当前状态</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <picker  bindchange="bindSalonVipStatusChange" value="{{salonvip_status_index}}" range="{{salonvip_status_list}}" range-key='title' data-id='{{salonvip_status_list[index].value}}'>
+                        <view class="weui-select">{{salonvip_status_list[salonvip_status_index].title}}</view>                    
+                    </picker>                          
+                </view>
+            </view>
+
+            <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell">
+                    <view class='weui-cell__hd'>
+                       <view class="weui-label">活动总结</view>                 
+                    </view>
+                    <view class="weui-cell__bd">
+                        <textarea class="weui-textarea" placeholder="请输入详情" bindinput="bindSummaryChange" style="height: 3.3em" value="{{summary}}"/>
+                        <view class="weui-textarea-counter">0/200</view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="weui-cell weui-cell_select">
+                  <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                      <view class="weui-label">总结员工</view>
+                  </view>            
+                  <view class="weui-cell__bd">
+                      <picker bindchange="bindSummaryEmplChange" value="{{summary_ecode_index}}" range="{{empllist}}" range-key='ename'>
+                          <view class="weui-select">{{empllist[summary_ecode_index].ename}}</view>
+                      </picker>
+                  </view>
+            </view>            
+
+
+        </view>
+        <view class="weui-btn-area">
+            <button class="weui-btn" type="primary" bindtap="updateSalonVip">确定</button>
+        </view>
+    </view>
+
+</view>

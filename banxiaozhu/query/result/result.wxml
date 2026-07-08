@@ -1,0 +1,113 @@
+<view class="page">
+  <view class='page__hd'> 
+    <view class="page__title">{{reportname}}</view>
+    <view class="page__desc">工号:{{param.ecode}} </view>
+    <view class="page__desc">开始日期:{{param.fromdate}}  截止日期:{{param.todate}}</view>
+  </view>
+
+    <view class="page__bd">
+        <!-- <view>
+            <web-view src='{{url}}'>
+            </web-view> 
+        </view> -->
+        <!-- <view class="weui-form-preview__item">
+            <view class="weui-form-preview__label">{{reportdata.}}</view>
+            <view class="weui-form-preview__value">{{item.vipcnt}}/{{item.newvipcnt}}/{{item.newvipamount}}</view>
+        </view> -->
+   
+            <block wx:for="{{reportdata}}"  wx:key="this">             
+                <view class="weui-form-preview">
+                    <view class="weui-form-preview__bd">
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">{{item.itemname}}</view>
+                            <view class="weui-form-preview__value">{{item.value}}</view>
+                        </view>
+                    </view>
+                </view>
+            </block>
+
+        <!-- <view wx:if="{{company=='yiren'}}" >
+             <view class="weui-form-preview">
+                <view class="weui-form-preview__hd">
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">日期</view>
+                        <view class="weui-form-preview__value_in-hd">{{item.vsdate}}</view>
+                    </view>
+                </view> -->
+                <!-- <view class="weui-form-preview__bd">
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">客数</view>
+                        <view class="weui-form-preview__value">{{reportdata.vipcnt}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">客次</view>
+                        <view class="weui-form-preview__value">{{reportdata.viptimes}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">项次</view>
+                        <view class="weui-form-preview__value">{{reportdata.itemcnt}}</view>
+                    </view>
+                     <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">资金流水</view>
+                        <view class="weui-form-preview__value">{{reportdata.cash_amount}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">服务流水</view>
+                        <view class="weui-form-preview__value">{{reportdata.s_amount}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">商品流水</view>
+                        <view class="weui-form-preview__value">{{reportdata.g_amount}}</view>
+                    </view>   
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">疗程流水</view>
+                        <view class="weui-form-preview__value">{{reportdata.timescard_amount}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">附卡流水</view>
+                        <view class="weui-form-preview__value">{{reportdata.othercard_amount}}</view>
+                    </view>   
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">固定提成</view>
+                        <view class="weui-form-preview__value">{{reportdata.ticheng}}</view>
+                    </view>                                                        
+                </view> -->
+                <!-- <view class="weui-form-preview__ft">
+                    <navigator url="" class="weui-form-preview__btn weui-form-preview__btn_primary" hover-class="weui-form-preview__btn_active">操作</navigator>
+                </view> -->
+            <!-- </view>             -->
+        
+        <!-- </view> --> 
+        
+        <!-- <block wx:for="{{reportdata}}"  wx:key="this">
+            <view class="weui-form-preview">
+                <view class="weui-form-preview__hd">
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">日期</view>
+                        <view class="weui-form-preview__value_in-hd">{{item.vsdate}}</view>
+                    </view>
+                </view>
+                <view class="weui-form-preview__bd">
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">客数/新客数/新客金额</view>
+                        <view class="weui-form-preview__value">{{item.vipcnt}}/{{item.newvipcnt}}/{{item.newvipamount}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">服务现金/卡付/赠送</view>
+                        <view class="weui-form-preview__value">{{item.s_cashamount}}/{{item.s_cardamount}}/{{item.s_sendamount}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">综合情况</view>
+                        <view class="weui-form-preview__value">{{item.desc1}}</view>
+                    </view>
+                </view>
+                <view class="weui-form-preview__ft">
+                    <navigator url="" class="weui-form-preview__btn weui-form-preview__btn_primary" hover-class="weui-form-preview__btn_active">操作</navigator>
+                </view>
+            </view>       
+        </block> -->
+
+  
+    </view>
+</view>
+

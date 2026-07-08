@@ -1,0 +1,48 @@
+<view class="page">
+  <view class="page__bd">
+
+      <!-- <view class="weui-search-bar">
+        <view class="weui-search-bar__form">
+          <view class="weui-search-bar__box" bind:tap="wxSearchTabVip">
+            <icon  class="weui-search-icon_in-box" color="red" type="search" size="14"></icon>
+            <input type="text" class="weui-search-bar__input"  readonly placeholder="搜索入口1"  catch:tap="wxSearchTabVip"/> 
+          </view>
+        </view>
+      </view> -->
+      <!-- <mp-searchbar placeholder="搜索入口2" bind:tap="wxSearchTabVip">
+      </mp-searchbar> -->
+
+      <navigator url="../queryvip/queryvip">
+          <wux-button block  type="light">查询客户</wux-button>
+      </navigator>
+
+      <!-- <wux-cell class='demo-item'> -->
+        <navigator url="../newvip/newvip">
+          <wux-button block  type="light">新增客人</wux-button>
+        </navigator>
+      <!-- </wux-cell> -->
+
+      <wux-index height="100%" bind:change="onChange">
+          <wux-index-item wx:for="{{ alphabet }}" wx:key="initial" name="{{ item.initial }}">
+              <block wx:for="{{ item.cells }}" wx:for-item="cell" wx:key="uuid">
+                  <!-- <view  class="demo-item" wx:for="{{ item.cells }}" wx:for-item="cell" wx:key="uuid"> -->
+                    <view class="weui-cells weui-cells_after-title" style='margin-right:23px'>
+                        <navigator url="../vip?uuid={{cell.uuid}}" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                             <!-- <view class="weui-cell__hd">
+                                <image src="../../images/vip-{{cell.viplevel}}.png" style="margin-right: 5px;vertical-align: middle;width:20px; height: 20px;"></image>
+                            </view> -->
+                            <view class="weui-cell__bd">{{cell.vname}}</view>
+                            <!-- <view class="weui-cell__ft weui-cell__ft_in-access" >{{cell.vcode}}</view> -->
+                            <view wx:if="{{cell.viptype==10}}" class="weui-cell__ft weui-cell__ft_in-access">{{cell.vcode}}</view>
+                            <view wx:if="{{cell.viptype==20}}" class="weui-cell__ft weui-cell__ft_in-access">散客</view>
+                            <view wx:if="{{cell.viptype==30}}" class="weui-cell__ft weui-cell__ft_in-access">潜在客户</view>
+                        </navigator>
+                    </view>
+
+                <!-- </view>  -->
+              </block>
+          </wux-index-item>
+      </wux-index> 
+  </view>
+
+</view>

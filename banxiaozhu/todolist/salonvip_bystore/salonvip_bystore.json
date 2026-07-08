@@ -1,0 +1,11 @@
+{
+  "usingComponents": {
+    "wux-swipe-action-group": "../../wux/packages/lib/swipe-action-group/index",
+    "wux-swipe-action": "../../wux/packages/lib/swipe-action/index",
+    "wux-cell-group": "../../wux/packages/lib/cell-group/index",
+    "wux-cell": "../../wux/packages/lib/cell/index",
+    "wux-icon": "../../wux/packages/lib/icon/index",
+    "wux-card": "../../wux/packages/lib/card/index",
+    "wux-wing-blank": "../../wux/packages/lib/wing-blank/index"
+  }
+}

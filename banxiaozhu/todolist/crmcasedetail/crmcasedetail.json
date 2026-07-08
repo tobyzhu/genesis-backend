@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "回访详情",
+  "usingComponents": {
+      "wux-cell-group": "../../wux/packages/lib/cell-group/index",
+      "wux-cell": "../../wux/packages/lib/cell/index",
+      "wux-select": "../../wux/packages/lib/select/index"
+  }
+}

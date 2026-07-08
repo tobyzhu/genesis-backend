@@ -1,0 +1,80 @@
+
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">当前用户</view>
+        <view class="page__desc">{{company}}-{{storecode}}-{{ecode}}</view>
+    </view>
+    <view class="page__bd">
+        <block id='thismonth' >
+            <view class="weui-cells__title">{{thismonth}}业绩</view>
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="../archivement_bytype/archivement_bytype?month=thismonth" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">客数</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{thismonth_vipcnt}}</view>
+                </navigator>
+            </view>
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="../archivement_bytype/archivement_bytype?month=thismonth" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">客次</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{thismonth_viptimes}}</view>
+                </navigator>
+            </view>
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="../archivement_bytype/archivement_bytype?month=thismonth" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">业绩</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{thismonth_yeji}}</view>
+                </navigator>
+            </view>            
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="../archivement_bytype/archivement_bytype?month=thismonth" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">实耗</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{thismonth_shihao}}</view>
+                </navigator>
+            </view>  
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="../archivement_bytype/archivement_bytype?month=thismonth" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">实操</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{thismonth_shichao}}</view>
+                </navigator>
+            </view>  
+
+        </block>
+
+        <block id='lastmonth' >
+            <view class="weui-cells__title">{{lastmonth}}业绩</view>
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">客数</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{lastmonth_vipcnt}}</view>
+                </navigator>
+            </view>
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">客次</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{lastmonth_viptimes}}</view>
+                </navigator>
+            </view>
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">业绩</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{lastmonth_yeji}}</view>
+                </navigator>
+            </view>            
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">实耗</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{lastmonth_shihao}}</view>
+                </navigator>
+            </view>  
+            <view class="weui-cells weui-cells_after-title">
+                <navigator url="" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">实操</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">{{lastmonth_shichao}}</view>
+                </navigator>
+            </view>  
+
+        </block>
+
+
+    </view>
+</view>

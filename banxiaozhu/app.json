@@ -1,0 +1,131 @@
+{
+  "pages": [
+    "my/checknetwork/checknetwork",
+    "my/login/login",
+    "index/index",
+    "index/instore_vips/instore_vips",
+    "todolist/todolist",
+    "todolist/crmcase/crmcase",
+    "vip/vip",
+    "wxSearchView/wxSearchView",
+    "todolist/crmcasedetail/crmcasedetail",
+    "todolist/todaybooking/todaybooking",
+    "vip/newvip/newvip",
+    "vip/viplist/viplist",
+    "vip/vipindex/vipindex",
+    "vip/booking/booking",
+    "vip/kaidan/kaidan",
+    "vip/timescard/timescard",
+    "vip/serviece/serviece",
+    "vip/kaidan/preview/preview",
+    "vip/goods/goods",
+    "vip/consumequery/consumequery",
+    "vip/bookingdetail/bookingdetail",
+    "vip/crmcasedetailquery/crmcasedetailquery",
+    "vip/vipinfo/vipinfo",
+    "vip/newcard/newcard",
+    "vip/queryvip/queryvip",
+    "vip/search/search",
+    "vip/fillcard/fillcard",
+    "vip/newtimescard/newtimescard",
+    "vip/shoppingcar/shoppingcar",
+    "vip/goodsquery/goodsquery",
+    "vip/goodssearch/goodssearch",
+    "vip/serviecesearch/serviecesearch",
+    "vip/serviecequery/serviecequery",
+    "vip/nearlyvip/nearlyvip",
+    "vip/timescardquery/timescardquery",
+    "vip/timescardsearch/timescardsearch",
+    "vip/shoppingcar/success/success",
+    "vip/shoppingcar/delete/delete",
+    "vip/shoppingcartitem/shoppingcartitem",
+    "search/search",
+    "my/cache/cache",
+    "my/authorize/authorize",
+    "my/my",
+    "my/archivement/archivement",
+    "my/archivement_bytype/archivement_bytype",
+    "my/archivement_bydate/archivement_bydate",
+    "vip/vipmanage/vipmanage",
+    "vip/checkout/checkout",
+    "vip/itemsedit/itemsedit",
+    "vip/hungs/hungs",
+    "vip/hungitemedit/hungitemedit",
+    "vip/vipcasedetail/vipcasedetail",
+    "vip/vipcasedetail_edit/vipcasedetail_edit",
+    "vip/viplistbylevel/viplistbylevel",
+    "vip/queryvipparam/queryvipparam",
+    "my/payment/payment",
+    "my/payment/payment_detail/payment_detail",
+    "query/vipcnt/vipcnt",
+    "query/query",
+    "todolist/planvipcase/planvipcase",
+    "query/param/param",
+    "query/result/result",
+    "query/emplarch_detail/emplarch_detail",
+    "vip/advanceinfo/advanceinfo",
+    "vip/advanceinfoitem/advanceinfoitem",
+    "vip/vipaddress/vipaddress",
+    "vip/newvipaddress/newvipaddress",
+    "vip/consumesearch/consumesearch",
+    "citySelector/citySelector",
+    "vip/salonvip_byvip/salonvip_byvip",
+    "vip/salonvip_edit/salonvip_edit",
+    "todolist/salonvip_bystore/salonvip_bystore"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#f8f8f8",
+    "navigationBarTitleText": "帮小主",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#000000",
+    "selectedColor": "#04BE02",
+    "position": "bottom",
+    "list": [
+      {
+        "pagePath": "index/index",
+        "text": "首页",
+        "iconPath": "images/HomeNormal.png",
+        "selectedIconPath": "images/HomeSelected.png"
+      },
+      {
+        "pagePath": "vip/vipindex/vipindex",
+        "text": "客户",
+        "iconPath": "images/callServiceDefault.png",
+        "selectedIconPath": "images/callServiceSelected.png"
+      },
+      {
+        "pagePath": "query/query",
+        "text": "店务",
+        "iconPath": "images/MoreNormal.png",
+        "selectedIconPath": "images/MoreSelected.png"
+      },
+      {
+        "pagePath": "my/my",
+        "text": "我的",
+        "iconPath": "images/MineNormal.png",
+        "selectedIconPath": "images/MineSelected.png"
+      }
+    ]
+  },
+  "useExtendedLib": {
+    "kbone": true,
+    "weui": true
+  },
+  "plugins": {
+    "WechatSI": {
+      "version": "0.3.6",
+      "provider": "wx069ba97219f66d99"
+    }
+  },
+  "permission": {
+    "scope.record": {
+      "desc": "用于结账页的语音指令（按住说话转文字）"
+    }
+  },
+  "resizable": true,
+  "debug": false,
+  "sitemapLocation": "sitemap.json"
+}

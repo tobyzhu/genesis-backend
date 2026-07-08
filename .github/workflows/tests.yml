@@ -1,0 +1,92 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  banxiaozhu:
+    name: banxiaozhu (Jest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: banxiaozhu
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: banxiaozhu/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest
+        run: npm test
+
+  backend:
+    name: genesis_backend (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: genesis_backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: genesis_backend/requirement.txt
+
+      - name: Check database secrets
+        id: dbcheck
+        env:
+          DB_HOST: ${{ secrets.GENESIS_DB_HOST }}
+        run: |
+          if [ -z "$DB_HOST" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping backend pytest — configure repository secrets GENESIS_DB_HOST, GENESIS_DB_PORT, GENESIS_DB_USER, GENESIS_DB_PASSWORD, GENESIS_DB_NAME to enable."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write .env for test database
+        if: steps.dbcheck.outputs.configured == 'true'
+        env:
+          DB_HOST: ${{ secrets.GENESIS_DB_HOST }}
+          DB_PORT: ${{ secrets.GENESIS_DB_PORT }}
+          DB_USER: ${{ secrets.GENESIS_DB_USER }}
+          DB_PASSWORD: ${{ secrets.GENESIS_DB_PASSWORD }}
+          DB_NAME: ${{ secrets.GENESIS_DB_NAME }}
+        run: |
+          {
+            echo "DB_HOST=${DB_HOST}"
+            echo "DB_PORT=${DB_PORT:-3306}"
+            echo "DB_USER=${DB_USER}"
+            echo "DB_PASSWORD=${DB_PASSWORD}"
+            echo "DB_NAME=${DB_NAME}"
+          } > .env
+
+      - name: Install Python dependencies
+        if: steps.dbcheck.outputs.configured == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirement.txt
+
+      - name: Prepare test database schema
+        if: steps.dbcheck.outputs.configured == 'true'
+        run: bash ../scripts/setup-test-db.sh
+
+      - name: Run pytest
+        if: steps.dbcheck.outputs.configured == 'true'
+        env:
+          GENESIS_USE_TEST_DB: "1"
+        run: pytest assistant/tests -q

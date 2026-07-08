@@ -1,0 +1,39 @@
+<!--todolist/crmcasedetail/crmcasedetail.wxml-->
+<wux-select id="wux-select1" />
+<wux-select id="wux-select2" />
+<wux-select id="wux-select3" />
+<wux-select id="wux-select4" />
+
+<view class="page" xmlns:wx="http://www.w3.org/1999/xhtml">
+    <view class="page__hd">
+        <view class="page__title">{{vname}}</view>
+        <view class="page__desc">{{casedesc}}</view>
+    </view>
+    <form>
+        <view class="page__bd">
+              <!-- <wux-cell-group title="回访详情">
+                    <wux-cell title="门店体验" extra="{{ title1 }}" bind:click="onClick1"></wux-cell>
+                    <wux-cell title="产品使用" extra="{{ title2 }}" bind:click="onClick2"></wux-cell>
+                    <wux-cell title="有无过敏" extra="{{ title3 }}" bind:click="onClick3"></wux-cell>
+                    <wux-cell title="饮食与运动" extra="{{ title4 }}" bind:click="onClick4"></wux-cell>
+              </wux-cell-group> -->
+
+              <view class="weui-cells weui-cells_after-title">
+                  <view class="weui-cell">
+                      <view class="weui-cell__bd">
+                          <textarea class="weui-textarea" name="detaildescription" maxlength='500' value='{{detaildescription}}' bindinput="detaildescriptionChange" placeholder="请输入回访情况" style="height: 3.3em">{{detaildescription}}</textarea>
+                          <view class="weui-textarea-counter">0/500</view>
+                      </view>
+                  </view>
+              </view>
+
+              <view class="weui-btn-area">
+                  <button class="weui-btn" type="primary" wx:if="{{parent=='crmcase'}}" bindtap="addCrmCaseDetail">确定</button>
+                  <button class="weui-btn" type="primary" wx:if="{{parent=='preview'}}" bindtap="updateCrmCaseDetail">确定2</button>
+              </view>
+
+
+        </view>    
+    </form>    
+ 
+</view>

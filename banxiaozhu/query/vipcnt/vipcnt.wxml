@@ -1,0 +1,56 @@
+<!-- <view class="container">
+    <canvas canvas-id="vipcnt_Line" class="canvas" style="height:300px" bindtouchstart="touchHandler"></canvas>
+</view> -->
+<!-- <wxs module="util" src="../../utils/utls.js" /> -->
+
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">查询条件</view>
+        <view class="page__desc">日期范围:{{fromdate}}-{{todate}}</view>
+    </view>
+    <view class="page__bd page__bd_spacing">
+
+        <!-- <view class="weui-cell weui-cell_input">
+            <view class="weui-cell__hd">
+                <view class="weui-label">查询日期:</view>
+            </view>
+            <view class="weui-cell__bd">
+                <picker mode="date" value="{{fromdate}}" start="2020-01-01" end="2020-12-31" bindchange="bindFromDateChange">
+                    <view class="weui-input">{{fromdate}}</view>
+                </picker>
+            </view>
+            <view class="weui-cell__bd">
+                <picker mode="date" value="{{todate}}" start="2020-01-01" end="2020-12-31" bindchange="bindToDateChange">
+                    <view class="weui-input">{{todate}}</view>
+                </picker>
+            </view>
+        </view> -->
+        <!-- <view class="button-sp-area">
+            <button class="weui-btn mini-btn" bindtap='yesterday' type="default" size="mini">昨天</button>
+            <button class="weui-btn mini-btn" bindtap="today" type="default" size="mini">今天</button>
+            <button class="weui-btn mini-btn" bindtap="thismonth" type="default" size="mini">本月</button>  
+        </view>
+        <button class="weui-btn" bindtap="clickQuery" type="primary">查询</button> -->
+
+        <!-- <view class="sub-title">Default</view>
+        <wux-navbar leftText="前一天" title="{{reportdate}}" rightText="后一天" bind:click="onClick" /> -->
+
+        <!-- <view class="section section_gap" wx:for="{{imagearray}}" wx:for-item="item" wx:key="id">
+            <view class="section__title">{{item.text}}</view>
+            <view class="section__ctn">
+                <image style="width: 370px; height: 200px; background-color: #eeeeee;" mode="{{item.mode}}" src="{{item.src}}"></image>
+            </view>
+        </view> -->
+
+        <!-- <view class="sub-title">Default</view> -->
+        <wux-timeline>
+          <block wx:for="{{thismonthdata}}" wx:key="vsdate">
+               <wux-timeline-item content="{{item.vsdate}}  {{item.desc1}} " />
+          </block>
+        </wux-timeline>
+
+    </view>
+</view>
+
+
+

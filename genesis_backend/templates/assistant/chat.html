@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>智能助手 — Genesis</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --border: #2d3a4d;
+      --text: #e7edf5;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-dim: #2563eb;
+      --user-bg: #1e3a5f;
+      --bot-bg: #243044;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+    header p {
+      margin: 0.35rem 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-top: 0.75rem;
+    }
+    .toolbar label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .toolbar input, .toolbar select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+    .thread-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 0.65rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--border);
+    }
+    .thread-row select {
+      min-width: 200px;
+      flex: 1;
+      max-width: 420px;
+    }
+    .thread-row button {
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .thread-row button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .user-badge {
+      margin-left: auto;
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 920px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1rem 1.25rem 5.5rem;
+      overflow: hidden;
+    }
+    #log {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      padding-right: 0.25rem;
+    }
+    .bubble {
+      max-width: 92%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      line-height: 1.55;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.user {
+      align-self: flex-end;
+      background: var(--user-bg);
+      border: 1px solid #2d4a73;
+    }
+    .bubble.assistant {
+      align-self: flex-start;
+      background: var(--bot-bg);
+      border: 1px solid var(--border);
+    }
+    .bubble.meta {
+      align-self: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      padding: 0.25rem;
+    }
+    .bubble.error {
+      align-self: stretch;
+      background: #3f1f24;
+      border-color: #7f1d1d;
+      color: #fecaca;
+    }
+    .composer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 0.75rem 1.25rem 1rem;
+      background: linear-gradient(transparent, var(--bg) 30%);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .composer-inner {
+      max-width: 920px;
+      margin: 0 auto;
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-end;
+    }
+    .composer textarea {
+      flex: 1;
+      min-height: 44px;
+      max-height: 160px;
+      resize: vertical;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    .composer button {
+      padding: 0.65rem 1.1rem;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .composer button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .composer button:hover:not(:disabled) {
+      background: var(--accent-dim);
+    }
+    details.raw {
+      margin-top: 0.5rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    details.raw summary { cursor: pointer; }
+    details.raw pre {
+      overflow: auto;
+      max-height: 200px;
+      background: var(--bg);
+      padding: 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .export-actions {
+      margin-top: 0.45rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .export-actions .export-label {
+      font-size: 0.74rem;
+      color: var(--muted);
+      margin-right: 0.15rem;
+    }
+    .export-actions button {
+      padding: 0.28rem 0.52rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.74rem;
+    }
+    .dim-stats-panel {
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      background: var(--panel);
+    }
+    .dim-stats-panel h2 {
+      margin: 0 0 0.35rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .dim-stats-panel .dim-hint {
+      margin: 0 0 0.65rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .dim-stats-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem 0.75rem;
+      align-items: flex-end;
+      margin-bottom: 0.65rem;
+    }
+    .dim-stats-form label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .dim-stats-form input[type="number"],
+    .dim-stats-form input[type="date"],
+    .dim-stats-form select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    .dim-stats-form select#dimStatDimension {
+      min-width: 220px;
+      max-width: 100%;
+    }
+    .dim-stats-form .dim-actions {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+      margin-left: auto;
+    }
+    .dim-stats-form button#dimStatBtn {
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .dim-stats-form button#dimStatBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .dim-stat-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin: 0 0 0.45rem;
+    }
+    .dim-stat-warn {
+      font-size: 0.72rem;
+      color: #fbbf24;
+      margin: 0 0 0.45rem;
+    }
+    .dim-table-wrap {
+      overflow-x: auto;
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    table.dim-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    table.dim-table th,
+    table.dim-table td {
+      padding: 0.4rem 0.5rem;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+    }
+    table.dim-table th:first-child,
+    table.dim-table td:first-child,
+    table.dim-table th:nth-child(2),
+    table.dim-table td:nth-child(2) {
+      text-align: left;
+    }
+    table.dim-table th {
+      background: var(--bg);
+      color: var(--muted);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    table.dim-table tbody tr:hover td {
+      background: rgba(59, 130, 246, 0.08);
+    }
+    #dimStatError.dim-inline {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>智能助手</h1>
+    <p>使用 DeepSeek（密钥在服务端 .env）自动规划查询并汇总业务数据。需先登录后台员工账号。</p>
+    <div class="toolbar">
+      <label>LLM 模型
+        <select id="agent"></select>
+      </label>
+      <label>业务助手
+        <select id="profile"></select>
+      </label>
+      <label>company
+        <input id="company" type="text" size="8" />
+      </label>
+      <label>storecode
+        <input id="storecode" type="text" size="6" />
+      </label>
+    </div>
+    <div class="thread-row">
+      <label style="font-size:0.75rem;color:var(--muted);margin:0;">历史会话</label>
+      <select id="threadSelect" aria-label="历史会话"></select>
+      <button type="button" class="primary" id="newThread">新会话</button>
+      <button type="button" id="reloadThreads">刷新列表</button>
+      <span class="user-badge">当前账号：{{ current_username|default:""|escape }}</span>
+      <button type="button" id="switchUser">切换用户</button>
+      <button type="button" id="logoutAdmin">仅退出（回后台首页）</button>
+    </div>
+  </header>
+  <main>
+    <section class="dim-stats-panel" aria-labelledby="dim-stats-heading">
+      <h2 id="dim-stats-heading">门店营业 · 管理属性维度</h2>
+      <p class="dim-hint">
+        与下方对话助手使用相同数据口径（有效交易 <code>valiflag=Y</code> 对应的消费明细）。此处直接请求汇总接口，不经过大模型。
+        公司、门店请使用页顶输入框，与对话查询保持一致。
+      </p>
+      <div class="dim-stats-form">
+        <label>管理属性
+          <select id="dimStatDimension" aria-label="管理属性维度"></select>
+        </label>
+        <label>日期字段
+          <select id="dimStatDateField" aria-label="交易日期字段">
+            <option value="vsdate">vsdate（发生日）</option>
+            <option value="cdate">cdate（记账日）</option>
+          </select>
+        </label>
+        <label>开始日期
+          <input type="date" id="dimStatFrom" aria-label="开始日期" />
+        </label>
+        <label>结束日期
+          <input type="date" id="dimStatTo" aria-label="结束日期" />
+        </label>
+        <label>回溯天数
+          <input type="number" id="dimStatDays" min="1" max="3650" value="90" style="width:4.5rem" title="未填起止日期时使用" />
+        </label>
+        <label>TOP 行数
+          <input type="number" id="dimStatTopN" min="1" max="200" value="50" style="width:4rem" />
+        </label>
+        <label style="flex-direction:row;align-items:center;gap:0.35rem;">
+          <input type="checkbox" id="dimStatIncludeBlank" checked />
+          <span>含空值分组</span>
+        </label>
+        <div class="dim-actions">
+          <button type="button" id="dimStatBtn">查询统计</button>
+        </div>
+      </div>
+      <div id="dimStatError" class="bubble error dim-inline" style="display:none" role="alert"></div>
+      <p class="dim-stat-meta" id="dimStatRange" style="display:none"></p>
+      <p class="dim-stat-warn" id="dimStatWarn" style="display:none"></p>
+      <div id="dimStatTableWrap" class="dim-table-wrap" style="display:none">
+        <table class="dim-table" id="dimStatTable" aria-describedby="dim-stats-heading">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>编码</th>
+              <th>笔数</th>
+              <th>数量</th>
+              <th>金额</th>
+              <th>现金折算</th>
+              <th>卡折算</th>
+              <th>赠送折算</th>
+            </tr>
+          </thead>
+          <tbody id="dimStatTbody"></tbody>
+        </table>
+      </div>
+      <p class="dim-stat-meta" id="dimStatSummary" style="display:none"></p>
+      <div id="dimStatExportWrap"></div>
+    </section>
+    <section class="dim-stats-panel" aria-labelledby="vip-sleeping-heading">
+      <h2 id="vip-sleeping-heading">沉睡会员预警</h2>
+      <p class="dim-hint">
+        直接查询当前门店在指定天数内无有效消费（<code>valiflag=Y</code>）的会员，不经过大模型。公司、门店与页顶输入框一致。
+      </p>
+      <div class="dim-stats-form">
+        <label>沉睡天数
+          <input type="number" id="vipSleepInactiveDays" min="30" max="3650" value="90" style="width:4.5rem" title="超过该天数无有效消费视为沉睡" />
+        </label>
+        <label>严重预警天数
+          <input type="number" id="vipSleepCriticalDays" min="60" max="3650" value="180" style="width:4.5rem" />
+        </label>
+        <label>会员类型
+          <select id="vipSleepViptype" aria-label="会员类型">
+            <option value="">全部</option>
+            <option value="10">10 会员</option>
+            <option value="20">20 散客</option>
+          </select>
+        </label>
+        <label>顾问工号
+          <input type="text" id="vipSleepEcode" size="8" placeholder="可选" />
+        </label>
+        <label>显示行数
+          <input type="number" id="vipSleepLimit" min="1" max="500" value="200" style="width:4rem" />
+        </label>
+        <div class="dim-actions">
+          <button type="button" id="vipSleepBtn">查询预警</button>
+          <button type="button" id="vipSleepExportBtn">导出 Excel（全量）</button>
+          <button type="button" id="vipStoreExportBtn">导出全部会员</button>
+        </div>
+      </div>
+      <div id="vipSleepError" class="bubble error dim-inline" style="display:none" role="alert"></div>
+      <p class="dim-stat-meta" id="vipSleepSummary" style="display:none"></p>
+      <div id="vipSleepTableWrap" class="dim-table-wrap" style="display:none">
+        <table class="dim-table" id="vipSleepTable" aria-describedby="vip-sleeping-heading">
+          <thead>
+            <tr>
+              <th>会员号</th>
+              <th>姓名</th>
+              <th>手机</th>
+              <th>顾问</th>
+              <th>末次消费</th>
+              <th>未到店天数</th>
+              <th>累计消费</th>
+              <th>风险</th>
+            </tr>
+          </thead>
+          <tbody id="vipSleepTbody"></tbody>
+        </table>
+      </div>
+      <div id="vipSleepExportWrap"></div>
+    </section>
+    <div id="log"></div>
+  </main>
+  <div class="composer">
+    <div class="composer-inner">
+      <textarea id="input" rows="2" placeholder="例如：当前门店有哪些未结账客人？张三的手机号是多少？"></textarea>
+      <button type="button" id="send">发送</button>
+    </div>
+  </div>
+  {{ agents|json_script:"agents-json" }}
+  {{ profiles|json_script:"profiles-json" }}
+  {{ assistant_api_urls|json_script:"assistant-api-urls" }}
+  {{ store_dimension_choices|json_script:"store-dimension-choices" }}
+  <script>
+    (function () {
+      const AP = (function () {
+        try {
+          return JSON.parse(document.getElementById("assistant-api-urls").textContent);
+        } catch (e) {
+          return {
+            url_chat: "/assistant/api/chat/",
+            url_threads: "/assistant/api/threads/",
+            url_agents: "/assistant/api/agents/",
+            url_profiles: "/assistant/api/profiles/",
+            url_thread_detail_template: "/assistant/api/threads/2147483647/",
+            thread_detail_pk_placeholder: 2147483647,
+            url_switch_user: "/assistant/switch-user/",
+            url_logout_admin_home: "/assistant/logout-admin/",
+            url_export: "/assistant/api/export/",
+            url_export_datasets: "/assistant/api/export/datasets/",
+            url_vip_sleeping_alert: "/assistant/api/vip/sleeping-alert/",
+            url_vip_batch_export: "/assistant/api/vip/batch-export/",
+            url_store_dimension_sales: "/report/get_store_dimension_sales/",
+          };
+        }
+      })();
+
+      function urlThreadDetail(id) {
+        const ph = String(AP.thread_detail_pk_placeholder);
+        const tpl = AP.url_thread_detail_template || "";
+        if (!tpl || tpl.indexOf(ph) === -1) {
+          return "/assistant/api/threads/" + id + "/";
+        }
+        return tpl.split(ph).join(String(id));
+      }
+
+      async function readApiJson(res) {
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        const text = await res.text();
+        if (ct.indexOf("application/json") !== -1) {
+          try {
+            return JSON.parse(text);
+          } catch (e) {
+            throw new Error("JSON 解析失败: " + (e && e.message) + " 片段: " + text.slice(0, 400));
+          }
+        }
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(
+            "未授权或 CSRF 校验失败（HTTP " +
+              res.status +
+              "）。请重新登录后台，并确认从「/assistant/」页面发送（勿用无尾斜杠的 /assistant）。"
+          );
+        }
+        throw new Error(
+          "服务器返回了 HTML 或非 JSON（HTTP " +
+            res.status +
+            "），多为路径错误或需重新登录。正文开头: " +
+            text.replace(/\s+/g, " ").slice(0, 320)
+        );
+      }
+
+      function _collectTableDatasets(toolResults) {
+        const datasets = [];
+        if (!Array.isArray(toolResults)) return datasets;
+        function push(name, rows) {
+          if (!Array.isArray(rows) || !rows.length) return;
+          if (!rows.every((x) => x && typeof x === "object" && !Array.isArray(x))) return;
+          datasets.push({ name, rows });
+        }
+        function walk(name, obj, depth) {
+          if (depth > 12 || obj == null) return;
+          if (Array.isArray(obj) && obj.length && obj.every((x) => x && typeof x === "object" && !Array.isArray(x))) {
+            push(name, obj);
+            return;
+          }
+          if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+            let found = false;
+            Object.keys(obj).forEach(function (k) {
+              const child = name ? name + "_" + k : k;
+              const v = obj[k];
+              if (Array.isArray(v) && v.length && v.every((x) => x && typeof x === "object" && !Array.isArray(x))) {
+                push(child, v);
+                found = true;
+              } else if (v && typeof v === "object") {
+                walk(child, v, depth + 1);
+                found = true;
+              }
+            });
+            if (!found) push(name || "summary", [obj]);
+          }
+        }
+        toolResults.forEach(function (tr) {
+          if (!tr || typeof tr !== "object" || tr.ok === false) return;
+          const tool = String(tr.tool || "tool");
+          const data = tr.data;
+          if (data == null) return;
+          walk(tool, data, 0);
+        });
+        return datasets;
+      }
+
+      function _glossaryLookup(glossary) {
+        const map = {};
+        (glossary || []).forEach(function (g) {
+          map[(g.dataset || "") + "\0" + (g.field || "")] = g;
+        });
+        return map;
+      }
+
+      function _fieldLabel(glossaryMap, datasetName, field) {
+        const g = glossaryMap[(datasetName || "") + "\0" + (field || "")];
+        return (g && g.label) || field;
+      }
+
+      async function _resolveExportPayload(exportOpts) {
+        if (exportOpts && exportOpts.datasets && exportOpts.datasets.length) {
+          const payload = { datasets: exportOpts.datasets };
+          const csrftoken = getCookie("csrftoken");
+          const res = await fetch(AP.url_export_datasets || "/assistant/api/export/datasets/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify({ datasets: exportOpts.datasets }),
+          });
+          const data = await readApiJson(res);
+          if (res.ok && data.ok) {
+            return {
+              datasets: data.datasets || exportOpts.datasets,
+              field_glossary: data.field_glossary || [],
+            };
+          }
+          return { datasets: exportOpts.datasets, field_glossary: [] };
+        }
+        const csrftoken = getCookie("csrftoken");
+        const payload = {};
+        if (exportOpts && exportOpts.panelTool && exportOpts.panelData != null) {
+          payload.panel_tool = exportOpts.panelTool;
+          payload.panel_data = exportOpts.panelData;
+        } else if (exportOpts && exportOpts.messageId) {
+          payload.message_id = exportOpts.messageId;
+          if (exportOpts.threadId) payload.thread_id = exportOpts.threadId;
+        } else if (exportOpts && exportOpts.toolResults) {
+          payload.tool_results = exportOpts.toolResults;
+        } else {
+          return { datasets: [], field_glossary: [] };
+        }
+        const res = await fetch(AP.url_export_datasets || "/assistant/api/export/datasets/", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken || "",
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await readApiJson(res);
+        if (!res.ok || !data.ok) {
+          throw new Error((data && data.error) || "无法解析导出数据（HTTP " + res.status + "）");
+        }
+        return {
+          datasets: data.datasets || [],
+          field_glossary: data.field_glossary || [],
+        };
+      }
+
+      async function _resolveExportDatasets(exportOpts) {
+        const pack = await _resolveExportPayload(exportOpts);
+        return pack.datasets || [];
+      }
+
+      async function _exportExcelFromOpts(exportOpts, filename) {
+        const csrftoken = getCookie("csrftoken");
+        const payload = {
+          format: "xlsx",
+          max_rows_per_sheet: 50000,
+          filename: filename || "assistant-export.xlsx",
+        };
+        if (exportOpts && exportOpts.panelTool && exportOpts.panelData != null) {
+          payload.panel_tool = exportOpts.panelTool;
+          payload.panel_data = exportOpts.panelData;
+        } else if (exportOpts && exportOpts.messageId) {
+          payload.message_id = exportOpts.messageId;
+          if (exportOpts.threadId) payload.thread_id = exportOpts.threadId;
+        } else if (exportOpts && exportOpts.toolResults) {
+          payload.tool_results = exportOpts.toolResults;
+        } else if (exportOpts && exportOpts.datasets) {
+          payload.datasets = exportOpts.datasets;
+        } else {
+          throw new Error("没有可导出的数据");
+        }
+        const res = await fetch(AP.url_export || "/assistant/api/export/", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken || "",
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error("Excel 导出失败（HTTP " + res.status + "）: " + t.slice(0, 300));
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = payload.filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function _createExportBar(exportOpts, filenameBase) {
+        const actions = document.createElement("div");
+        actions.className = "export-actions";
+        const label = document.createElement("span");
+        label.className = "export-label";
+        label.textContent = "导出结果：";
+        actions.appendChild(label);
+
+        function addBtn(text, handler) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = text;
+          b.onclick = async function () {
+            try {
+              b.disabled = true;
+              await handler();
+            } catch (e) {
+              appendBubble("error", "导出失败：" + e);
+            } finally {
+              b.disabled = false;
+            }
+          };
+          actions.appendChild(b);
+        }
+
+        addBtn("Excel", async function () {
+          await _exportExcelFromOpts(exportOpts, (filenameBase || "assistant-export") + ".xlsx");
+        });
+        addBtn("JSON", async function () {
+          const pack = await _resolveExportPayload(exportOpts);
+          _downloadText(
+            (filenameBase || "assistant-export") + ".json",
+            JSON.stringify(
+              {
+                field_glossary: pack.field_glossary || [],
+                datasets: pack.datasets || [],
+              },
+              null,
+              2
+            ),
+            "application/json;charset=utf-8"
+          );
+        });
+        addBtn("CSV", async function () {
+          const pack = await _resolveExportPayload(exportOpts);
+          _downloadText(
+            (filenameBase || "assistant-export") + ".csv",
+            _toCsv(pack.datasets, pack.field_glossary),
+            "text/csv;charset=utf-8"
+          );
+        });
+        addBtn("Markdown", async function () {
+          const pack = await _resolveExportPayload(exportOpts);
+          _downloadText(
+            (filenameBase || "assistant-export") + ".md",
+            _toMarkdown(pack.datasets, pack.field_glossary),
+            "text/markdown;charset=utf-8"
+          );
+        });
+        return actions;
+      }
+
+      function _downloadText(filename, content, mimeType) {
+        const blob = new Blob([content], { type: mimeType || "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function _glossarySectionCsv(glossary) {
+        if (!glossary || !glossary.length) return "";
+        const lines = ["# 字段说明", "dataset,field,label,description"];
+        glossary.forEach(function (g) {
+          const row = [g.dataset, g.field, g.label, g.description].map(function (v) {
+            const s = v == null ? "" : String(v);
+            return '"' + s.replace(/"/g, '""') + '"';
+          });
+          lines.push(row.join(","));
+        });
+        return lines.join("\n") + "\n\n";
+      }
+
+      function _toCsv(datasets, glossary) {
+        const glossaryMap = _glossaryLookup(glossary);
+        const lines = [_glossarySectionCsv(glossary).replace(/\n$/, "")];
+        datasets.forEach(function (ds, idx) {
+          if (idx > 0) lines.push("");
+          lines.push("# " + ds.name);
+          const cols = [];
+          const seen = new Set();
+          ds.rows.forEach(function (r) {
+            Object.keys(r).forEach(function (k) {
+              if (!seen.has(k)) {
+                seen.add(k);
+                cols.push(k);
+              }
+            });
+          });
+          lines.push(cols.map(function (c) { return _fieldLabel(glossaryMap, ds.name, c); }).join(","));
+          lines.push(cols.join(","));
+          ds.rows.forEach(function (r) {
+            const row = cols.map(function (c) {
+              const v = r[c];
+              const s = v == null ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v));
+              return '"' + s.replace(/"/g, '""') + '"';
+            });
+            lines.push(row.join(","));
+          });
+        });
+        return lines.join("\n");
+      }
+
+      function _toMarkdown(datasets, glossary) {
+        const glossaryMap = _glossaryLookup(glossary);
+        const out = [];
+        if (glossary && glossary.length) {
+          out.push("## 字段说明");
+          out.push("| 数据集 | 字段名 | 中文名称 | 字段说明 |");
+          out.push("| --- | --- | --- | --- |");
+          glossary.forEach(function (g) {
+            out.push(
+              "| " +
+                [g.dataset, g.field, g.label, g.description]
+                  .map(function (v) {
+                    return String(v == null ? "" : v).replace(/\|/g, "\\|");
+                  })
+                  .join(" | ") +
+                " |"
+            );
+          });
+          out.push("");
+        }
+        datasets.forEach(function (ds) {
+          out.push("## " + ds.name);
+          const cols = [];
+          const seen = new Set();
+          ds.rows.forEach(function (r) {
+            Object.keys(r).forEach(function (k) {
+              if (!seen.has(k)) {
+                seen.add(k);
+                cols.push(k);
+              }
+            });
+          });
+          const labels = cols.map(function (c) { return _fieldLabel(glossaryMap, ds.name, c); });
+          out.push("| " + labels.join(" | ") + " |");
+          out.push("| " + cols.map(function () { return "---"; }).join(" | ") + " |");
+          ds.rows.forEach(function (r) {
+            out.push(
+              "| " +
+                cols
+                  .map(function (c) {
+                    const v = r[c];
+                    const s = v == null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
+                    return s.replace(/\|/g, "\\|");
+                  })
+                  .join(" | ") +
+                " |"
+            );
+          });
+          out.push("");
+        });
+        return out.join("\n");
+      }
+
+      function clearClientUserContext() {
+        history.length = 0;
+        currentThreadId = null;
+        if (threadSelect) threadSelect.value = "";
+        try {
+          window.sessionStorage.clear();
+        } catch (e) {}
+        try {
+          window.localStorage.clear();
+        } catch (e) {}
+        clearLog();
+      }
+
+      const defaultCompany = "{{ default_company|escapejs }}";
+      const defaultStore = "{{ default_storecode|escapejs }}";
+      const agentsEl = document.getElementById("agent");
+      const profileEl = document.getElementById("profile");
+      const companyEl = document.getElementById("company");
+      const storeEl = document.getElementById("storecode");
+      const logEl = document.getElementById("log");
+      const inputEl = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+
+      companyEl.value = defaultCompany;
+      storeEl.value = defaultStore;
+
+      const dimStatDimensionEl = document.getElementById("dimStatDimension");
+      const dimStatDateFieldEl = document.getElementById("dimStatDateField");
+      const dimStatFromEl = document.getElementById("dimStatFrom");
+      const dimStatToEl = document.getElementById("dimStatTo");
+      const dimStatDaysEl = document.getElementById("dimStatDays");
+      const dimStatTopNEl = document.getElementById("dimStatTopN");
+      const dimStatIncludeBlankEl = document.getElementById("dimStatIncludeBlank");
+      function _mountPanelExportWrap(wrapEl, exportOpts, filenameBase) {
+        if (!wrapEl) return;
+        wrapEl.innerHTML = "";
+        if (!exportOpts) return;
+        wrapEl.appendChild(_createExportBar(exportOpts, filenameBase));
+      }
+
+      const dimStatBtn = document.getElementById("dimStatBtn");
+      const dimStatExportWrap = document.getElementById("dimStatExportWrap");
+      const dimStatErrorEl = document.getElementById("dimStatError");
+      const dimStatRangeEl = document.getElementById("dimStatRange");
+      const dimStatWarnEl = document.getElementById("dimStatWarn");
+      const dimStatTableWrap = document.getElementById("dimStatTableWrap");
+      const dimStatTbody = document.getElementById("dimStatTbody");
+      const dimStatSummaryEl = document.getElementById("dimStatSummary");
+      let lastDimStatPayload = null;
+
+      (function fillDimStatOptions() {
+        let choices = [];
+        try {
+          choices = JSON.parse(document.getElementById("store-dimension-choices").textContent);
+        } catch (e) {
+          choices = [];
+        }
+        dimStatDimensionEl.innerHTML = "";
+        choices.forEach(function (c) {
+          const opt = document.createElement("option");
+          opt.value = c.value;
+          opt.textContent = c.label || c.value;
+          dimStatDimensionEl.appendChild(opt);
+        });
+      })();
+
+      function _isoToYmd(iso) {
+        if (!iso || String(iso).length < 8) return "";
+        return String(iso).replace(/-/g, "").slice(0, 8);
+      }
+
+      function _hideDimStatResult() {
+        dimStatErrorEl.style.display = "none";
+        dimStatRangeEl.style.display = "none";
+        dimStatWarnEl.style.display = "none";
+        dimStatTableWrap.style.display = "none";
+        dimStatSummaryEl.style.display = "none";
+        dimStatTbody.innerHTML = "";
+        lastDimStatPayload = null;
+        _mountPanelExportWrap(dimStatExportWrap, null, "");
+      }
+
+      function _fmtMoney(n) {
+        const x = Number(n);
+        if (!isFinite(x)) return "—";
+        return x.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      async function runDimStat() {
+        const company = companyEl.value.trim();
+        const storecode = storeEl.value.trim();
+        const dimension = dimStatDimensionEl.value.trim();
+        if (!company || !storecode) {
+          dimStatErrorEl.textContent = "请先在页顶填写 company 与 storecode。";
+          dimStatErrorEl.style.display = "block";
+          return;
+        }
+        if (!dimension) {
+          dimStatErrorEl.textContent = "请选择管理属性维度。";
+          dimStatErrorEl.style.display = "block";
+          return;
+        }
+
+        const params = new URLSearchParams();
+        params.set("company", company);
+        params.set("storecode", storecode);
+        params.set("dimension", dimension);
+        params.set("date_field", dimStatDateFieldEl.value || "vsdate");
+        const yf = _isoToYmd(dimStatFromEl.value);
+        const yt = _isoToYmd(dimStatToEl.value);
+        if (yf) params.set("fromdate", yf);
+        if (yt) params.set("todate", yt);
+        if (!yf || !yt) {
+          const d = parseInt(dimStatDaysEl.value, 10);
+          if (!isNaN(d) && d > 0) params.set("days", String(d));
+        }
+        const tn = parseInt(dimStatTopNEl.value, 10);
+        if (!isNaN(tn)) params.set("top_n", String(tn));
+        params.set("include_blank", dimStatIncludeBlankEl.checked ? "true" : "false");
+
+        const baseUrl = AP.url_store_dimension_sales || "/report/get_store_dimension_sales/";
+        const url = baseUrl + (baseUrl.indexOf("?") >= 0 ? "&" : "?") + params.toString();
+
+        dimStatBtn.disabled = true;
+        _hideDimStatResult();
+        try {
+          const res = await fetch(url, { credentials: "same-origin" });
+          const data = await readApiJson(res);
+          if (!data.ok) {
+            dimStatErrorEl.textContent =
+              (data.error || "查询失败") +
+              (data.allowed_dimensions ? "\n可选维度：" + data.allowed_dimensions.join(", ") : "");
+            dimStatErrorEl.style.display = "block";
+            return;
+          }
+          const payload = data.data || {};
+          const r = payload.range || {};
+          dimStatRangeEl.textContent =
+            "区间 " +
+            (r.from || "") +
+            " — " +
+            (r.to || "") +
+            " · date_field=" +
+            (r.date_field || "") +
+            " · dimension=" +
+            (payload.dimension || dimension);
+          dimStatRangeEl.style.display = "block";
+
+          if (payload.aggregation_truncated && payload.note) {
+            dimStatWarnEl.textContent = payload.note;
+            dimStatWarnEl.style.display = "block";
+          }
+
+          const rows = payload.rows || [];
+          rows.forEach(function (row) {
+            const tr = document.createElement("tr");
+            [
+              row.dim_label,
+              row.dim_value,
+              row.line_count != null ? String(row.line_count) : "",
+              row.qty != null ? String(row.qty) : "",
+              _fmtMoney(row.total_amount),
+              _fmtMoney(row.cash_amount),
+              _fmtMoney(row.card_amount),
+              _fmtMoney(row.send_amount),
+            ].forEach(function (cell) {
+              const td = document.createElement("td");
+              td.textContent = cell == null ? "" : String(cell);
+              tr.appendChild(td);
+            });
+            dimStatTbody.appendChild(tr);
+          });
+          dimStatTableWrap.style.display = rows.length ? "block" : "none";
+
+          const s = payload.summary || {};
+          dimStatSummaryEl.textContent =
+            "全量汇总（不受 TOP 截断）：明细行 " +
+            (s.line_count != null ? s.line_count : "—") +
+            " · 总数量 " +
+            (s.total_qty != null ? s.total_qty : "—") +
+            " · 总金额 " +
+            _fmtMoney(s.total_amount);
+          dimStatSummaryEl.style.display = "block";
+          lastDimStatPayload = payload;
+          const dimension = (payload.dimension || dimStatDimensionEl.value || "dim").replace(/[^\w-]/g, "_");
+          if (rows.length) {
+            _mountPanelExportWrap(
+              dimStatExportWrap,
+              {
+                panelTool: "panel_store_dimension_sales",
+                panelData: payload,
+              },
+              "store-dimension-" + dimension
+            );
+          } else {
+            _mountPanelExportWrap(dimStatExportWrap, null, "");
+          }
+        } catch (e) {
+          dimStatErrorEl.textContent = "请求失败：" + e;
+          dimStatErrorEl.style.display = "block";
+        } finally {
+          dimStatBtn.disabled = false;
+        }
+      }
+
+      dimStatBtn.addEventListener("click", runDimStat);
+
+      const vipSleepBtn = document.getElementById("vipSleepBtn");
+      const vipSleepExportWrap = document.getElementById("vipSleepExportWrap");
+      const vipSleepExportBtn = document.getElementById("vipSleepExportBtn");
+      const vipStoreExportBtn = document.getElementById("vipStoreExportBtn");
+      const vipSleepInactiveDaysEl = document.getElementById("vipSleepInactiveDays");
+      const vipSleepCriticalDaysEl = document.getElementById("vipSleepCriticalDays");
+      const vipSleepViptypeEl = document.getElementById("vipSleepViptype");
+      const vipSleepEcodeEl = document.getElementById("vipSleepEcode");
+      const vipSleepLimitEl = document.getElementById("vipSleepLimit");
+      const vipSleepErrorEl = document.getElementById("vipSleepError");
+      const vipSleepSummaryEl = document.getElementById("vipSleepSummary");
+      const vipSleepTableWrap = document.getElementById("vipSleepTableWrap");
+      const vipSleepTbody = document.getElementById("vipSleepTbody");
+      let lastVipSleepData = null;
+
+      function _riskLabel(level) {
+        const m = { critical: "严重", warning: "预警", never_visited: "从未消费", unknown: "未知" };
+        return m[level] || level || "";
+      }
+
+      function _hideVipSleepResult() {
+        vipSleepErrorEl.style.display = "none";
+        vipSleepSummaryEl.style.display = "none";
+        vipSleepTableWrap.style.display = "none";
+        vipSleepTbody.innerHTML = "";
+        lastVipSleepData = null;
+        _mountPanelExportWrap(vipSleepExportWrap, null, "");
+      }
+
+      function _renderVipSleepRows(rows) {
+        vipSleepTbody.innerHTML = "";
+        (rows || []).forEach(function (row) {
+          const tr = document.createElement("tr");
+          [
+            row.vcode,
+            row.vname,
+            row.mtcode || row.telph,
+            row.adviser_name || row.ecode,
+            row.last_vsdate || "—",
+            row.days_since_last_visit != null && row.days_since_last_visit !== "" ? String(row.days_since_last_visit) : "—",
+            _fmtMoney(row.lifetime_amount),
+            _riskLabel(row.risk_level),
+          ].forEach(function (cell) {
+            const td = document.createElement("td");
+            td.textContent = cell == null ? "" : String(cell);
+            tr.appendChild(td);
+          });
+          vipSleepTbody.appendChild(tr);
+        });
+        vipSleepTableWrap.style.display = rows && rows.length ? "block" : "none";
+      }
+
+      async function runVipSleepAlert() {
+        const company = companyEl.value.trim();
+        const storecode = storeEl.value.trim();
+        if (!company || !storecode) {
+          vipSleepErrorEl.textContent = "请先在页顶填写 company 与 storecode。";
+          vipSleepErrorEl.style.display = "block";
+          return;
+        }
+        const payload = {
+          company: company,
+          storecode: storecode,
+          inactive_days: parseInt(vipSleepInactiveDaysEl.value, 10) || 90,
+          critical_days: parseInt(vipSleepCriticalDaysEl.value, 10) || 180,
+          viptype: vipSleepViptypeEl.value || "",
+          ecode: vipSleepEcodeEl.value.trim(),
+          limit: parseInt(vipSleepLimitEl.value, 10) || 200,
+        };
+        vipSleepBtn.disabled = true;
+        _hideVipSleepResult();
+        try {
+          const csrftoken = getCookie("csrftoken");
+          const res = await fetch(AP.url_vip_sleeping_alert || "/assistant/api/vip/sleeping-alert/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await readApiJson(res);
+          if (!res.ok || !data.ok) {
+            vipSleepErrorEl.textContent = (data && data.error) || "查询失败（HTTP " + res.status + "）";
+            vipSleepErrorEl.style.display = "block";
+            return;
+          }
+          lastVipSleepData = data.data || {};
+          const s = lastVipSleepData.summary || {};
+          const c = lastVipSleepData.criteria || {};
+          const rb = s.risk_breakdown || {};
+          vipSleepSummaryEl.textContent =
+            "口径：超过 " + (c.inactive_days || "") + " 天无有效消费 · 共检出 " +
+            (s.sleeping_count != null ? s.sleeping_count : "—") + " 人" +
+            (s.truncated ? "（已截断，请导出完整列表）" : "") +
+            " · 严重 " + (rb.critical || 0) + " / 从未消费 " + (rb.never_visited || 0) + " / 预警 " + (rb.warning || 0);
+          vipSleepSummaryEl.style.display = "block";
+          _renderVipSleepRows(lastVipSleepData.sleeping_vips || []);
+          const storecode = storeEl.value.trim() || "store";
+          const sleepRows = lastVipSleepData.sleeping_vips || [];
+          if (sleepRows.length) {
+            _mountPanelExportWrap(
+              vipSleepExportWrap,
+              {
+                panelTool: "panel_vip_sleeping_alert",
+                panelData: lastVipSleepData,
+              },
+              "sleeping-vips-current-" + storecode
+            );
+          } else {
+            _mountPanelExportWrap(vipSleepExportWrap, null, "");
+          }
+        } catch (e) {
+          vipSleepErrorEl.textContent = "查询失败：" + e;
+          vipSleepErrorEl.style.display = "block";
+        } finally {
+          vipSleepBtn.disabled = false;
+        }
+      }
+
+      async function downloadVipBatchExport(exportType) {
+        const company = companyEl.value.trim();
+        const storecode = storeEl.value.trim();
+        if (!company || !storecode) {
+          vipSleepErrorEl.textContent = "请先在页顶填写 company 与 storecode。";
+          vipSleepErrorEl.style.display = "block";
+          return;
+        }
+        const payload = {
+          export_type: exportType,
+          company: company,
+          storecode: storecode,
+          inactive_days: parseInt(vipSleepInactiveDaysEl.value, 10) || 90,
+          critical_days: parseInt(vipSleepCriticalDaysEl.value, 10) || 180,
+          viptype: vipSleepViptypeEl.value || "",
+          ecode: vipSleepEcodeEl.value.trim(),
+          limit: 5000,
+        };
+        const btn = exportType === "store_vips" ? vipStoreExportBtn : vipSleepExportBtn;
+        btn.disabled = true;
+        try {
+          const csrftoken = getCookie("csrftoken");
+          const res = await fetch(AP.url_vip_batch_export || "/assistant/api/vip/batch-export/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) {
+            const t = await res.text();
+            let errMsg = t.slice(0, 300);
+            try {
+              const j = JSON.parse(t);
+              if (j.error) errMsg = j.error;
+            } catch (ignore) {}
+            throw new Error(errMsg);
+          }
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = exportType === "store_vips" ? "store-vips.xlsx" : "sleeping-vips.xlsx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          vipSleepErrorEl.textContent = "导出失败：" + e;
+          vipSleepErrorEl.style.display = "block";
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      if (vipSleepBtn) vipSleepBtn.addEventListener("click", runVipSleepAlert);
+      if (vipSleepExportBtn) vipSleepExportBtn.addEventListener("click", function () { downloadVipBatchExport("sleeping_vips"); });
+      if (vipStoreExportBtn) vipStoreExportBtn.addEventListener("click", function () { downloadVipBatchExport("store_vips"); });
+
+      let agents = [];
+      try {
+        agents = JSON.parse(document.getElementById("agents-json").textContent);
+      } catch (e) { agents = []; }
+      agents.forEach(function (a) {
+        const opt = document.createElement("option");
+        opt.value = a.id;
+        opt.textContent = a.label || a.id;
+        agentsEl.appendChild(opt);
+      });
+      if (!agents.length) {
+        const opt = document.createElement("option");
+        opt.value = "deepseek";
+        opt.textContent = "DeepSeek（未检测到密钥）";
+        agentsEl.appendChild(opt);
+      }
+
+      let profiles = [];
+      try {
+        profiles = JSON.parse(document.getElementById("profiles-json").textContent);
+      } catch (e) { profiles = []; }
+      profiles.forEach(function (p) {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.label || p.id;
+        if (p.description) opt.title = p.description;
+        profileEl.appendChild(opt);
+      });
+      if (!profiles.length) {
+        const opt = document.createElement("option");
+        opt.value = "general";
+        opt.textContent = "通用业务助手";
+        profileEl.appendChild(opt);
+      }
+
+      function getCookie(name) {
+        const v = document.cookie.match("(^|;) ?" + name + "=([^;]*)(;|$)");
+        return v ? decodeURIComponent(v[2]) : null;
+      }
+
+      const history = [];
+      let currentThreadId = null;
+
+      function appendBubble(role, text, extra) {
+        const div = document.createElement("div");
+        div.className = "bubble " + role;
+        div.textContent = text;
+        logEl.appendChild(div);
+        if (extra) logEl.appendChild(extra);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function appendMeta(text) {
+        const div = document.createElement("div");
+        div.className = "bubble meta";
+        div.textContent = text;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function clearLog() {
+        logEl.innerHTML = "";
+        history.length = 0;
+      }
+
+      function appendToolDetails(toolResults, plan, messageId, threadId) {
+        if (!toolResults || !toolResults.length) return;
+
+        const hasExportable = toolResults.some(function (tr) {
+          return tr && tr.ok !== false && tr.data != null;
+        });
+        if (hasExportable) {
+          const exportBar = _createExportBar(
+            {
+              toolResults: toolResults,
+              messageId: messageId,
+              threadId: threadId,
+            },
+            "assistant-export"
+          );
+          logEl.appendChild(exportBar);
+        }
+
+        const det = document.createElement("details");
+        det.className = "raw";
+        const summ = document.createElement("summary");
+        summ.textContent = "查看该轮查询明细（JSON）";
+        det.appendChild(summ);
+        const pre = document.createElement("pre");
+        pre.textContent = JSON.stringify({ tool_results: toolResults, plan: plan }, null, 2);
+        det.appendChild(pre);
+        logEl.appendChild(det);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      const threadSelect = document.getElementById("threadSelect");
+      const newThreadBtn = document.getElementById("newThread");
+      const reloadThreadsBtn = document.getElementById("reloadThreads");
+      const switchUserBtn = document.getElementById("switchUser");
+      const logoutAdminBtn = document.getElementById("logoutAdmin");
+
+      async function fetchThreads(selectId) {
+        let data;
+        try {
+          const res = await fetch(AP.url_threads, { credentials: "same-origin" });
+          data = await readApiJson(res);
+        } catch (e) {
+          appendBubble("error", "加载会话列表失败：" + e);
+          return;
+        }
+        if (!data.ok) {
+          appendBubble(
+            "error",
+            (data.error || "加载会话列表失败") + (data.detail ? "\n" + data.detail : "")
+          );
+          return;
+        }
+        threadSelect.innerHTML = "";
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "（尚未选择：发送后将自动创建会话）";
+        threadSelect.appendChild(opt0);
+        (data.threads || []).forEach(function (t) {
+          const opt = document.createElement("option");
+          opt.value = String(t.id);
+          const cnt = t.message_count != null ? " · " + t.message_count + "条" : "";
+          opt.textContent = (t.title || "会话") + cnt + " · " + (t.updated_at || "").slice(0, 16);
+          threadSelect.appendChild(opt);
+        });
+        if (selectId) {
+          threadSelect.value = String(selectId);
+          currentThreadId = selectId;
+        }
+      }
+
+      async function loadThread(id) {
+        if (!id) {
+          currentThreadId = null;
+          clearLog();
+          appendMeta("已切换到未绑定会话：下一条发送将创建新会话。");
+          return;
+        }
+        let data;
+        let res;
+        try {
+          res = await fetch(urlThreadDetail(id), { credentials: "same-origin" });
+          data = await readApiJson(res);
+        } catch (e) {
+          appendBubble("error", "加载会话失败：" + e);
+          return;
+        }
+        if (!res.ok || !data.ok) {
+          appendBubble("error", (data && data.error) || "加载会话失败（HTTP " + res.status + "）");
+          return;
+        }
+        currentThreadId = id;
+        if (data.thread) {
+          if (data.thread.company) companyEl.value = data.thread.company;
+          if (data.thread.storecode) storeEl.value = data.thread.storecode;
+          if (data.thread.agent_id) agentsEl.value = data.thread.agent_id;
+          if (data.thread.profile_id) profileEl.value = data.thread.profile_id;
+        }
+        clearLog();
+        (data.messages || []).forEach(function (m) {
+          if (m.role === "user") {
+            appendBubble("user", m.content);
+            history.push({ role: "user", content: m.content });
+          } else if (m.role === "assistant") {
+            appendBubble("assistant", m.content);
+            history.push({ role: "assistant", content: m.content });
+            const meta = m.metadata || {};
+            appendToolDetails(meta.tool_results, meta.plan ? { parsed: meta.plan, raw: meta.plan_raw } : null, m.id, data.thread ? data.thread.id : currentThreadId);
+          }
+        });
+        appendMeta("已加载历史，可直接继续提问（将基于上文与历史查询结果）。");
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      threadSelect.addEventListener("change", function () {
+        const v = threadSelect.value;
+        if (!v) {
+          currentThreadId = null;
+          clearLog();
+          appendMeta("未选择会话：下一条将新建会话。");
+          return;
+        }
+        loadThread(parseInt(v, 10));
+      });
+
+      newThreadBtn.addEventListener("click", async function () {
+        const csrftoken = getCookie("csrftoken");
+        try {
+          const res = await fetch(AP.url_threads, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify({
+              title: "新对话",
+              company: companyEl.value.trim(),
+              storecode: storeEl.value.trim(),
+              agent: agentsEl.value,
+              profile: profileEl.value,
+            }),
+          });
+          const data = await readApiJson(res);
+          if (!data.ok || !data.thread) {
+            appendBubble("error", "创建会话失败");
+            return;
+          }
+          currentThreadId = data.thread.id;
+          await fetchThreads(currentThreadId);
+          clearLog();
+          appendMeta("已创建新会话，可以开始提问。");
+        } catch (e) {
+          appendBubble("error", "创建会话失败：" + e);
+        }
+      });
+
+      reloadThreadsBtn.addEventListener("click", function () {
+        fetchThreads(currentThreadId);
+      });
+
+      switchUserBtn.addEventListener("click", function () {
+        const ok = window.confirm("将退出当前账号并清空本地上下文，然后跳转到登录页。是否继续？");
+        if (!ok) return;
+        clearClientUserContext();
+        window.location.href = AP.url_switch_user || "/assistant/switch-user/";
+      });
+
+      logoutAdminBtn.addEventListener("click", function () {
+        const ok = window.confirm("将退出当前账号并返回后台首页。是否继续？");
+        if (!ok) return;
+        clearClientUserContext();
+        window.location.href = AP.url_logout_admin_home || "/assistant/logout-admin/";
+      });
+
+      async function send() {
+        const msg = inputEl.value.trim();
+        if (!msg) return;
+        inputEl.value = "";
+        appendBubble("user", msg);
+        history.push({ role: "user", content: msg });
+
+        sendBtn.disabled = true;
+        appendMeta("正在调用模型并查询数据…");
+
+        const csrftoken = getCookie("csrftoken");
+        const payload = {
+          agent: agentsEl.value,
+          profile: profileEl.value,
+          company: companyEl.value.trim(),
+          storecode: storeEl.value.trim(),
+          message: msg,
+        };
+        if (currentThreadId) payload.thread_id = currentThreadId;
+        try {
+          const res = await fetch(AP.url_chat, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await readApiJson(res);
+          logEl.removeChild(logEl.lastChild);
+
+          if (!data.ok) {
+            appendBubble("error", "错误：" + (data.error || res.statusText));
+            return;
+          }
+
+          if (data.thread_id) {
+            currentThreadId = data.thread_id;
+            threadSelect.value = String(data.thread_id);
+            fetchThreads(currentThreadId);
+          }
+
+          appendBubble("assistant", data.answer);
+          history.push({ role: "assistant", content: data.answer });
+          appendToolDetails(data.tool_results, data.plan, data.assistant_message_id, data.thread_id || currentThreadId);
+          logEl.scrollTop = logEl.scrollHeight;
+        } catch (e) {
+          if (logEl.lastChild && logEl.lastChild.classList.contains("meta")) {
+            logEl.removeChild(logEl.lastChild);
+          }
+          appendBubble("error", "请求失败：" + e);
+        } finally {
+          sendBtn.disabled = false;
+        }
+      }
+
+      sendBtn.addEventListener("click", send);
+      inputEl.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          send();
+        }
+      });
+
+      (async function init() {
+        const params = new URLSearchParams(window.location.search);
+        const tidRaw = params.get("thread");
+        const tidNum = tidRaw ? parseInt(tidRaw, 10) : NaN;
+        if (tidRaw && !isNaN(tidNum)) {
+          await fetchThreads(tidNum);
+          await loadThread(tidNum);
+        } else {
+          await fetchThreads(null);
+          appendMeta(
+            "提示：会话与查询会保存；选历史会话可继续追问。可问未结账、会员/员工/卡/流水或只读 SQL。上方可直接按管理属性维度汇总门店营业。"
+          );
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

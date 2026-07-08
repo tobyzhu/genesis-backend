@@ -1,0 +1,74 @@
+<view class="page" xmlns:wx="http://www.w3.org/1999/xhtml">
+    <view class="page__hd">
+        <view class="page__title">{{vip.vname}}</view>
+        <view class="page__desc">咨询内容</view>
+    </view>
+    <view class="page__bd">
+        <view class="weui-toptips weui-toptips_warn" wx:if="{{showTopTips}}">错误提示</view>
+
+        <view class="weui-cells weui-cells_after-title">
+
+            <view class="weui-cell weui-cell_select">
+                  <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                      <view class="weui-label">员工</view>
+                  </view>            
+                  <view class="weui-cell__bd">
+                      <picker bindchange="bindEmplChange" value="{{emplIndex}}" range="{{empllist}}" range-key='ename'>
+                          <view class="weui-select">{{empllist[emplIndex].ename}}</view>
+                      </picker>
+                  </view>
+            </view>
+
+            <view class="weui-cell weui-cell_select">
+                <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                    <view class="weui-label">类型</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <picker bindchange="bindVipcasetypeChange" value="{{vipcasetypeIndex}}" range="{{vipcasetypeList}}" range-key="itemvalues">
+                        <view class="weui-select weui-select_in-select-after">{{vipcasetypeList[vipcasetypeIndex].itemvalues}}</view>
+                    </picker>
+                </view>
+            </view>
+            
+            <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell">
+                    <view class='weui-cell__hd'>
+                       <view class="weui-label">咨询内容</view>                 
+                    </view>
+                    <view class="weui-cell__bd">
+                        <textarea class="weui-textarea" placeholder="请输入详情" bindinput="bindDetailChanged" style="height: 3.3em" value="{{detail}}"/>
+                        <view class="weui-textarea-counter">0/200</view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="weui-cell weui-cell_select">
+                    <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                        <view class="weui-label">下次回访日期</view>
+                    </view>
+                    <view class="weui-cell__bd">
+                        <picker mode="date" value="{{nextdate}}" start="2019-03-01" end="2029-12-31" bindchange="bindNextDateChange">
+                            <view class="weui-select">{{nextdate}}</view>
+                        </picker>
+                    </view>
+            </view>      
+
+            <view class="weui-cell weui-cell_select">
+                  <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                      <view class="weui-label">下次回访员工</view>
+                  </view>            
+                  <view class="weui-cell__bd">
+                      <picker bindchange="bindNextEmplChange" value="{{nextemplIndex}}" range="{{empllist}}" range-key='ename'>
+                          <view class="weui-select">{{empllist[nextemplIndex].ename}}</view>
+                      </picker>
+                  </view>
+            </view>
+        </view>
+
+
+        <view class="weui-btn-area">
+            <button class="weui-btn" type="primary" bindtap="updateVipCaseDetail">确定</button>
+        </view>
+    </view>
+
+</view>

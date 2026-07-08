@@ -1,0 +1,45 @@
+<view class="page">
+  <view class="page__bd">
+      <!-- <wux-search-bar clear show-cancel value="{{ value }}" controlled placeholder="Search" bind:change="onSearchChange" bind:focus="onSearchFocus" bind:blur="onSearchBlur" bind:confirm="onSearchConfirm" bind:clear="onSearchClear" bind:cancel="onSearchCancel" /> -->
+
+      <view class="weui-search-bar">
+        <view class="weui-search-bar__form">
+          <view class="weui-search-bar__box">
+            <icon class="weui-icon-search_in-box" type="search" size="14"></icon>
+            <input type="text" class="weui-search-bar__input"  disabled='true' placeholder="搜索入口" bindtap="wxSearchTabGoods"/>
+          </view>
+        </view>
+      </view>
+
+
+        <scroll-view scroll-y style="height: 400px;" bindscrolltoupper="upper" bindscrolltolower="lower" bindscroll="scroll" scroll-into-view="{{toView}}" scroll-top="{{scrollTop}}">
+            <view wx:if="{{goodsList.length > 0}}"class="weui-panel weui-panel_access">
+                <!-- <view class="weui-panel__hd">文字组合列表</view> -->
+                <view class="weui-panel__bd">
+                    <wux-cell-group title="商品列表">
+                        <block wx:for="{{ goodsList }}" wx:key="*this">
+                            <view class="section">
+                              <view class="section">{{item.gname}}
+                                  <text class='price' style='font-size=7'>原价:{{item.price}}</text>
+                              </view>
+                              <view class="section">
+                                  <switch checked='{{stype}}' bindchange="stypeChange">是否赠送</switch>
+                                  <!-- <input type="digit" value="{{item.secdisc}}" bindconfirm="secdiscChange"></input> -->
+                                  <!-- <input type='digit' value="{{item.mondisc}}" bindconfirm="mondiscChange"></input> -->
+                                  <text >{{item.amount}}</text>
+                              </view>
+
+                              <button bindtap='subQty' id="{{index}}" class='.sub' style='display:inline'  >-</button> 
+                              <text class='.qty' style='display:inline' >{{item.qty}}</text>                        
+                              <button bindtap='addQty' id="{{index}}" class='.add'  style='display:inline'  >+</button> 
+                            </view>
+
+                        </block>
+                    </wux-cell-group>
+                </view>
+            </view>
+
+        </scroll-view>
+  </view>
+
+</view>

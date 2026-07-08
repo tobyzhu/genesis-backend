@@ -1,0 +1,53 @@
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">当期登陆状态</view>
+        <view class="page__desc"></view>
+    </view>
+    <view class="page__bd">
+        <view class="weui-cells__title">网络</view>
+        <view class="weui-cells weui-cells_after-title">
+            <view class="weui-cell">
+                <view class="weui-cell__bd">公司</view>
+                <view class="weui-cell__ft">{{company}}</view>
+            </view>
+            <view class="weui-cell">
+                <view class="weui-cell__bd">门店</view>
+                <view class="weui-cell__ft">{{storecode}}</view>
+            </view>
+            <view class="weui-cell">
+                <view class="weui-cell__bd">当期用户</view>
+                <view class="weui-cell__ft">{{ecode}}</view>
+            </view> 
+            <view class="weui-cell">
+                <view class="weui-cell__bd">当前网络</view>
+                <view class="weui-cell__ft">{{networkType}}-{{bssid_flag}}-{{network_allow_flag}}-{{local_BSSID}}</view>
+            </view>             
+        </view>  
+    </view>
+</view>
+
+
+<button bindtap='clearCache'>清除缓存</button>
+<button bindtap='updateCache'>更新全部缓存</button>
+
+<button bindtap='getVipList'>更新客户名单</button>
+<button bindtap='getEmplList'>更新员工</button>
+<button bindtap='getRoomList'>更新房间信息</button>
+<button bindtap='getInstrumentList'>更新仪器信息</button>
+<button bindtap='getSrvList'>更新服务项目</button>
+<button bindtap='getGoodsList'>更新商品信息</button>
+<button bindtap='get_itemdisplay'>更新展示信息</button>
+<!-- get_brand -->
+
+<button bindtap='getCardtypeList'>更新卡类信息</button>
+
+<button bindtap='getWifiInfo'>测试无线</button>
+<button bindtap='getUserInfo'>获取用户信息</button>
+<button bindtap='soterAuthentication'>生物识别</button>
+<view>{{ssid}}----{{bssid}}</view>
+<view wx:if="{{(ssid==='toby-home')}}">
+  <view>{{ssid}}----{{bssid}}</view>
+  <view>{{brand}}-{{model}}</view>
+</view>
+
+

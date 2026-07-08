@@ -1,0 +1,142 @@
+<view class="page" xmlns:wx="http://www.w3.org/1999/xhtml">
+    <view class="page__hd">
+        <view class="page__title">卡充值</view>
+    </view>
+    <view class="page__bd">
+        <view class="weui-toptips weui-toptips_warn" wx:if="{{showTopTips}}">{{errormsg}}</view>
+
+        <view class="weui-cells weui-cells_after-title">
+
+
+            <!-- <view class="weui-cell weui-cell_switch">
+                <view class="weui-cell__hd weui-cell__hd_in-switch-after">是否赠送</view>
+                <view class="weui-cell__ft">
+                    <switch bindchange="bindStypeChange">{{stypename}}  </switch>
+                </view>                
+            </view> -->
+
+            <view class="weui-cell weui-cell_select">
+                <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                    <view class="weui-label">充值卡</view>
+                </view>
+                <view class="weui-cell__bd">
+                  <picker bindchange="bindFillcardChange" value="{{fillcardindex}}" range="{{fillcardlist}}" range-key='carddesc'>
+                    <view class="weui-select weui-select_in-select-after">{{fillcardlist[fillcardindex].carddesc}}</view>
+                  </picker>
+                </view>
+            </view>
+
+            <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell">
+                    <view class="weui-cell__bd">充值卡号</view>
+                    <view class="weui-cell__ft">{{fillcardlist[fillcardindex].ccode}}</view>
+                </view>
+            </view>
+            <!-- <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell">
+                    <view class="weui-cell__bd">充值前卡类</view>
+                    <view class="weui-cell__ft">{{fillcardlist[fillcardindex].cardname}}</view>
+                </view>
+            </view>    -->
+
+            <br/>
+            <view class="weui-cell weui-cell_select">
+                <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                    <view class="weui-label">充值后卡类</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <picker bindchange="bindFillCardtypeChange" value="{{fillcardtypeIndex}}" range="{{fillcardtypelist}}" range-key='cardname'>
+                      <view class="weui-select weui-select_in-select-after">{{fillcardtypelist[fillcardtypeindex].cardname}}</view>
+                    </picker>
+                </view>
+            </view>
+            <view class="weui-cells weui-cells_after-title">
+                <view class="weui-cell">
+                    <view class="weui-cell__bd">标准售价</view>
+                    <view class="weui-cell__ft">{{fillcardtypelist[fillcardtypeindex].price}}</view>
+                    <view  class="weui-cell__bd"></view>
+                </view>
+            </view>
+            <br />
+            <view class="weui-cell weui-cell_input">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">应付金额</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <input bindinput="bindPriceChanged" value="{{price}}" class="weui-input" type='digit'/>
+                </view>
+            </view>
+            <view class="weui-cell weui-cell_input">
+                <view class="weui-cell__hd">
+                    <view class="weui-label">可用金额</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <input bindinput="bindLeftmoneyChanged" value="{{leftmoney}}" class="weui-input" type='digit' />
+                </view>
+            </view>
+
+            <view class="weui-cell weui-cell_select">
+            <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                <view class="weui-label">交易分类</view>
+            </view>
+            <view class="weui-cell__bd">
+                <picker bindchange="bindStypeChange" value="{{stypeindex}}" range="{{stypelist}}" range-key='itemvalues'>
+                    <view class="weui-select weui-select_in-select-after">{{stypelist[stypeindex].itemvalues}}</view>
+                </picker>
+                <!-- <picker bindchange="bindStypeChange" value="{{stypeindex}}" range="{{stypelist}}" range-key='stype'>
+                    <view class="weui-select weui-select_in-select-after">{{stypelist[stypeindex].stypename}}</view>
+                </picker> -->
+            </view>
+            </view>
+
+            <view  class="weui-cell weui-cell_select">
+                <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                  <view class="weui-label">付款卡号</view>
+                </view>
+                <view class="weui-cell__bd">
+                  <picker bindchange="bindPaycardChange" value="{{paycardindex}}" range="{{paycardlist}}" range-key='carddesc'>
+                    <view class="weui-select weui-select_in-select-after">{{paycardlist[paycardindex].carddesc}}</view>
+                  </picker>
+                </view>
+            </view>
+
+
+            <view class="weui-cell weui-cell_select">
+                <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                    <view class="weui-label">销售人员</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <picker bindchange="bindPmcodeChange" value="{{pmcodeindex}}" range="{{pmcodelist}}" range-key='ename'>
+                        <view class="weui-select weui-select_in-select-after">{{pmcodelist[pmcodeindex].ename}}</view>
+                    </picker>
+                </view>
+            </view>
+            <view class="weui-cell weui-cell_select">
+                <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                    <view class="weui-label">销售人员</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <picker bindchange="bindSeccodeChange" value="{{seccodeindex}}" range="{{seccodelist}}" range-key='ename'>
+                        <view class="weui-select weui-select_in-select-after">{{seccodelist[seccodeindex].ename}}</view>
+                    </picker>
+                </view>
+            </view>
+
+            <view class="weui-cell weui-cell_select">
+                <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                    <view class="weui-label">销售人员</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <picker bindchange="bindThrcodeChange" value="{{thrcodeindex}}" range="{{thrcodelist}}" range-key='ename'>
+                        <view class="weui-select weui-select_in-select-after">{{thrcodelist[thrcodeindex].ename}}</view>
+                    </picker>
+                </view>
+            </view>
+        </view>
+
+        <view class="button-foot">
+            <button class="weui-btn" type="primary" bindtap="bindFillCardHung">确定开单</button>
+        </view>
+        
+    </view>
+</view>

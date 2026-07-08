@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "搜索会员",
+  "usingComponents": {
+    "wux-index": "../../wux/packages/lib/index/index",
+    "wux-index-item": "../../wux/packages/lib/index-item/index",
+    "wux-search-bar": "../../wux/packages/lib/search-bar/index" ,
+    "wux-icon": "../../wux/packages/lib/icon/index",
+    "wux-button": "../../wux/packages/lib/button/index",
+    "mp-searchbar": "weui-miniprogram/searchbar/searchbar"  
+  }
+}
