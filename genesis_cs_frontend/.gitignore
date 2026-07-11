@@ -1,13 +1,7 @@
-# Runtime logs
-*.log
-
-# Backup archives (redundant with in-repo .pbl/.pbd)
-*.rar
-*.zip
-
-# PowerBuilder / VSS backups
-*.bak
-vssver.scc
-
-# Invalid project file (saved as GitHub HTML page)
-manage/saas_manage.pbt
+# Only track PowerBuilder library sources (*.pbl).
+# Ignore everything else in this directory.
+*
+!*/
+!*.pbl
+!*.PBL
+!.gitignore
