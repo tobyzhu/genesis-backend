@@ -1,0 +1,1 @@
+mysqldump.exe -hftp.softweb.net.cn  -uroot -pshgv2014 multistore --default-character-set=gbk --opt -Q -R | mysql -hlocalhost -uroot -pshgv2014 jmj

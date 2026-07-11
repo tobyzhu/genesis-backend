@@ -1,0 +1,55 @@
+
+#select * from expvstoll a, expense b
+
+update expvstoll a, expense b
+
+set b.exp_basenum = b.s_mount, b.exp_secbasenum=b.s_mount
+
+where 1=1
+
+and a.company=b.company
+
+and a.storecode=b.storecode
+
+and a.company='yfy'
+
+and a.valiflag='Y'
+
+and b.stype='N'
+
+and b.ttype in ('S','G')
+
+
+
+#select * from expvstoll a, expense b
+
+update expvstoll a, expense b
+
+set b.exp_basenum = b.s_mount*1, b.exp_secbasenum=b.s_mount*0.0
+
+where 1=1
+and a.company=b.company
+
+and a.storecode=b.storecode
+
+and a.uuid = b.transuuid
+
+and a.company='yfy'
+
+and a.valiflag='Y'
+
+and b.stype='N'
+
+and b.ttype in ('C','I')
+
+and length(b.ASSCODE2)=0
+
+and a.uuid  in 
+	(
+		select distinct transuuid from toll a, paymode b 
+		where 1=1
+        and a.company=b.company
+        and a.company='yfy'
+		and a.pcode=b.pcode
+        and b.iscash ='1'
+	)

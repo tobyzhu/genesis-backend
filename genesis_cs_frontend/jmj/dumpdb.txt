@@ -1,0 +1,1 @@
+mysqldump  -E -R --triggers  --single-transaction --master-data=2  --default-character-set=utf8 -u root -pshgv2014 multistore | mysql -uroot -pshgv > /tmp/¿âÃû.sql
