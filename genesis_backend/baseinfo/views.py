@@ -84,8 +84,10 @@ class GoodsViewSet(viewsets.ModelViewSet):
 
 class EmplViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
-    queryset = Empl.objects.filter(company=common.constants.COMPANYID,flag='Y').order_by('ecode')
+    queryset = Empl.objects.filter(flag='Y').order_by('ecode')
     serializer_class = EmplSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['company', 'storecode']
 
 
 class PositionViewSet(viewsets.ModelViewSet):

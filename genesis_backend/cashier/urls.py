@@ -32,5 +32,8 @@ urlpatterns = [
     url(r'vipitemtrans_confirm/?', views.vipitemtrans_confirm),
     url(r'fillcardhistory/?', views.fillcardhistory),
 
+    url(r'service_items/?', views.service_items),
+    url(r'goods_items/?', views.goods_items),
+    url(r'cardtype_items/?', views.cardtype_items),
     # path('snippets/<int:pk>/', views.snippet_detail),
 ]

@@ -165,6 +165,26 @@ class ExpvstollHung(GenesisModel):
     vipuuid = models.ForeignKey('baseinfo.Vip',db_column='vipuuid',blank=True,null=True,on_delete=models.SET_NULL,verbose_name='客户唯一号')
     # vsdatetime_hung = models.DateTimeField(blank=True,null=True)
 
+    def _sync_vcode_hung(self):
+        if (self.vcode_hung or '').strip():
+            return
+        legacy = (self.vipcode or '').strip()
+        if legacy:
+            self.vcode_hung = legacy
+            return
+        if not self.vipuuid_id:
+            return
+        vip = self.vipuuid
+        if vip is None:
+            from baseinfo.models import Vip
+            vip = Vip.objects.filter(pk=self.vipuuid_id).only('vcode').first()
+        if vip and (vip.vcode or '').strip():
+            self.vcode_hung = (vip.vcode or '').strip()
+
+    def save(self, *args, **kwargs):
+        self._sync_vcode_hung()
+        super().save(*args, **kwargs)
+
     class Meta:
         managed = True
         db_table = 'expvstoll_hung'

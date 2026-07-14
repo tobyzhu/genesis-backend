@@ -1,0 +1,42 @@
+<view class="page detail-page">
+  <view wx:if="{{loading}}" class="state-box">加载中…</view>
+  <view wx:elif="{{error}}" class="state-box">{{error}}</view>
+  <block wx:elif="{{vip}}">
+    <view class="detail-head">
+      <text class="detail-name">{{vip.vname}}</text>
+      <text class="detail-seg detail-seg--{{vip.segment}}">{{segmentLabel}}</text>
+    </view>
+    <view class="detail-meta">
+      <view wx:if="{{vip.vcode}}">会员号：{{vip.vcode}}</view>
+      <view wx:if="{{vip.adviser_name}}">顾问：{{vip.adviser_name}}</view>
+      <view wx:if="{{vip.days_since_last_visit !== ''}}">未到店：{{vip.days_since_last_visit}} 天</view>
+      <view wx:if="{{vip.last_vsdate}}">末次消费日：{{vip.last_vsdate}}</view>
+      <view>累计消费：{{vip.lifetime_amount}} 元</view>
+      <view>消费趋势：{{amountTrendLabel}} · 到店趋势：{{visitTrendLabel}}</view>
+      <view wx:if="{{vip.status_label}}">ERP 状态：{{vip.status_label}} → 建议 {{vip.target_status_label}}</view>
+    </view>
+
+    <view class="section" wx:if="{{vip.risk_factors && vip.risk_factors.length}}">
+      <view class="section-title">风险原因</view>
+      <view class="bullet" wx:for="{{vip.risk_factors}}" wx:key="*this">· {{item}}</view>
+    </view>
+
+    <view class="section" wx:if="{{vip.playbook_goals && vip.playbook_goals.length}}">
+      <view class="section-title">运营目标</view>
+      <view class="bullet" wx:for="{{vip.playbook_goals}}" wx:key="*this">· {{item}}</view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">建议动作</view>
+      <view class="action-card" wx:for="{{vip.recommended_actions}}" wx:key="priority">
+        <view class="action-title">{{item.priority}}. {{item.title}}</view>
+        <view class="action-detail">{{item.detail}}</view>
+        <view class="action-script" wx:if="{{item.suggested_script}}">参考话术：{{item.suggested_script}}</view>
+      </view>
+    </view>
+
+    <view class="footer-bar">
+      <button type="primary" size="mini" bindtap="onAskAssistant">让助手进一步解读</button>
+    </view>
+  </block>
+</view>

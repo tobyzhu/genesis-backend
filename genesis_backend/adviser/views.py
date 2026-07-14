@@ -35,6 +35,31 @@ from cashier.models import EarnestMoney, Expvstoll, Expense, Toll, Cardhistory
 import common.constants
 from common.models import Sequence
 
+
+def safe_execute_sql(sql, params):
+    """避开 pymysql mogrify 的 % 格式化问题，手动处理参数"""
+    from django.db import connection
+    escaped = []
+    for p in params:
+        if p is None:
+            escaped.append("NULL")
+        elif isinstance(p, str):
+            escaped.append("'" + p.replace("'", "''") + "'")
+        else:
+            escaped.append(str(p))
+    for ep in escaped:
+        sql = sql.replace('%s', ep, 1)
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
+        list_data = []
+        desc = cursor.description
+        if desc is None:
+            return '[]'
+        columns = [col[0] for col in desc]
+        for row in cursor.fetchall():
+            list_data.append(dict(zip(columns, row)))
+        return json.dumps(list_data, cls=DjangoJSONEncoder)
+
 def sql_to_json(sql,params):
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
@@ -284,42 +309,62 @@ def get_vip_cardlist(request):
 
     try:
         suptype = request.GET['suptype']
-        sql = " select a.uuid uuid, vcode,ccode,a.cardtype cardtype ,cardname, a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney,  a.s_price s_price, a.leftqty leftqty, promotionsid,b.suptype suptype, a.status status ," \
+        sql = " select a.uuid uuid, vcode,ccode,a.cardtype cardtype ,cardname, a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney,  a.s_price s_price, a.leftqty leftqty, a.promotionsid,b.suptype suptype, b.comptype comptype, a.status status, a.valdate valdate, (select coalesce(promotionsname,'') from promotions where company=a.company and promotionsid=a.promotionsid limit 1) as promotionname," \
               "  concat((case status when 'P' then '挂账-' else '已购-' end ),cardname,'(',trim(a.cardnote),')', a.leftqty,'*',a.s_price,'=',a.leftmoney) carddesc  " \
               " from cardinfo a, cardtype b " \
               " where a.flag='Y' and b.flag='Y' and a.company =%s and a.company = b.company and a.cardtype=b.cardtype " \
               " and a.status in ('O','P')" \
               " and a.vipuuid = %s and b.suptype=%s"
 
-        params = (company + ' ' + vipuuid + ' ' + suptype).split()
+        params = (company, vipuuid, suptype)
         print('sql:', sql, 'params', params)
     except:
-        params = (company+' '+ '%   %' ).split()
+        # 默认查询：返回该会员所有卡片（无 suptype/comptype 筛选）
+        sql = (
+            "select a.uuid uuid, vcode,ccode,a.cardtype cardtype,cardname, "
+            "a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney, "
+            "a.s_price s_price, a.leftqty leftqty, "
+            "a.promotionsid,b.suptype suptype, b.comptype comptype, a.status status, a.stype stype, a.valdate valdate, "
+            "(select coalesce(promotionsname,'') from promotions where company=a.company and promotionsid=a.promotionsid limit 1) as promotionname, "
+            "concat( "
+            "(case a.status when 'P' then '挂账-' else '已购-' end ),"
+            "(case a.stype when 'P' then '赠送' when 'N' then '正常' else '' end ),'-',"
+            "cardname,'-结余:',coalesce(a.leftmoney,a.leftqty,0)) carddesc "
+            "from cardinfo a, cardtype b "
+            "where a.flag='Y' and b.flag='Y' "
+            "and a.company=%s and a.company=b.company "
+            "and a.cardtype=b.cardtype "
+            "and a.status in ('O','P') "
+            "and a.vipuuid=%s "
+            "order by a.ccode"
+        )
+        params = (company, vipuuid)
+        print('[default] sql:', sql, 'params:', params)
 
     try:
         comptype = request.GET['comptype']
         if comptype == 'amount':
-            sql = "  select a.uuid uuid, vcode,ccode,a.cardtype cardtype ,cardname, a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney,  a.s_price price, a.leftqty leftqty, promotionsid,b.suptype suptype, a.status status ," \
+            sql = "  select a.uuid uuid, vcode,ccode,a.cardtype cardtype ,cardname, a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney,  a.s_price price, a.leftqty leftqty, a.promotionsid,b.suptype suptype, b.comptype comptype, a.status status, a.valdate valdate, (select coalesce(promotionsname,'') from promotions where company=a.company and promotionsid=a.promotionsid limit 1) as promotionname," \
                   "  a.stype stype, concat((case a.status when 'P' then '挂账' else '已购' end ),'-',(case a.stype when 'P' then '赠送' when 'N' then '正常' else '' end ),'-' , cardname,'-结余:',a.leftmoney) carddesc " \
                   "  from cardinfo a, cardtype b " \
                   "  where a.flag='Y' and b.flag='Y' and a.company =%s and a.company = b.company and a.cardtype=b.cardtype " \
                   "  and a.status in ('O','P')" \
                   "  and a.vipuuid = %s and b.comptype=%s"
 
-            params = (company + ' ' + vipuuid + ' ' + comptype).split()
+            params = (company, vipuuid, comptype)
 
         if comptype == 'times':
-            sql = "  select a.uuid uuid, vcode,ccode,a.cardtype cardtype ,cardname, a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney,  a.s_price price, a.leftqty leftqty, promotionsid,b.suptype suptype, a.status status ," \
+            sql = "  select a.uuid uuid, vcode,ccode,a.cardtype cardtype ,cardname, a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney,  a.s_price price, a.leftqty leftqty, a.promotionsid,b.suptype suptype, b.comptype comptype, a.status status, a.valdate valdate, (select coalesce(promotionsname,'') from promotions where company=a.company and promotionsid=a.promotionsid limit 1) as promotionname," \
                   "  a.stype stype,concat((case a.status when 'P' then '挂账' else '已购' end ),'-',(case a.stype when 'P' then '赠送' when 'N' then '正常' else '' end ),'-', cardname,'-',ifnull(a.cardnote,''),  '  结余:',a.leftqty,'次') carddesc " \
                   "  from cardinfo a, cardtype b " \
                   "  where a.flag='Y' and b.flag='Y' and a.company =%s and a.company = b.company and a.cardtype=b.cardtype and a.leftqty >0 " \
                   "  and a.status in ('O','P')" \
                   "  and a.vipuuid = %s and b.comptype=%s" \
                   "  order by a.ccode"
-            params = (company + ' ' + vipuuid + ' ' + comptype).split()
+            params = (company, vipuuid, comptype)
 
         if comptype == 'period':
-            sql = "  select a.uuid uuid, vcode,ccode,a.cardtype cardtype ,cardname, a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney,  a.s_price price, a.leftqty leftqty, promotionsid,b.suptype suptype, a.status status ," \
+            sql = "  select a.uuid uuid, vcode,ccode,a.cardtype cardtype ,cardname, a.cardtypeuuid cardtypeuuid, a.leftmoney leftmoney,  a.s_price price, a.leftqty leftqty, a.promotionsid,b.suptype suptype, b.comptype comptype, a.status status, a.valdate valdate, (select coalesce(promotionsname,'') from promotions where company=a.company and promotionsid=a.promotionsid limit 1) as promotionname," \
                   "  a.stype stype, concat((case a.status when 'P' then '挂账-' else '正常-' end ),'-',a.stype,'-', cardname, '-',ifnull(a.cardnote,'') , '  结余:',a.leftqty,'次') carddesc " \
                   "  from cardinfo a, cardtype b " \
                   "  where a.flag='Y' and b.flag='Y' and a.company =%s and a.company = b.company and a.cardtype=b.cardtype and a.leftmoney >0 " \
@@ -327,12 +372,12 @@ def get_vip_cardlist(request):
                   "  and a.vipuuid = %s and b.comptype=%s " \
                   "  order by a.ccode"
 
-            params = (company + ' ' + vipuuid + ' ' + comptype).split()
+            params = (company, vipuuid, comptype)
 
     except:
-        params = (company+' '+ '%  %' ).split()
+        pass
 
-    json_data = sql_to_json(sql,params)
+    json_data = safe_execute_sql(sql,params)
     print('sql:', sql, 'params', params)
     print(json_data)
     return HttpResponse(json_data, content_type="application/json")
@@ -2786,6 +2831,160 @@ def checkout_hungs(request):
         )
 
 
+
+
+@csrf_exempt
+def get_completed_hungs(request):
+    """
+    已完成开单列表（psstatus_hung='70'）。
+    支持：分页、日期范围、VIP 关键词搜索。
+    """
+    try:
+        company = request.GET.get('company', '')
+        storecode = request.GET.get('storecode', '')
+        page = int(request.GET.get('page', '1'))
+        page_size = int(request.GET.get('page_size', '20'))
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+        keyword = request.GET.get('keyword', '').strip()
+    except Exception:
+        return JsonResponse({'ok': False, 'message': '\u53c2\u6570\u683c\u5f0f\u9519\u8bef'})
+
+    if not company:
+        return JsonResponse({'ok': False, 'message': '\u7f3a\u5c11 company'})
+
+    qs = ExpvstollHung.objects.filter(
+        company=company,
+        flag='Y',
+        valiflag_hung='Y',
+        psstatus_hung='70',
+    ).select_related('vipuuid')
+
+    if storecode:
+        qs = qs.filter(storecode=storecode)
+    if date_from:
+        qs = qs.filter(vsdate_hung__gte=date_from)
+    if date_to:
+        qs = qs.filter(vsdate_hung__lte=date_to)
+    if keyword:
+        vip_ids = Vip.objects.filter(
+            models.Q(vname__icontains=keyword) |
+            models.Q(mtcode__icontains=keyword) |
+            models.Q(vcode__icontains=keyword)
+        ).values_list('uuid', flat=True)
+        qs = qs.filter(vipuuid__in=vip_ids)
+
+    qs = qs.order_by('-vsdate_hung', '-vstime_hung', '-create_time')
+
+    total = qs.count()
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_qs = qs[start:end]
+
+    rows = []
+    for h in page_qs:
+        vip = h.vipuuid
+        expense_items = ExpenseHung.objects.filter(company=company, hunguuid=h.uuid, flag='Y')
+        item_count = expense_items.count()
+        totmount = float(h.totmount_hung or 0)
+        rows.append({
+            'hunguuid': str(h.uuid),
+            'exptxserno': h.exptxserno_hung or '',
+            'vsdate': h.vsdate_hung or '',
+            'vstime': h.vstime_hung or '',
+            'order_time': _format_hung_order_time(h),
+            'vipuuid': str(vip.uuid) if vip else '',
+            'vname': (vip.vname if vip else '') or '',
+            'vcode': (vip.vcode if vip else '') or '',
+            'mtcode': (vip.mtcode if vip else '') or '',
+            'totmount': totmount,
+            'item_count': item_count,
+            'ecode_hung': h.ecode_hung or '',
+            'ttype': h.ttype_hung or '',
+        })
+
+    return JsonResponse({
+        'ok': True,
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'rows': rows,
+    })
+
+
+@csrf_exempt
+def get_completed_order_detail(request):
+    """
+    \u5df2\u5b8c\u6210\u5f00\u5355\u8be6\u60c5\uff1aheader + line items
+    """
+    try:
+        company = request.GET.get('company', '')
+        hunguuid = request.GET.get('hunguuid', '')
+    except Exception:
+        return JsonResponse({'ok': False, 'message': '\u53c2\u6570\u683c\u5f0f\u9519\u8bef'})
+
+    if not company or not hunguuid:
+        return JsonResponse({'ok': False, 'message': '\u7f3a\u5c11\u5fc5\u8981\u53c2\u6570'})
+
+    try:
+        h_uuid = _parse_uuid_loose(hunguuid)
+    except Exception:
+        return JsonResponse({'ok': False, 'message': 'hunguuid \u53c2\u6570\u65e0\u6548'})
+
+    try:
+        hung = ExpvstollHung.objects.select_related('vipuuid').get(
+            company=company, uuid=h_uuid, flag='Y', valiflag_hung='Y'
+        )
+    except ExpvstollHung.DoesNotExist:
+        return JsonResponse({'ok': False, 'message': '\u5f00\u5355\u4e0d\u5b58\u5728'})
+
+    vip = hung.vipuuid
+
+    items = []
+    for line in ExpenseHung.objects.filter(company=company, hunguuid=hung.uuid, flag='Y').order_by('ditem_hung'):
+        icode = line.srvcode_hung or ''
+        items.append({
+            'itemuuid': str(line.uuid),
+            'ditem': line.ditem_hung or '',
+            'ttype': line.ttype_hung or '',
+            'stype': line.stype_hung or '',
+            'ttypename': _hung_line_ttypename(line.ttype_hung),
+            'stypename': _hung_line_stypename(line.stype_hung),
+            'itemcode': icode,
+            'itemname': _resolve_hung_itemname(company, line.ttype_hung, icode),
+            'price': float(line.s_price_hung or 0),
+            'qty': float(line.s_qty_hung or 0),
+            'secdisc': float(line.secdisc_hung or 1),
+            'srvmondisc': float(line.srvmondisc_hung or 0),
+            'amount': float(line.s_mount_hung or 0),
+            'pmcode': line.pmcode_hung or '',
+            'seccode': line.asscode1_hung or '',
+            'thrcode': line.asscode2_hung or '',
+            'remark': line.dnote_hung or '',
+        })
+
+    return JsonResponse({
+        'ok': True,
+        'hung': {
+            'hunguuid': str(hung.uuid),
+            'exptxserno': hung.exptxserno_hung or '',
+            'vsdate': hung.vsdate_hung or '',
+            'vstime': hung.vstime_hung or '',
+            'order_time': _format_hung_order_time(hung),
+            'psstatus': hung.psstatus_hung or '',
+            'totmount': float(hung.totmount_hung or 0),
+            'ttype': hung.ttype_hung or '',
+            'remark': hung.remark_hung or '',
+            'ecode_hung': hung.ecode_hung or '',
+            'vipuuid': str(vip.uuid) if vip else '',
+            'vname': (vip.vname if vip else '') or '',
+            'vcode': (vip.vcode if vip else '') or '',
+            'mtcode': (vip.mtcode if vip else '') or '',
+        },
+        'items': items,
+    })
+
+
 @csrf_exempt
 def get_checkout_shortfall(request):
     company = request.GET.get('company', common.constants.COMPANYID)
@@ -3118,3 +3317,277 @@ def update_BookingEvent(request):
         # return HttpResponse(json_data, content_type="application/json")
 
         return HttpResponse(200, content_type="application/json")
+
+
+# ---- 开单挂账（从 cashier/views.py 迁入） ----
+
+def getserno(company,storecode, tablecode):
+    try:
+        sequence = Sequence.objects.get(company=company, storecode=storecode, tablecode=tablecode)
+    except:
+        sequence = Sequence.objects.create(company=company, storecode=storecode, tablecode=tablecode, sequence=0)
+    print('sequence', sequence)
+    sequence.sequence = sequence.sequence + 1
+    sequence.save()
+    return sequence.sequence
+
+    return company  + storecode +'_'+ tablecode+'_' + str(sequence.sequence)
+
+
+@csrf_exempt
+def cardtype_service_items(request):
+    '''获取卡类关联的服务项目'''
+    company = request.GET.get('company', '')
+    cardtypeuuid = request.GET.get('cardtypeuuid', '')
+    cardtype_code = request.GET.get('cardtype', '')
+    if not company or not cardtypeuuid:
+        # 无 UUID 时按编码查询
+        if cardtype_code:
+            try:
+                cardtype = Cardtype.objects.get(company=company, cardtype=cardtype_code)
+            except Cardtype.DoesNotExist:
+                return JsonResponse([], safe=False)
+        else:
+            return JsonResponse([], safe=False)
+    else:
+        try:
+            cardtype = Cardtype.objects.get(company=company, uuid=cardtypeuuid)
+        except Cardtype.DoesNotExist:
+            # UUID 未匹配时回退到按编码查询
+            if cardtype_code:
+                try:
+                    cardtype = Cardtype.objects.get(company=company, cardtype=cardtype_code)
+                except Cardtype.DoesNotExist:
+                    return JsonResponse([], safe=False)
+            else:
+                return JsonResponse([], safe=False)
+    ct_code = cardtype.cardtype
+    tt = getattr(cardtype, 'ttype', '') or ''
+    if tt == 'S':
+        try:
+            svc = Serviece.objects.get(company=company, flag='Y', svrcdoe=ct_code)
+            data = [{'code': svc.svrcdoe, 'name': svc.svrname, 'price': float(svc.price or 0), 'ttype': 'S'}]
+        except Serviece.DoesNotExist:
+            data = []
+    elif tt == 'G':
+        try:
+            gd = Goods.objects.get(company=company, flag='Y', gcode=ct_code)
+            data = [{'code': gd.gcode, 'name': gd.gname, 'price': float(gd.price or 0), 'ttype': 'G'}]
+        except Goods.DoesNotExist:
+            data = []
+    else:
+        # ttype 为空或未知：回退到同时尝试两种查找
+        try:
+            svc = Serviece.objects.get(company=company, flag='Y', svrcdoe=ct_code)
+            data = [{'code': svc.svrcdoe, 'name': svc.svrname, 'price': float(svc.price or 0), 'ttype': 'S'}]
+        except Serviece.DoesNotExist:
+            try:
+                gd = Goods.objects.get(company=company, flag='Y', gcode=ct_code)
+                data = [{'code': gd.gcode, 'name': gd.gname, 'price': float(gd.price or 0), 'ttype': 'G'}]
+            except Goods.DoesNotExist:
+                data = []
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+def save_hung_order(request):
+    '''保存挂账单'''
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        data = request.POST.dict()
+    
+    company = data.get('company', '')
+    storecode = data.get('storecode', '01')
+    vipuuid = data.get('vipuuid', '')
+    items = data.get('items', [])
+    if not company or not vipuuid or not items:
+        return JsonResponse({'ok': False, 'message': '缺少必要参数'})
+    
+    try:
+        with transaction.atomic():
+            today = datetime.now().strftime('%Y%m%d')
+            serno = getserno(company, storecode, 'EXP')
+            exptxserno = f'{company}{storecode}_hung_{serno}'
+            # 查找 VIP 编码
+            try:
+                vip_obj = Vip.objects.get(uuid=vipuuid)
+                vip_code = vip_obj.vcode
+            except Vip.DoesNotExist:
+                vip_code = ''
+            
+            hung = ExpvstollHung.objects.create(
+                company=company, storecode=storecode,
+                ccode_hung=next((item.get('card_ccode', '') or item.get('srvcode', '') for item in items if item.get('card_ccode', '') or item.get('ttype') == 'I'), ''),
+                cardtype_hung=next((item.get('cardtype', '') for item in items if item.get('cardtype', '')), ''),
+                exptxserno_hung=exptxserno,
+                vsdate_hung=today,
+                vstime_hung=datetime.now().strftime('%H%M%S'),
+                vipuuid_id=vipuuid,
+                vcode_hung=vip_code,
+                vipcode=vip_code,
+                totmount_hung=sum(float(item.get('s_price', 0)) * int(item.get('s_qty', 1)) for item in items),
+                psstatus_hung='10',
+                ttype_hung='S',
+                valiflag_hung='Y',
+            )
+            
+            for idx, item in enumerate(items):
+                ttype = item.get('ttype', 'S')
+                srvcode = item.get('srvcode', '')
+                s_qty = int(item.get('s_qty', 1))
+                s_price = float(item.get('s_price', 0))
+                secdisc = float(item.get('secdisc', 1))
+                srvmondisc = float(item.get('srvmondisc', 0))
+                s_mount = s_qty * s_price * secdisc - srvmondisc
+                stype = item.get('stype', 'N')
+                card_ccode = item.get('card_ccode', '')
+                pmcode = item.get('pmcode', '') or ''
+                asscode1 = item.get('asscode1', '') or ''
+                asscode2 = item.get('asscode2', '') or ''
+                
+                ExpenseHung.objects.create(
+                    company=company,
+                    storecode=storecode,
+                    hunguuid=hung,
+                    exptxserno_hung=exptxserno,
+                    ditem_hung=f'{idx+1:04d}',
+                    ttype_hung=ttype,
+                    stype_hung=stype,
+                    srvcode_hung=srvcode,
+                    s_qty_hung=s_qty,
+                    s_price_hung=s_price,
+                    secdisc_hung=secdisc,
+                    srvmondisc_hung=srvmondisc,
+                    s_mount_hung=s_mount,
+                    srvactmount_hung=s_mount,
+                    pmcode_hung=pmcode,
+                    asscode1_hung=asscode1,
+                    asscode2_hung=asscode2,
+                    depositeflag='N',
+                    otherserno_hung=card_ccode or '',
+                    flag='Y',
+                )
+                
+                # 充值：更新卡余额
+                if ttype == 'I' and srvcode:
+                    try:
+                        card = Cardinfo.objects.select_related('cardtypeuuid').get(company=company, ccode=srvcode)
+                        if card.cardtypeuuid and card.cardtypeuuid.comptype == 'times':
+                            card.leftqty = (card.leftqty or Decimal('0')) + Decimal(str(s_price))
+                        else:
+                            card.leftmoney = (card.leftmoney or Decimal('0')) + Decimal(str(s_price))
+                        card.save()
+                    except Cardinfo.DoesNotExist:
+                        pass
+                    # 充值记录写入 cardtype_hung（复用 cardtype 字段）
+                    try:
+                        rc = card
+                        recharge_cardtype = rc.cardtype
+                    except Cardinfo.DoesNotExist:
+                        recharge_cardtype = ''
+                # 售卡：创建 cardinfo 挂账卡
+                if ttype == 'C' and srvcode:
+                    new_ccode = ''
+                    card_leftqty = 0
+                    card_leftmoney = 0
+                    try:
+                        ct = Cardtype.objects.filter(company=company, flag='Y', cardtype=srvcode).first()
+                        if ct:
+                            if ct.comptype == 'times':
+                                card_leftqty = int(item.get('s_qty', 1))
+                            elif ct.comptype == 'amount':
+                                card_leftmoney = s_price
+                    except Exception:
+                        pass
+                    try:
+                        vip_obj = Vip.objects.get(uuid=vipuuid)
+                        new_ccode = vip_obj.nextccode()
+                    except (Vip.DoesNotExist, Exception):
+                        new_ccode = getserno(company, storecode, 'CARD')
+                    Cardinfo.objects.create(
+                        company=company, storecode=storecode,
+                        ccode=new_ccode,
+                        cardtype=srvcode,
+                        status='P',
+                        flag='Y',
+                        isic='0',
+                        stype=stype,
+                        promotionsid='0',
+                        s_price=s_price,
+                        leftmoney=card_leftmoney,
+                        leftqty=card_leftqty,
+                        vcode=vip_code,
+                        vipuuid_id=vipuuid,
+                        cardtypeuuid=Cardtype.objects.filter(company=company, flag='Y', cardtype=srvcode).first(),
+                    )
+            
+            return JsonResponse({'ok': True, 'exptxserno': exptxserno})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+@csrf_exempt
+def cardtype_prices(request):
+    '''获取卡类关联的疗程价格选项'''
+    company = request.GET.get('company', '')
+    cardtype = request.GET.get('cardtype', '')
+    if not company or not cardtype:
+        return JsonResponse([], safe=False)
+    try:
+        prices = Servieceprice.objects.filter(
+            company=company, flag='Y', srvcode=cardtype, saleflag='Y'
+        ).values('qty', 'price', 'amount').order_by('qty')
+        data = [{'qty': int(r['qty'] or 1), 'price': float(r['price'] or 0), 'amount': float(r['amount'] or 0)} for r in prices]
+        if not data:
+            ct = Cardtype.objects.filter(company=company, flag='Y', cardtype=cardtype).first()
+            if ct:
+                data = [{'qty': 1, 'price': float(ct.price or 0), 'amount': float(ct.price or 0)}]
+    except Exception:
+        data = []
+    return JsonResponse(data, safe=False)
+
+@csrf_exempt
+def get_hung_list(request):
+    '''获取挂单列表（未结账，或按会员筛选）'''
+    company = request.GET.get('company', '')
+    storecode = request.GET.get('storecode', '88')
+    vipuuid = request.GET.get('vipuuid', '')
+
+    if not company:
+        return JsonResponse([], safe=False)
+
+    qs = ExpvstollHung.objects.filter(
+        company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
+    )
+
+    if vipuuid:
+        try:
+            v_uuid = _parse_uuid_loose(vipuuid)
+            qs = qs.filter(vipuuid=v_uuid)
+        except Exception:
+            pass
+    else:
+        open_status = ('10', '20', '30', '40', '50', '60')
+        qs = qs.filter(psstatus_hung__in=open_status)
+
+    qs = qs.order_by('-vsdate_hung', '-vstime_hung')[:100]
+
+    data = []
+    for h in qs:
+        data.append({
+            'uuid': str(h.uuid),
+            'exptxserno': h.exptxserno_hung or '',
+            'vcode': h.vcode_hung or '',
+            'vipuuid': str(h.vipuuid_id) if h.vipuuid_id else '',
+            'vsdate': h.vsdate_hung or '',
+            'vstime': h.vstime_hung or '',
+            'totmount': float(h.totmount_hung or 0),
+            'psstatus': h.psstatus_hung or '',
+            'paycode': h.ccode_hung or '',
+            'cardtype': h.cardtype_hung or '',
+            'itemcount': ExpenseHung.objects.filter(hunguuid=h.uuid, flag='Y').count(),
+        })
+
+    return JsonResponse(data, safe=False)

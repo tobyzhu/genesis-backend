@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Genesis 短视频播放器 — 美业管理系统推广视频</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#0f0f0f;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.header{padding:20px 16px 0;text-align:center;width:100%}
+.header h1{font-size:18px;font-weight:700;color:#a78bfa}
+.header p{font-size:12px;color:#888;margin-top:4px}
+
+/* Phone frame */
+.phone-frame{width:375px;max-width:100%;margin:16px auto;background:#000;border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);position:relative}
+
+.video-container{position:relative;aspect-ratio:9/16;background:#111;overflow:hidden}
+.video-container img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .4s ease}
+
+/* Caption overlay at bottom */
+.caption-overlay{position:absolute;bottom:0;left:0;right:0;padding:60px 20px 24px;background:linear-gradient(transparent,rgba(0,0,0,.85))}
+.caption-text{font-size:17px;line-height:1.6;text-align:center;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);min-height:3.2em;display:flex;align-items:center;justify-content:center}
+.caption-text .inner{max-width:320px}
+
+/* Scene info */
+.scene-info{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);border-radius:8px;padding:6px 12px;font-size:11px;color:#ccc}
+.scene-info span{color:#a78bfa;font-weight:600}
+
+/* Timeline indicator */
+.timeline-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.15)}
+.timeline-progress{height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);width:0%;transition:width .1s linear;border-radius:0 2px 2px 0}
+
+/* Controls overlay */
+.controls-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .3s}
+.controls-overlay:hover,.controls-overlay.show{opacity:1}
+.play-btn{width:64px;height:64px;border-radius:50%;background:rgba(124,58,237,.85);border:none;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+.play-btn:hover{transform:scale(1.08)}
+
+/* Video selector */
+.video-selector{width:375px;max-width:100%;padding:0 16px 16px}
+.video-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.video-btn{padding:10px 6px;border-radius:10px;border:1.5px solid #333;background:transparent;color:#aaa;font-size:12px;cursor:pointer;transition:all .2s;text-align:center;line-height:1.3}
+.video-btn.active{border-color:#7c3aed;background:rgba(124,58,237,.15);color:#a78bfa;font-weight:600}
+.video-btn .tag{display:block;font-size:9px;color:#666;margin-top:2px}
+.video-btn.active .tag{color:#7c3aed}
+
+/* Speed control */
+.speed-control{display:flex;gap:6px;justify-content:center;margin-top:10px}
+.speed-btn{padding:4px 12px;border-radius:6px;border:1px solid #333;background:transparent;color:#666;font-size:11px;cursor:pointer;transition:all .2s}
+.speed-btn.active{border-color:#7c3aed;color:#a78bfa;background:rgba(124,58,237,.1)}
+
+@media(max-width:420px){
+  .phone-frame{border-radius:0}
+  .video-container{aspect-ratio:9/16}
+  .header h1{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Genesis 美业管理系统</h1>
+  <p>推广短视频 · 自动播放器</p>
+</div>
+
+<div class="phone-frame">
+  <div class="video-container" id="videoContainer">
+    <img id="sceneImage" src="" alt="场景画面">
+    <div class="scene-info" id="sceneInfo">脚本 <span id="videoNum">1</span> · 第<span id="sceneNum">1</span>场 · <span id="timeLabel">0s</span></div>
+    <div class="caption-overlay">
+      <div class="caption-text"><div class="inner" id="captionText"></div></div>
+    </div>
+    <div class="timeline-bar"><div class="timeline-progress" id="timelineProgress"></div></div>
+    <div class="controls-overlay show" id="controlsOverlay" onclick="togglePlay()">
+      <button class="play-btn" id="playBtn">▶</button>
+    </div>
+  </div>
+</div>
+
+<div class="video-selector">
+  <div class="video-grid" id="videoGrid"></div>
+  <div class="speed-control">
+    <button class="speed-btn" data-speed="0.5">0.5x</button>
+    <button class="speed-btn active" data-speed="1">1x</button>
+    <button class="speed-btn" data-speed="1.5">1.5x</button>
+    <button class="speed-btn" data-speed="2">2x</button>
+  </div>
+</div>
+
+<script>
+// ============ VIDEO DATA ============
+const SCENES_BASE = 'assets/scenes/';
+
+const VIDEOS = [
+  {
+    id: 1, title: '员工离职带走客户？', type: '痛点型',
+    scenes: [
+      { time: 3, visual: '老板面对镜头，表情认真', dialog: '美容院员工离职，客户跟着走——这个问题你遇到过吗？' },
+      { time: 7, visual: '手机录屏，展示帮小主客户列表页面', dialog: '客户没录入系统，全在员工微信里，一走就真走了。' },
+      { time: 10, visual: '展示帮小主客户档案界面', dialog: '用帮小主，客户信息进系统不走。手机号、消费记录、项目偏好全在。新员工接手马上能查。' },
+      { time: 10, visual: '展示 CRM 回访提醒界面', dialog: '客户好久没来，系统自动提醒你做回访。不是靠人记，是靠系统管。' },
+      { time: 10, visual: '回到老板面对镜头', dialog: '与其担心员工离职，不如先把客户锁进系统。' },
+      { time: 15, visual: '展示帮小主小程序界面 + 二维码', dialog: '搜索帮小主小程序就能用。评论区链接领14天免费试用。' },
+      { time: 5, visual: '老板面对镜头 + 右下角关注引导', dialog: '关注我，下期聊怎么用AI减少客户流失。' },
+    ]
+  },
+  {
+    id: 2, title: '手机就能开单结账', type: '功能展示型',
+    scenes: [
+      { time: 5, visual: '手机录屏帮小主小程序首页', dialog: '你家美容院开个单还要跑回前台电脑前？' },
+      { time: 10, visual: '模拟搜索客户、选项目、加购物车', dialog: '试试这样——搜客户、选项目、挂单、结账，全部手机上点几下就完事。' },
+      { time: 10, visual: '展示结账成功界面，余额扣减', dialog: '次卡、时效卡、充值卡，系统自动算余额。不用按计算器。' },
+      { time: 10, visual: '展示客户档案页实时查卡内余额', dialog: '客户问还有多少钱，点开手机直接给他看。专业又高效。' },
+      { time: 10, visual: '口播 + 字幕', dialog: '不用买几千块的POS机，员工自己手机就是收银台。评论区领14天试用。' },
+    ]
+  },
+  {
+    id: 3, title: 'AI 比店长更了解客户', type: 'AI 卖点型',
+    scenes: [
+      { time: 5, visual: '面对镜头', dialog: '我问你，你现在能说出上个月消费最高的5个客户是谁吗？' },
+      { time: 5, visual: '字幕 + 数据动画', dialog: '大多数老板说不全。但我们的AI可以。' },
+      { time: 15, visual: '展示 AI 助手对话界面截图', dialog: '直接打字问消费最高的客户，AI自动查数据库。再问她喜欢什么项目，画像秒出。' },
+      { time: 10, visual: '展示沉睡预警页面截图', dialog: 'AI自动扫描所有客户——哪些超过90天没来，哪些消费在下降。提前锁定要流失的人。' },
+      { time: 10, visual: '展示 AI 批量生成回访任务界面', dialog: '确定目标后，AI一键生成CRM回访任务，提醒顾问去联系。全流程两分钟。' },
+      { time: 10, visual: '镜头 + 二维码', dialog: '这套AI是Genesis独家的。评论区领免费试用亲自体验。' },
+    ]
+  },
+  {
+    id: 4, title: '用系统前 vs 用系统后', type: '对比型',
+    scenes: [
+      { time: 5, visual: '快剪：纸笔记录、Excel、微信截屏交替', dialog: '用系统之前——账乱、客户跟丢、对不清账。' },
+      { time: 3, visual: '画面卡住转场', dialog: '现在——' },
+      { time: 12, visual: '展示帮小主小程序主界面', dialog: '一个手机小程序，管完所有事。员工不用培训，上手就会用。' },
+      { time: 10, visual: '展示 PC 后台报表截图', dialog: '老板在后台看报表，业绩、客流量、员工绩效一目了然。' },
+      { time: 10, visual: '展示 AI 生命周期分析界面', dialog: 'AI自动把客户分成活跃、预警、沉睡。每个客户该做什么运营，清清楚楚。' },
+      { time: 10, visual: '面对镜头', dialog: '从Excel换到系统一个下午的事，之后每天省两小时。后台私信试用两个字，帮你开通。' },
+    ]
+  },
+  {
+    id: 5, title: '用了近一年的真实感受', type: '真实证言型',
+    scenes: [
+      { time: 3, visual: '店长面对镜头，在门店内', dialog: '用了Genesis差不多一年了，说几个真实感受。' },
+      { time: 9, visual: '店长边走边介绍，展示门店环境', dialog: '最大的变化是客户资料终于不是碎片化的了。即使顾问换了人，新来的也能马上知道客户的消费习惯。' },
+      { time: 10, visual: '展示员工用手机操作小程序', dialog: '第二个是效率。原来开单要跑到前台，现在员工手边就办了。顾客体验也好。' },
+      { time: 8, visual: '展示手机 AI 助手界面', dialog: '第三个是AI辅助，帮我们发现了之前没注意到的沉睡客户，拉回了好几个。' },
+      { time: 10, visual: '店长总结面对镜头', dialog: '如果你也在用Excel或者纸记，真的可以试试看。' },
+    ]
+  },
+  {
+    id: 6, title: '亏了都不知道亏在哪', type: '痛点型',
+    scenes: [
+      { time: 5, visual: '老板对电脑算账皱眉', dialog: '月底算账：收入不错啊，一算利润——亏了。' },
+      { time: 7, visual: '字幕 + 散乱收据画面', dialog: '项目成本？产品损耗？低价卡锁太狠？你不知道钱丢在哪。' },
+      { time: 10, visual: '展示系统经营报表截图', dialog: 'Genesis的经营报表，把每个项目的成本利润拆开给你看。' },
+      { time: 8, visual: '展示商品库存报表截图', dialog: '库存多少、损耗多少、临期产品都有数据。拍脑袋和靠数据差很多。' },
+      { time: 15, visual: '展示多维度财务分析界面', dialog: '收入可以按顾问、按项目、按卡类型、按时间段筛。哪个渠道赚钱一目了然。' },
+      { time: 10, visual: '面对镜头', dialog: '每月的经营数据是你做决策的依据，不是用完就丢的废纸。' },
+      { time: 5, visual: '引导 + 字幕', dialog: '评论区点试用，带走你的门店仪表盘。' },
+    ]
+  }
+];
+
+// ============ PLAYER STATE ============
+let currentVideo = 0;
+let currentScene = 0;
+let isPlaying = false;
+let playSpeed = 1;
+let timer = null;
+let sceneTimer = null;
+let controlsTimeout = null;
+
+const img = document.getElementById('sceneImage');
+const captionText = document.getElementById('captionText');
+const sceneInfo = document.getElementById('sceneInfo');
+const videoNum = document.getElementById('videoNum');
+const sceneNum = document.getElementById('sceneNum');
+const timeLabel = document.getElementById('timeLabel');
+const timelineProgress = document.getElementById('timelineProgress');
+const controlsOverlay = document.getElementById('controlsOverlay');
+const playBtn = document.getElementById('playBtn');
+const videoGrid = document.getElementById('videoGrid');
+
+// ============ INIT ============
+function init() {
+  VIDEOS.forEach((v, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'video-btn' + (i === 0 ? ' active' : '');
+    btn.innerHTML = `${v.title}<span class="tag">${v.type}</span>`;
+    btn.onclick = () => selectVideo(i);
+    videoGrid.appendChild(btn);
+  });
+
+  document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      playSpeed = parseFloat(btn.dataset.speed);
+    };
+  });
+
+  selectVideo(0);
+}
+
+function selectVideo(index) {
+  stopPlayback();
+  currentVideo = index;
+  currentScene = 0;
+  document.querySelectorAll('.video-btn').forEach((b, i) => b.classList.toggle('active', i === index));
+  showScene(0);
+  controlsOverlay.classList.add('show');
+  playBtn.textContent = '▶';
+  isPlaying = false;
+}
+
+function showScene(index) {
+  const video = VIDEOS[currentVideo];
+  const scene = video.scenes[index];
+  if (!scene) return;
+
+  const imgPath = `${SCENES_BASE}v${video.id}_s${String(index + 1).padStart(2, '0')}.png`;
+  img.src = imgPath;
+  img.onerror = () => { img.src = imgPath; };
+
+  captionText.textContent = scene.dialog;
+  videoNum.textContent = video.id;
+  sceneNum.textContent = index + 1;
+  timeLabel.textContent = `${Math.round(scene.time)}s`;
+  currentScene = index;
+}
+
+function getTotalDuration(videoId) {
+  return VIDEOS[videoId].scenes.reduce((sum, s) => sum + s.time, 0);
+}
+
+function getElapsedTime(videoId, upToScene) {
+  let total = 0;
+  for (let i = 0; i < upToScene; i++) {
+    total += VIDEOS[videoId].scenes[i].time;
+  }
+  return total;
+}
+
+// ============ PLAYBACK ============
+function togglePlay() {
+  if (isPlaying) {
+    pausePlayback();
+  } else {
+    startPlayback();
+  }
+}
+
+function startPlayback() {
+  if (currentScene >= VIDEOS[currentVideo].scenes.length) {
+    currentScene = 0;
+    showScene(0);
+  }
+  isPlaying = true;
+  playBtn.textContent = '⏸';
+  controlsOverlay.classList.remove('show');
+  clearTimeout(controlsTimeout);
+  runScene(currentScene);
+}
+
+function runScene(sceneIdx) {
+  if (!isPlaying) return;
+  const video = VIDEOS[currentVideo];
+  if (sceneIdx >= video.scenes.length) {
+    finishPlayback();
+    return;
+  }
+
+  showScene(sceneIdx);
+  const scene = video.scenes[sceneIdx];
+  const duration = scene.time / playSpeed;
+
+  // Timeline
+  const totalDuration = getTotalDuration(currentVideo);
+  const elapsed = getElapsedTime(currentVideo, sceneIdx);
+  const updateProgress = () => {
+    if (!isPlaying) return;
+    const now = getElapsedTime(currentVideo, currentScene) + (scene.time - remaining);
+    const pct = Math.min(now / totalDuration * 100, 100);
+    timelineProgress.style.width = pct + '%';
+  };
+
+  let remaining = scene.time;
+  sceneTimer = setInterval(() => {
+    remaining -= 0.1;
+    if (!isPlaying) {
+      clearInterval(sceneTimer);
+      return;
+    }
+    const now = getElapsedTime(currentVideo, currentScene) + (scene.time - remaining);
+    const pct = Math.min(now / totalDuration * 100, 100);
+    timelineProgress.style.width = pct + '%';
+    timeLabel.textContent = `${Math.round(now)}s`;
+
+    if (remaining <= 0) {
+      clearInterval(sceneTimer);
+      runScene(sceneIdx + 1);
+    }
+  }, 100 * (1 / playSpeed));
+}
+
+function pausePlayback() {
+  isPlaying = false;
+  clearInterval(sceneTimer);
+  playBtn.textContent = '▶';
+  controlsOverlay.classList.add('show');
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  clearInterval(sceneTimer);
+  timelineProgress.style.width = '0%';
+}
+
+function finishPlayback() {
+  isPlaying = false;
+  playBtn.textContent = '↻';
+  controlsOverlay.classList.add('show');
+  timelineProgress.style.width = '100%';
+}
+
+// Click anywhere on video to toggle play
+document.querySelector('.video-container').onclick = (e) => {
+  if (e.target.closest('.controls-overlay')) return;
+  togglePlay();
+};
+
+init();
+</script>
+</body>
+</html>

@@ -48,7 +48,15 @@ urlpatterns=[
     url(r'get_instore_vips/', views.get_instore_vips),
     url(r'get_instore_guests/', views.get_instore_vips),
     url(r'get_hungitem/', views.get_hungitem),
-    url(r'update_hungitem/', views.update_hungitem)
+    url(r'update_hungitem/', views.update_hungitem),
+    url(r'get_hung_list/', views.get_hung_list),
+    url(r'cardtype_service_items/?', views.cardtype_service_items),
+    url(r'save_hung/?', views.save_hung_order),
 
+    url(r'cardtype_prices/?', views.cardtype_prices),
+
+#    
+    url(r'get_completed_hungs/?', views.get_completed_hungs),
+    url(r'get_completed_order_detail/?', views.get_completed_order_detail),
 #    url(r'^images$',)
 ]

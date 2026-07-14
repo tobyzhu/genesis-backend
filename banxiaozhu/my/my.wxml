@@ -22,6 +22,20 @@
         </view>
 
         <view class="weui-cells weui-cells_after-title">
+            <navigator url="/assistant/chat/chat" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                <view class="weui-cell__bd">门店助手</view>
+                <view class="weui-cell__ft weui-cell__ft_in-access">AI 问答</view>
+            </navigator>
+        </view>
+
+        <view class="weui-cells weui-cells_after-title">
+            <view class="weui-cell weui-cell_access" hover-class="weui-cell_active" bindtap="bindShareReferral">
+                <view class="weui-cell__bd">推荐同行</view>
+                <view class="weui-cell__ft weui-cell__ft_in-access">分享给同行</view>
+            </view>
+        </view>
+
+        <view class="weui-cells weui-cells_after-title">
             <navigator url="cache/cache" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
                 <view class="weui-cell__bd">缓存</view>
                 <view class="weui-cell__ft weui-cell__ft_in-access">更新缓存</view>

@@ -1,0 +1,72 @@
+<view class="page lifecycle-page">
+  <view class="lifecycle-header">
+    <text class="lifecycle-header__store">{{storeLabel}}</text>
+    <text class="lifecycle-header__cfg" wx:if="{{config.inactive_days}}">
+      休眠 {{config.inactive_days}} 天 · 预警=趋势下降
+    </text>
+  </view>
+
+  <view class="segment-bar">
+    <view
+      wx:for="{{segments}}"
+      wx:key="id"
+      class="segment-chip {{activeSegment === item.id ? 'segment-chip--active' : ''}}"
+      data-id="{{item.id}}"
+      bindtap="onSegmentTap"
+    >{{item.label}}</view>
+  </view>
+
+  <view class="summary-row" wx:if="{{summary.total}}">
+    <text>活跃 {{summary.active}}</text>
+    <text class="summary-warn">预警 {{summary.at_risk}}</text>
+    <text>休眠 {{summary.sleeping}}</text>
+    <text>本页 {{summary.returned}}</text>
+  </view>
+
+  <view class="migrate-banner" wx:if="{{showMigrations}}">
+    <text>{{migrateSummary}}</text>
+  </view>
+  <scroll-view scroll-x="true" class="migrate-scroll" wx:if="{{showMigrations}}">
+    <view
+      wx:for="{{migrations}}"
+      wx:key="vipuuid"
+      class="migrate-chip"
+      data-uuid="{{item.vipuuid}}"
+      bindtap="onVipTap"
+    >{{item.vname}} · {{item.transition}}</view>
+  </scroll-view>
+
+  <view class="error-box" wx:if="{{error}}">{{error}}</view>
+  <view class="loading-box" wx:if="{{loading}}">加载中…</view>
+
+  <view class="vip-list" wx:if="{{!loading && !error}}">
+    <block wx:if="{{vips.length === 0}}">
+      <view class="empty-tip">暂无符合条件的客户</view>
+    </block>
+    <view
+      wx:for="{{vips}}"
+      wx:key="vipuuid"
+      class="vip-card"
+      data-uuid="{{item.vipuuid}}"
+      bindtap="onVipTap"
+    >
+      <view class="vip-card__head">
+        <text class="vip-card__name">{{item.vname || '—'}}</text>
+        <text class="vip-card__seg vip-card__seg--{{item.segment}}">{{item.segment_label}}</text>
+      </view>
+      <view class="vip-card__meta">
+        <text wx:if="{{item.vcode}}">{{item.vcode}}</text>
+        <text wx:if="{{item.days_since_last_visit !== ''}}"> · {{item.days_since_last_visit}} 天未到店</text>
+      </view>
+      <view class="vip-card__actions" wx:if="{{item.recommended_actions && item.recommended_actions.length}}">
+        <text class="vip-card__action">{{item.recommended_actions[0].title}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer-bar">
+    <button size="mini" type="default" bindtap="onCreateCrmTasks">生成预警任务</button>
+    <button size="mini" type="default" bindtap="onOpenPlanVipCase">计划回访</button>
+    <button size="mini" type="default" bindtap="onAskAssistant">智能助手解读</button>
+  </view>
+</view>

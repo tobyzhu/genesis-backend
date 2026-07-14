@@ -28,6 +28,7 @@ from adviser.views import sql_to_json
 # Create your models here.
 from cashier.models import Expvstoll, Expense
 from adviser.models import Cardinfo
+from baseinfo.models import Cardtype
 from baseinfo.models import Goods,Empl,Serviece,Vip
 import common.constants
 import crm.crmsql
@@ -102,8 +103,47 @@ def UpdateCrmCaseDetail(request):
 
 class VipViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
-    queryset = Vip.objects.filter(company='JMJ').order_by('viptype','vcode')
     serializer_class = VipSerializer
+
+    def get_queryset(self):
+        company = self.request.GET.get('company') or self.request.META.get('HTTP_X_COMPANY', '')
+        storecode = self.request.GET.get('storecode') or self.request.META.get('HTTP_X_STORECODE', '')
+        qs = Vip.objects.filter(flag='Y')
+        if company:
+            qs = qs.filter(company=company)
+        if storecode:
+            qs = qs.filter(storecode=storecode)
+        search = self.request.GET.get('search', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(vname__icontains=search) | Q(mtcode__icontains=search) | Q(vcode__icontains=search)
+            )
+        viplevel = self.request.GET.get('viplevel', '').strip()
+        if viplevel:
+            qs = qs.filter(viplevel=viplevel)
+        viptype = self.request.GET.get('viptype', '').strip()
+        if viptype:
+            qs = qs.filter(viptype=viptype)
+        sex = self.request.GET.get('sex', '').strip()
+        if sex:
+            qs = qs.filter(sex=sex)
+        birth_gte = self.request.GET.get('birth__gte', '').strip()
+        birth_lte = self.request.GET.get('birth__lte', '').strip()
+        if birth_gte and birth_lte:
+            qs = qs.filter(birth__gte=birth_gte, birth__lte=birth_lte)
+        indate_gte = self.request.GET.get('indate__gte', '').strip()
+        indate_lte = self.request.GET.get('indate__lte', '').strip()
+        if indate_gte and indate_lte:
+            qs = qs.filter(indate__gte=indate_gte, indate__lte=indate_lte)
+        has_phone = self.request.GET.get('has_phone', '').strip().upper()
+        if has_phone == 'Y':
+            qs = qs.exclude(mtcode__exact='')
+        elif has_phone == 'N':
+            qs = qs.filter(mtcode__exact='')
+        wechat = self.request.GET.get('wechat', '').strip()
+        if wechat:
+            qs = qs.filter(wechat__icontains=wechat)
+        return qs.order_by('-indate', 'vcode')
 
 def generatecrmcase(request):
     ps_date = request.GET['ps_date']
@@ -442,6 +482,20 @@ def get_vipconsumelist(request):
         goods_map = dict(Goods.objects.filter(company=company, gcode__in=list(need_goods)).values_list('gcode', 'gname'))
         sold_card_map = dict(Cardinfo.objects.filter(company=company, ccode__in=list(need_cards)).values_list('ccode', 'cardtype'))
         trans_card_map = dict(Cardinfo.objects.filter(company=company, ccode__in=list(need_trans_cards)).values_list('ccode', 'cardtype'))
+        # 获取卡类名称映射
+        all_cardtypes = set()
+        for v in sold_card_map.values():
+            if v:
+                all_cardtypes.add(v)
+        for v in trans_card_map.values():
+            if v:
+                all_cardtypes.add(v)
+        ct_name_map = {}
+        if all_cardtypes:
+            ct_name_map = dict(
+                Cardtype.objects.filter(company=company, cardtype__in=list(all_cardtypes))
+                .values_list('cardtype', 'cardname')
+            )
         empl_map = dict(Empl.objects.filter(company=company, ecode__in=list(empl_codes)).values_list('ecode', 'ename'))
 
         rows = []
@@ -452,10 +506,18 @@ def get_vipconsumelist(request):
             itemname = e.srvcode or ''
             if e.ttype == 'S':
                 itemname = srv_map.get(e.srvcode, e.srvcode or '')
+                if e.srvcode:
+                    itemname = itemname + ' (' + e.srvcode + ')' 
             elif e.ttype == 'G':
                 itemname = goods_map.get(e.srvcode, e.srvcode or '')
+                if e.srvcode:
+                    itemname = itemname + ' (' + e.srvcode + ')' 
             elif e.ttype in ('C', 'I'):
                 itemname = sold_card_map.get(e.srvcode, e.srvcode or '')
+                # itemname = cardtype_code, 转换为卡名称+卡号
+                cardtype_code = itemname
+                card_name = ct_name_map.get(cardtype_code, cardtype_code)
+                itemname = card_name + '(' + (e.srvcode or '') + ')' 
 
             if keyword and keyword not in str(itemname or '').lower():
                 continue
@@ -464,10 +526,16 @@ def get_vipconsumelist(request):
             if t.ccode:
                 cardname = trans_card_map.get(t.ccode, t.ccode) or '未设定'
             exptxpaydesc = '余额:' + str(t.cardleftmoney if t.cardleftmoney is not None else 0)
+            # exptxserno 取最后的数字部分
+            # exptxserno 取最后一个_ 后的部分
+            exptxserno_raw = t.exptxserno or ''
+            exptxserno_num = exptxserno_raw.rsplit('_', 1)[-1] if '_' in exptxserno_raw else exptxserno_raw
             rows.append({
                 'transuuid': str(t.uuid),
                 'ccode': t.ccode or '',
                 'cardname': cardname,
+                'storecode': t.storecode or '',
+                'exptxserno': exptxserno_num,
                 'vsdate': t.vsdate or '',
                 'itemname': itemname,
                 's_qty': e.s_qty,
@@ -523,6 +591,19 @@ def get_vip_crmcasedetail(request):
     print('json_data',json_data)
     return HttpResponse(json_data, content_type="application/json")
 
+
+@api_view(['GET'])
+def get_vip_filter_options(request):
+    """\u8fd4\u56de\u4f1a\u5458\u7b5b\u9009\u9009\u9879\uff08\u7b49\u7ea7\u3001\u7c7b\u578b\uff09"""
+    company = request.GET.get('company', '')
+    levels = list(
+        Vip.objects.filter(company=company, flag='Y')
+        .exclude(viplevel__exact='')
+        .values_list('viplevel', flat=True)
+        .distinct().order_by('viplevel')
+    )
+    return Response({'viplevels': levels})
+
 def get_crmcasedetail_bycaseid(request):
     company = request.GET['company']
     uuid = request.GET['uuid']
@@ -540,6 +621,19 @@ def get_crmcasedetail_bycaseid(request):
     json_data = sql_to_json(sql,params)
     print('json_data',json_data)
     return HttpResponse(json_data, content_type="application/json")
+
+
+@api_view(['GET'])
+def get_vip_filter_options(request):
+    """\u8fd4\u56de\u4f1a\u5458\u7b5b\u9009\u9009\u9879\uff08\u7b49\u7ea7\u3001\u7c7b\u578b\uff09"""
+    company = request.GET.get('company', '')
+    levels = list(
+        Vip.objects.filter(company=company, flag='Y')
+        .exclude(viplevel__exact='')
+        .values_list('viplevel', flat=True)
+        .distinct().order_by('viplevel')
+    )
+    return Response({'viplevels': levels})
 
 def get_viplist_bycrmrptid(request):
     # datedelta = datetime.datedelta(days=-7)
@@ -670,3 +764,16 @@ def get_crmsubreport(request):
     json_data = sql_to_json(sql,params)
     print('json_data',json_data)
     return HttpResponse(json_data, content_type="application/json")
+
+
+@api_view(['GET'])
+def get_vip_filter_options(request):
+    """\u8fd4\u56de\u4f1a\u5458\u7b5b\u9009\u9009\u9879\uff08\u7b49\u7ea7\u3001\u7c7b\u578b\uff09"""
+    company = request.GET.get('company', '')
+    levels = list(
+        Vip.objects.filter(company=company, flag='Y')
+        .exclude(viplevel__exact='')
+        .values_list('viplevel', flat=True)
+        .distinct().order_by('viplevel')
+    )
+    return Response({'viplevels': levels})

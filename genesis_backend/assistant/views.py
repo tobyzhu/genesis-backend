@@ -157,6 +157,8 @@ def _truncate(s: str, n: int) -> str:
 
 MAX_PLANNER_TOOL_JSON = 6000
 MAX_ANSWER_PRIOR_CHARS = 12000
+MAX_ANSWER_TOOL_JSON = 14000
+MAX_ANSWER_TOOL_ROWS = 20
 
 _DB_ESC_PREFIX = "__UE__"
 
@@ -243,6 +245,178 @@ def _prior_dialog_for_answer(prior_messages: List[AssistantMessage]) -> str:
     return _truncate("\n\n".join(lines), MAX_ANSWER_PRIOR_CHARS)
 
 
+def _compact_tool_results_for_answer(
+    tool_results: List[Dict[str, Any]],
+    *,
+    max_rows: int = MAX_ANSWER_TOOL_ROWS,
+    max_chars: int = MAX_ANSWER_TOOL_JSON,
+) -> str:
+    """Shrink large tool payloads before the answer LLM call (mobile + latency)."""
+    compact: List[Dict[str, Any]] = []
+    for tr in tool_results or []:
+        if not isinstance(tr, dict):
+            continue
+        if not tr.get("ok"):
+            compact.append(tr)
+            continue
+        data = tr.get("data")
+        tool_name = tr.get("tool") or ""
+        if isinstance(data, list) and len(data) > max_rows:
+            summary: Dict[str, Any] = {"row_count": len(data)}
+            if tool_name == "list_unsettled_guests":
+                vip_ids = {
+                    str(row.get("vipuuid") or "").strip()
+                    for row in data
+                    if isinstance(row, dict) and row.get("vipuuid")
+                }
+                summary["hung_count"] = len(data)
+                summary["guest_count"] = len(vip_ids)
+            compact.append(
+                {
+                    "tool": tool_name,
+                    "ok": True,
+                    "summary": summary,
+                    "data": data[:max_rows],
+                    "truncated_rows": len(data) - max_rows,
+                }
+            )
+        else:
+            compact.append(tr)
+
+    text = safe_json_dumps(compact)
+    if len(text) <= max_chars:
+        return text
+    return _truncate(text, max_chars)
+
+
+def _json_safe_metadata(obj: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure metadata is JSONField-safe (Decimal/UUID/datetime → str)."""
+    return json.loads(safe_json_dumps(obj))
+
+
+def run_assistant_turn(
+    thread: AssistantThread,
+    message: str,
+    company: str,
+    storecode: str,
+    *,
+    agent_id: str = "deepseek",
+    profile_id: str = "general",
+    context_prefix: str = "",
+) -> Dict[str, Any]:
+    """Run planner → tools → answer; persist messages on thread."""
+    message = (message or "").strip()
+    if not message:
+        raise ValueError("message 不能为空")
+
+    company = (company or "").strip()
+    storecode = (storecode or "").strip()
+    agent_id = (agent_id or "deepseek").strip().lower()
+    profile_id = (profile_id or "general").strip().lower()
+
+    thread.company = company
+    thread.storecode = storecode
+    thread.agent_id = agent_id
+    thread.profile_id = profile_id
+    thread.save(update_fields=["company", "storecode", "agent_id", "profile_id", "updated_at"])
+
+    prior_db = list(thread.messages.order_by("sequence", "id"))
+    was_empty = len(prior_db) == 0
+
+    profile = get_agent_profile(profile_id)
+    try:
+        lex = build_system_lexicon(company)
+    except Exception as ex:
+        lex = f"【系统字典加载失败，已降级】{ex}"
+
+    user_message = message
+    if (context_prefix or "").strip():
+        user_message = f"{context_prefix.strip()}\n\n{message}"
+
+    plan_messages: List[Dict[str, str]] = [
+        {"role": "system", "content": planner_system_prompt_for_profile(profile_id) + "\n\n" + lex},
+    ]
+    plan_messages.extend(_messages_to_planner_payload(prior_db))
+    plan_messages.append({"role": "user", "content": user_message})
+
+    allowed_tools = set(profile.tool_registry.keys())
+    plan_obj, plan_raw, plan_model, used_heuristic = _resolve_plan_object(
+        agent_id,
+        plan_messages,
+        profile_id=profile_id,
+        user_message=user_message,
+        allowed_tools=allowed_tools,
+    )
+    normalized = _normalize_tool_specs(plan_obj)
+
+    tool_results, tool_errors = run_tool_plan(
+        company, storecode, normalized, registry=profile.tool_registry
+    )
+
+    prior_text = _prior_dialog_for_answer(prior_db)
+    answer_user_parts = []
+    if prior_text.strip():
+        answer_user_parts.append(
+            "以下为此前多轮对话（含助手已给出的结论，请在指代「上次」「前面结果」时结合理解）：\n"
+            + prior_text
+        )
+    answer_user_parts.append(
+        f"当前公司 company={company!r}，门店 storecode={storecode!r}。\n"
+        f"当前用户问题：{user_message}\n\n"
+        f"本轮规划说明：{plan_obj.get('brief') or ''}\n\n"
+        f"本轮系统新查询结果（JSON）：\n{_compact_tool_results_for_answer(tool_results)}"
+    )
+    answer_messages = [
+        {"role": "system", "content": answer_system_prompt_for_profile(profile_id) + "\n\n" + lex},
+        {"role": "user", "content": "\n\n".join(answer_user_parts)},
+    ]
+    answer_text, answer_model = chat_completion(agent_id, answer_messages, temperature=0.3)
+
+    meta_out = _json_safe_metadata(
+        {
+            "plan": plan_obj,
+            "plan_raw": plan_raw,
+            "plan_model": plan_model,
+            "plan_heuristic": used_heuristic,
+            "profile_id": profile_id,
+            "tool_results": tool_results,
+            "tool_errors": tool_errors,
+            "answer_model": answer_model,
+        }
+    )
+
+    with transaction.atomic():
+        seq = _next_sequence(thread)
+        AssistantMessage.objects.create(
+            thread=thread,
+            role=AssistantMessage.ROLE_USER,
+            content=_encode_db_text(message),
+            sequence=seq,
+            metadata={"company": company, "storecode": storecode},
+        )
+        assistant_msg = AssistantMessage.objects.create(
+            thread=thread,
+            role=AssistantMessage.ROLE_ASSISTANT,
+            content=_encode_db_text(answer_text),
+            sequence=seq + 1,
+            metadata=meta_out,
+        )
+        if was_empty:
+            title = message[:120] if len(message) <= 120 else message[:117] + "..."
+            thread.title = _encode_db_text(title)
+            thread.save(update_fields=["title", "updated_at"])
+
+    return {
+        "thread_id": thread.pk,
+        "assistant_message_id": assistant_msg.pk,
+        "answer": answer_text,
+        "plan": {"raw": plan_raw, "parsed": plan_obj, "model": plan_model},
+        "tool_results": tool_results,
+        "tool_errors": tool_errors,
+        "answer_model": answer_model,
+    }
+
+
 def _assistant_api_urls() -> Dict[str, str]:
     """
     使用 reverse 生成绝对路径，避免页面在 /assistant 无尾斜杠时相对路径 api/… 被解析到站点根下而返回 HTML 404。
@@ -263,6 +437,11 @@ def _assistant_api_urls() -> Dict[str, str]:
         "url_export": reverse("assistant:assistant_export_api"),
         "url_export_datasets": reverse("assistant:assistant_export_datasets_api"),
         "url_vip_sleeping_alert": reverse("assistant:assistant_vip_sleeping_alert_api"),
+        "url_vip_lifecycle": reverse("assistant:assistant_vip_lifecycle_api"),
+        "url_vip_lifecycle_sync": reverse("assistant:assistant_vip_lifecycle_sync_api"),
+        "url_vip_lifecycle_snapshot": reverse("assistant:assistant_vip_lifecycle_snapshot_api"),
+        "url_vip_lifecycle_migrations": reverse("assistant:assistant_vip_lifecycle_migrations_api"),
+        "url_vip_lifecycle_crm_tasks": reverse("assistant:assistant_vip_lifecycle_crm_tasks_api"),
         "url_vip_batch_export": reverse("assistant:assistant_vip_batch_export_api"),
         "url_store_dimension_sales": reverse("report:get_store_dimension_sales"),
     }
@@ -407,105 +586,19 @@ def assistant_chat_api(request: HttpRequest):
                 agent_id=agent_id,
                 profile_id=profile_id,
             )
-            tid = thread.pk
 
-        thread = AssistantThread.objects.get(pk=tid, user=request.user)
-        thread.company = company
-        thread.storecode = storecode
-        thread.agent_id = agent_id
-        thread.profile_id = profile_id
-        thread.save(update_fields=["company", "storecode", "agent_id", "profile_id", "updated_at"])
+        context_prefix = ""
 
-        prior_db = list(thread.messages.order_by("sequence", "id"))
-        was_empty = len(prior_db) == 0
-    except DatabaseError as exc:
-        return _assistant_db_error_response(exc)
-
-    profile = get_agent_profile(profile_id)
-    try:
-        lex = build_system_lexicon(company)
-    except Exception as ex:
-        lex = f"【系统字典加载失败，已降级】{ex}"
-    plan_messages: List[Dict[str, str]] = [
-        {"role": "system", "content": planner_system_prompt_for_profile(profile_id) + "\n\n" + lex},
-    ]
-    plan_messages.extend(_messages_to_planner_payload(prior_db))
-    plan_messages.append({"role": "user", "content": message})
-
-    try:
-        allowed_tools = set(profile.tool_registry.keys())
-        plan_obj, plan_raw, plan_model, used_heuristic = _resolve_plan_object(
-            agent_id,
-            plan_messages,
+        result = run_assistant_turn(
+            thread,
+            message,
+            company,
+            storecode,
+            agent_id=agent_id,
             profile_id=profile_id,
-            user_message=message,
-            allowed_tools=allowed_tools,
+            context_prefix=context_prefix,
         )
-        normalized = _normalize_tool_specs(plan_obj)
-
-        tool_results, tool_errors = run_tool_plan(
-            company, storecode, normalized, registry=profile.tool_registry
-        )
-
-        prior_text = _prior_dialog_for_answer(prior_db)
-        answer_user_parts = []
-        if prior_text.strip():
-            answer_user_parts.append("以下为此前多轮对话（含助手已给出的结论，请在指代「上次」「前面结果」时结合理解）：\n" + prior_text)
-        answer_user_parts.append(
-            f"当前公司 company={company!r}，门店 storecode={storecode!r}。\n"
-            f"当前用户问题：{message}\n\n"
-            f"本轮规划说明：{plan_obj.get('brief') or ''}\n\n"
-            f"本轮系统新查询结果（JSON）：\n{safe_json_dumps(tool_results)}"
-        )
-        answer_messages = [
-            {"role": "system", "content": answer_system_prompt_for_profile(profile_id) + "\n\n" + lex},
-            {"role": "user", "content": "\n\n".join(answer_user_parts)},
-        ]
-        answer_text, answer_model = chat_completion(agent_id, answer_messages, temperature=0.3)
-
-        meta_out = {
-            "plan": plan_obj,
-            "plan_raw": plan_raw,
-            "plan_model": plan_model,
-            "plan_heuristic": used_heuristic,
-            "profile_id": profile_id,
-            "tool_results": tool_results,
-            "tool_errors": tool_errors,
-            "answer_model": answer_model,
-        }
-
-        with transaction.atomic():
-            seq = _next_sequence(thread)
-            AssistantMessage.objects.create(
-                thread=thread,
-                role=AssistantMessage.ROLE_USER,
-                content=_encode_db_text(message),
-                sequence=seq,
-                metadata={"company": company, "storecode": storecode},
-            )
-            assistant_msg = AssistantMessage.objects.create(
-                thread=thread,
-                role=AssistantMessage.ROLE_ASSISTANT,
-                content=_encode_db_text(answer_text),
-                sequence=seq + 1,
-                metadata=meta_out,
-            )
-            if was_empty:
-                thread.title = _encode_db_text(message[:120] if len(message) <= 120 else message[:117] + "...")
-                thread.save(update_fields=["title", "updated_at"])
-
-        return JsonResponse(
-            {
-                "ok": True,
-                "thread_id": thread.pk,
-                "assistant_message_id": assistant_msg.pk,
-                "answer": answer_text,
-                "plan": {"raw": plan_raw, "parsed": plan_obj, "model": plan_model},
-                "tool_results": tool_results,
-                "tool_errors": tool_errors,
-                "answer_model": answer_model,
-            }
-        )
+        return JsonResponse({"ok": True, **result})
     except DatabaseError as e:
         tid_out = thread.pk if thread is not None else None
         return _assistant_db_error_response(e, {"thread_id": tid_out})
@@ -764,9 +857,27 @@ def assistant_vip_batch_export_api(request: HttpRequest):
         )
         datasets = [{"name": "batch_store_vips", "rows": rows}]
         filename = f"store-vips-{storecode}.xlsx"
+    elif export_type == "lifecycle_vips":
+        from assistant.vip_lifecycle import compute_lifecycle_batch
+
+        result = compute_lifecycle_batch(
+            company,
+            storecode,
+            segment=(body.get("segment") or "").strip(),
+            viptype=(body.get("viptype") or "").strip(),
+            ecode=(body.get("ecode") or "").strip(),
+            limit=limit,
+        )
+        rows = result.get("vips") or []
+        datasets = [
+            {"name": "vip_lifecycle", "rows": rows},
+            {"name": "summary", "rows": [result.get("summary") or {}]},
+            {"name": "criteria", "rows": [result.get("criteria") or {}]},
+        ]
+        filename = f"vip-lifecycle-{storecode}.xlsx"
     else:
         return JsonResponse(
-            {"ok": False, "error": "export_type 仅支持 sleeping_vips 或 store_vips"},
+            {"ok": False, "error": "export_type 仅支持 sleeping_vips、store_vips 或 lifecycle_vips"},
             status=400,
         )
 
@@ -786,6 +897,148 @@ def assistant_vip_batch_export_api(request: HttpRequest):
         max_rows_per_sheet=max_rows,
         field_glossary=glossary,
     )
+
+
+@staff_member_required
+@require_http_methods(["GET", "POST"])
+def assistant_vip_lifecycle_api(request: HttpRequest):
+    if request.method == "GET":
+        try:
+            body = dict(request.GET.items())
+        except Exception:
+            body = {}
+    else:
+        try:
+            body = json.loads(request.body.decode("utf-8") or "{}")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return JsonResponse({"ok": False, "error": "无效的 JSON 请求体"}, status=400)
+
+    company, storecode = _parse_vip_scope(body, request)
+    try:
+        limit = int(body.get("limit") or 200)
+    except (TypeError, ValueError):
+        limit = 200
+
+    from assistant.vip_lifecycle import compute_lifecycle_batch, get_lifecycle_config, resolve_vipstatus_labels
+
+    cfg = get_lifecycle_config(company)
+    data = compute_lifecycle_batch(
+        company,
+        storecode,
+        segment=(body.get("segment") or "").strip(),
+        viptype=(body.get("viptype") or "").strip(),
+        ecode=(body.get("ecode") or "").strip(),
+        limit=limit,
+    )
+    return JsonResponse(
+        {
+            "ok": True,
+            "config": {
+                "inactive_days": cfg.inactive_days,
+                "critical_days": cfg.critical_days,
+                "trend_days": cfg.trend_days,
+                "status_sleeping": cfg.status_sleeping,
+                "status_lost": cfg.status_lost,
+                "status_active": cfg.status_active,
+                "status_labels": resolve_vipstatus_labels(company),
+            },
+            "data": data,
+        }
+    )
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def assistant_vip_lifecycle_sync_api(request: HttpRequest):
+    try:
+        body = json.loads(request.body.decode("utf-8") or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "无效的 JSON 请求体"}, status=400)
+
+    company, storecode = _parse_vip_scope(body, request)
+    dry_run = str(body.get("dry_run") or "").lower() in ("1", "true", "yes")
+
+    from assistant.vip_lifecycle import sync_sleeping_vip_status
+
+    result = sync_sleeping_vip_status(company, storecode, dry_run=dry_run)
+    return JsonResponse({"ok": True, "result": result})
+
+
+@staff_member_required
+@require_http_methods(["GET", "POST"])
+def assistant_vip_lifecycle_snapshot_api(request: HttpRequest):
+    if request.method == "GET":
+        body = dict(request.GET.items())
+    else:
+        try:
+            body = json.loads(request.body.decode("utf-8") or "{}")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return JsonResponse({"ok": False, "error": "无效的 JSON 请求体"}, status=400)
+
+    company, storecode = _parse_vip_scope(body, request)
+    dry_run = str(body.get("dry_run") or "").lower() in ("1", "true", "yes")
+
+    from assistant.vip_lifecycle import save_lifecycle_snapshot
+
+    result = save_lifecycle_snapshot(company, storecode, dry_run=dry_run)
+    return JsonResponse({"ok": True, "result": result})
+
+
+@staff_member_required
+@require_http_methods(["GET"])
+def assistant_vip_lifecycle_migrations_api(request: HttpRequest):
+    body = dict(request.GET.items())
+    company, storecode = _parse_vip_scope(body, request)
+    try:
+        days_back = int(body.get("days_back") or 7)
+    except (TypeError, ValueError):
+        days_back = 7
+    try:
+        limit = int(body.get("limit") or 200)
+    except (TypeError, ValueError):
+        limit = 200
+
+    from assistant.vip_lifecycle import compute_lifecycle_migrations
+
+    data = compute_lifecycle_migrations(
+        company,
+        storecode,
+        days_back=days_back,
+        transition=(body.get("transition") or "").strip(),
+        limit=limit,
+    )
+    return JsonResponse({"ok": True, "data": data})
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def assistant_vip_lifecycle_crm_tasks_api(request: HttpRequest):
+    try:
+        body = json.loads(request.body.decode("utf-8") or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "无效的 JSON 请求体"}, status=400)
+
+    company, storecode = _parse_vip_scope(body, request)
+    dry_run = str(body.get("dry_run") or "true").lower() in ("1", "true", "yes")
+    try:
+        limit = int(body.get("limit") or 100)
+    except (TypeError, ValueError):
+        limit = 100
+
+    from assistant.vip_lifecycle_crm import create_lifecycle_crm_tasks
+
+    result = create_lifecycle_crm_tasks(
+        company,
+        storecode,
+        segment=(body.get("segment") or "at_risk").strip(),
+        ecode=(body.get("ecode") or "").strip(),
+        limit=limit,
+        dry_run=dry_run,
+        creater_ecode=(body.get("creater_ecode") or "").strip(),
+    )
+    if result.get("error"):
+        return JsonResponse({"ok": False, "error": result["error"]}, status=400)
+    return JsonResponse({"ok": True, "result": result})
 
 
 @staff_member_required

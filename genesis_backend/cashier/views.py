@@ -1,4 +1,5 @@
 #coding = utf-8
+from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.shortcuts import render
 from datetime import datetime,timedelta
@@ -33,6 +34,7 @@ def getserno(company,storecode, tablecode):
     print('sequence', sequence)
     sequence.sequence = sequence.sequence + 1
     sequence.save()
+    return sequence.sequence
 
     return company  + storecode +'_'+ tablecode+'_' + str(sequence.sequence)
 
@@ -961,3 +963,30 @@ def fillcardhistory(request):
     #         print('error', e)
     #
     return HttpResponse('200', content_type="application/json")
+
+# ====== 手动开单 API ======
+
+@csrf_exempt
+def service_items(request):
+    '''获取服务项目列表'''
+    company = request.GET.get('company', '')
+    qs = Serviece.objects.filter(company=company, flag='Y').values('svrcdoe', 'svrname', 'price')
+    data = [{'code': r['svrcdoe'], 'name': r['svrname'], 'price': float(r['price'] or 0), 'ttype': 'S'} for r in qs]
+    return JsonResponse(data, safe=False)
+
+@csrf_exempt
+def goods_items(request):
+    '''获取商品列表'''
+    company = request.GET.get('company', '')
+    qs = Goods.objects.filter(company=company, flag='Y').values('gcode', 'gname', 'price')
+    data = [{'code': r['gcode'], 'name': r['gname'], 'price': float(r['price'] or 0), 'ttype': 'G'} for r in qs]
+    return JsonResponse(data, safe=False)
+
+@csrf_exempt
+def cardtype_items(request):
+    '''获取卡类列表（用于购卡选型）'''
+    company = request.GET.get('company', '')
+    qs = Cardtype.objects.filter(company=company, flag='Y').values('cardtype', 'cardname', 'suptype', 'comptype', 'price')
+    data = [{'code': r['cardtype'], 'name': r['cardname'], 'price': float(r['price'] or 0), 'ttype': 'C', 'comptype': r['comptype'] or '', 'suptype': r['suptype'] or ''} for r in qs]
+    return JsonResponse(data, safe=False)
+

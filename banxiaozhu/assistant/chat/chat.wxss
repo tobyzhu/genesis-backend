@@ -1,0 +1,133 @@
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #ededed;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  background: #f7f7f7;
+  border-bottom: 1rpx solid #ddd;
+}
+
+.chat-header__store {
+  font-size: 24rpx;
+  color: #666;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-header__link {
+  font-size: 26rpx;
+  color: #576b95;
+  padding: 8rpx 12rpx;
+}
+
+.chat-scroll {
+  flex: 1;
+  height: 0;
+  padding: 24rpx 24rpx 0;
+  box-sizing: border-box;
+}
+
+.chat-scroll__pad {
+  height: 24rpx;
+}
+
+.msg-row {
+  display: flex;
+  margin-bottom: 24rpx;
+}
+
+.msg-row--user {
+  justify-content: flex-end;
+}
+
+.msg-row--assistant {
+  justify-content: flex-start;
+}
+
+.msg-bubble {
+  max-width: 78%;
+  padding: 20rpx 24rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.msg-bubble--user {
+  background: #95ec69;
+  color: #111;
+}
+
+.msg-bubble--assistant {
+  background: #fff;
+  color: #333;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.msg-bubble--pending {
+  color: #888;
+  font-style: italic;
+}
+
+.msg-bubble--error {
+  background: #fff5f5;
+  color: #b00020;
+}
+
+.msg-text {
+  white-space: pre-wrap;
+}
+
+.quick-bar {
+  background: #f7f7f7;
+  border-top: 1rpx solid #e0e0e0;
+  padding: 12rpx 0 8rpx;
+}
+
+.quick-scroll {
+  white-space: nowrap;
+  padding: 0 16rpx;
+}
+
+.quick-chip {
+  display: inline-block;
+  margin-right: 16rpx;
+  padding: 12rpx 20rpx;
+  font-size: 24rpx;
+  color: #576b95;
+  background: #fff;
+  border: 1rpx solid #d9d9d9;
+  border-radius: 999rpx;
+}
+
+.input-bar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #f7f7f7;
+  border-top: 1rpx solid #ddd;
+}
+
+.input-bar__field {
+  flex: 1;
+  background: #fff;
+  border-radius: 8rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  min-height: 72rpx;
+}
+
+.input-bar__btn {
+  flex-shrink: 0;
+  margin: 0;
+}

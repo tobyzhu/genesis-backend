@@ -106,6 +106,22 @@ POST /assistant/api/vip/batch-export/
 
 助手页「沉睡会员预警」面板提供：查询预警、导出 Excel、导出全部会员。
 
+## 客户生命周期分级
+
+按 **活跃 / 流失预警（趋势下降）/ 休眠** 分级；休眠客可自动回写 `vip.status`。
+
+| 工具 / 入口 | 说明 |
+|-------------|------|
+| `vip_lifecycle_batch` / `vip_lifecycle_one` | 助手工具 |
+| `POST /assistant/api/vip/lifecycle/` | 批量查询 |
+| `POST /assistant/api/vip/lifecycle/sync/` | 同步 status |
+| `manage.py sync_vip_lifecycle` | CLI / cron |
+| Web 助手「客户生命周期」面板 | 查询、导出、同步 |
+
+**Admin 与 cron 配置**见 [`scripts/vip-lifecycle.md`](../../scripts/vip-lifecycle.md)（Appoption `seg=vip_lifecycle` + `vipstatus`）。
+
+P2 能力：深度休眠写流失 status、每日快照、分级迁移对比（Web/小程序）。
+
 ## 开单 / 结账表
 
 | 状态 | 物理表 |

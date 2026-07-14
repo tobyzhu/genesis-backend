@@ -20,7 +20,7 @@ router = routers.DefaultRouter()
 router.register(r'vipcasedetail', VipCaseDetailViewSet)
 router.register(r'crmcase', CrmCaseViewSet)
 router.register(r'crmcasedetail', CrmCaseDetailViewSet)
-router.register(r'vip', VipViewSet)
+router.register(r'vip', VipViewSet, basename='vip')
 router.register(r'empl', EmplViewSet)
 
 urlpatterns=[
@@ -42,6 +42,7 @@ urlpatterns=[
     url(r'^get_viplist_bycrmrptid/?', views.get_viplist_bycrmrptid),
     url(r'^getcrmcase_yiren/', getcrmcase_yiren),
     url(r'^get_crmsubreport/?', views.get_crmsubreport),
+    url(r'^vip_filter_options/?', views.get_vip_filter_options),
 
 
     # url(r'queryroom/',views.queryroom),

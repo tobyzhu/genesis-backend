@@ -187,11 +187,29 @@ Page({
       header: {
         'content-type': 'application/json' // 默认值
       },
-      success(res) {
-        if (res.data=='未找到'){
-          log.info('vip.js getVipBaseInfo 未找到：', res.data)
-          // 
+     success(res) {
+       if (res.data=='未找到'){
+         log.info('vip.js getVipBaseInfo 未找到：', res.data)
+         // 
 
+       }
+        // 来店渠道名称映射
+        if (res.data && app.globalData.sourcelist) {
+          for (var i = 0; i < app.globalData.sourcelist.length; i++) {
+            if (app.globalData.sourcelist[i].itemname == res.data.source) {
+              res.data.sourceName = app.globalData.sourcelist[i].itemvalues;
+              break;
+            }
+          }
+        }
+        // 等级名称映射
+        if (res.data && app.globalData.viplevellist) {
+          for (var i = 0; i < app.globalData.viplevellist.length; i++) {
+            if (app.globalData.viplevellist[i].itemname == res.data.viplevel) {
+              res.data.viplevelName = app.globalData.viplevellist[i].itemvalues;
+              break;
+            }
+          }
         }
 
 

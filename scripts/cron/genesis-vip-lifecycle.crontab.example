@@ -1,0 +1,21 @@
+# Genesis VIP 生命周期 status 同步 — 复制到 crontab -e
+# 文档: scripts/vip-lifecycle.md
+#
+# 环境变量（建议写入 /etc/genesis/vip-lifecycle.env 并在 crontab 中 source）
+#   VIP_LIFECYCLE_COMPANIES=yiren
+#   VIP_LIFECYCLE_CRM_TASKS=1
+#   VIP_LIFECYCLE_CRM_SEGMENTS=at_risk,sleeping
+#   VIP_LIFECYCLE_CRM_LIMIT=100
+#   GENESIS_PYTHON=/path/to/Genesis/genesis_backend/.venv/bin/python
+#   GENESIS_LOG_DIR=/var/log/genesis
+#
+# 每天凌晨 2:00 同步（单公司）
+# 0 2 * * * source /etc/genesis/vip-lifecycle.env && /path/to/Genesis/scripts/cron/sync-vip-lifecycle.sh >> /var/log/genesis/cron-vip-lifecycle.log 2>&1
+#
+# 多公司（逗号分隔）
+# 0 2 * * * source /etc/genesis/vip-lifecycle.env && VIP_LIFECYCLE_COMPANIES=yiren,demo /path/to/Genesis/scripts/cron/sync-vip-lifecycle.sh
+#
+# 仅统计不写库（调试）
+# 0 8 * * 1 VIP_LIFECYCLE_DRY_RUN=1 /path/to/Genesis/scripts/cron/sync-vip-lifecycle.sh yiren
+
+0 2 * * * /path/to/Genesis/scripts/cron/sync-vip-lifecycle.sh yiren

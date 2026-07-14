@@ -1,0 +1,56 @@
+<view class="page chat-page">
+  <view class="chat-header">
+    <text class="chat-header__store">{{storeLabel}}</text>
+    <view class="chat-header__actions">
+      <text class="chat-header__link" bindtap="onNewChat">新对话</text>
+    </view>
+  </view>
+
+  <scroll-view
+    class="chat-scroll"
+    scroll-y="true"
+    scroll-into-view="{{scrollToId}}"
+    scroll-with-animation="true"
+  >
+    <block wx:for="{{messages}}" wx:key="id">
+      <view id="{{item.id}}" class="msg-row msg-row--{{item.role}}">
+        <view class="msg-bubble msg-bubble--{{item.role}} {{item.error ? 'msg-bubble--error' : ''}} {{item.pending ? 'msg-bubble--pending' : ''}}">
+          <text class="msg-text" user-select="true">{{item.content}}</text>
+        </view>
+      </view>
+    </block>
+    <view class="chat-scroll__pad"></view>
+  </scroll-view>
+
+  <view class="quick-bar" wx:if="{{!sending}}">
+    <scroll-view scroll-x="true" class="quick-scroll">
+      <view
+        wx:for="{{quickPrompts}}"
+        wx:key="*this"
+        class="quick-chip"
+        data-text="{{item}}"
+        bindtap="onQuickTap"
+      >{{item}}</view>
+    </scroll-view>
+  </view>
+
+  <view class="input-bar">
+    <input
+      class="input-bar__field"
+      placeholder="输入问题，如：今天未结账客人有哪些？"
+      value="{{inputText}}"
+      bindinput="onInput"
+      confirm-type="send"
+      bindconfirm="onSendTap"
+      disabled="{{sending}}"
+    />
+    <button
+      class="input-bar__btn"
+      type="primary"
+      size="mini"
+      bindtap="onSendTap"
+      loading="{{sending}}"
+      disabled="{{sending}}"
+    >发送</button>
+  </view>
+</view>

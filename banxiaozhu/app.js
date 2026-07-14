@@ -114,8 +114,10 @@ App({
   },
 
   "globalData": {
-    // isDev:true,
+    // isDev:true,  // 本地调试：设为 true 可跳过 WiFi 校验
     isDev:false,
+    /** 设为 true 时等同开发环境，跳过 WiFi 检测直接进入登录页 */
+    skipNetworkCheck:false,
     appcode:'100',
     openid:'',
     unionid:'',
@@ -170,7 +172,7 @@ App({
     //host: "http://10.211.55.2:8030/",
     // host: "http://192.168.71.54:8030/",
     // 局域网一般为 192.168.x.x；误写为 192.169.x.x 会导致连接超时（与电脑不在同一网段语义）
-    host: "http://192.168.1.6:8030/",
+    host: "http://192.168.1.11:8030/",
     currentStore:{},
     currentCompany:{},
     indexImageUrl:[],

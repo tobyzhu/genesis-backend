@@ -69,7 +69,16 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow: function () {
-
+    var that = this;
+    var app = getApp();
+    util.get_Vip10List();
+    util.get_Vip20List();
+    util.get_Vip30List();
+    that.setData({
+      vip10list: app.globalData.vip10list,
+      vip20list: app.globalData.vip20list,
+      vip30list: app.globalData.vip30list
+    });
   },
 
   /**

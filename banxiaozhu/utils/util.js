@@ -1302,6 +1302,18 @@ function openLoading (option) {
   });
 }
 
+function isDevEnvironment() {
+  var app = getApp();
+  if (app.globalData.isDev || app.globalData.skipNetworkCheck) {
+    return true;
+  }
+  try {
+    return wx.getSystemInfoSync().platform === 'devtools';
+  } catch (e) {
+    return false;
+  }
+}
+
 function checkNetwork(that){
   var app = getApp();
   // var that = this;
@@ -1403,7 +1415,7 @@ function checkNetwork(that){
 
                 console.log('app.globalData.local_SSID', that.data.local_SSID)
 
-                if (app.globalData.isDev) { 
+                if (isDevEnvironment()) {
                   wx.reLaunch({
                     url: '/my/login/login',
                   })
@@ -1425,6 +1437,14 @@ function checkNetwork(that){
                     wx.reLaunch({
                       url: '/my/login/login',
                     })
+                  } else {
+                    that.setData({
+                      showTopTips: true,
+                      errormsg: '当前 WiFi 未授权，请联系管理员'
+                    })
+                    setTimeout(function () {
+                      that.setData({ showTopTips: false })
+                    }, 3000)
                   }
                 }
                 return true
@@ -1457,68 +1477,43 @@ function checkNetwork(that){
 
           fail: function (res) {
             console.log('getConnectedWifi fail res:',res)
-            app.globalData.tempnetwork.networkenable = true
-            app.globalData.tempnetwork.company = app.globalData.democompany
-            app.globalData.tempnetwork.companyname =app.globalData.democompanyname
-            app.globalData.tempnetwork.storecode = app.globalData.demostorecode
-            app.globalData.tempnetwork.storename =app.globalData.demostorename
-            app.globalData.tempnetwork.ecode = app.globalData.ecode
-            app.globalData.tempnetwork.local_SSID = ''
-            app.globalData.tempnetwork.local_BSSID = ''
-            app.globalData.tempnetwork.networkType = networkType
-            app.globalData.tempnetwork.bssid_flag = false
-            app.globalData.isDev=true
-
             that.setData({
               wifi_flag: false,
               bssid_flag: false,
               showTopTips: true,
-              errormsg: '未连接网络',
-              isDev:true
+              errormsg: '无法获取 WiFi 信息，请确认已连接门店网络'
             })
             setTimeout(function () {
               that.setData({
                 showTopTips: false
               });
             }, 3000);
-
-            if (app.globalData.isDev) {
-              wx.reLaunch({
-                url: '/my/login/login',
-              })
-            }
             return false
           }
         })
       } 
       else {
-        //    非wifi环境
+        // 非 WiFi 环境
         console.log('networkType=',networkType)
-        that.setData({
-          company:app.globalData.democompany,
-          storecode:app.globalData.demostorecode,
-          companyname:app.globalData.democompanyname,
-          storename:app.globalData.demostorename,
-          usercode:app.globalData.demostorecode,
-          isDev:true
-        })
-        // app.globalData.tempnetwork.networkenable = true
-        // app.globalData.tempnetwork.company = app.globalData.democompany
-        // app.globalData.tempnetwork.companyname =app.globalData.democompanyname
-        // app.globalData.tempnetwork.storecode = app.globalData.demostorecode
-        // app.globaldata.tempnetwork.storename =app.globaldata.demostorename
-        // app.globalData.tempnetwork.usercode = app.globalData.demoecode
-        // app.globalData.tempnetwork.local_SSID = ''
-        // app.globalData.tempnetwork.local_BSSID = ''
-        // app.globalData.tempnetwork.networkType = networkType
-        // app.globalData.tempnetwork.bssid_flag = false
-
-        app.globalData.isDev=true
-
-        if (app.globalData.isDev) {
+        if (isDevEnvironment()) {
+          app.globalData.company = app.globalData.democompany || 'demo'
+          app.globalData.storecode = app.globalData.demostorecode || '88'
+          app.globalData.companyname = app.globalData.democompanyname || ''
+          app.globalData.storename = app.globalData.demostorename || ''
+          app.globalData.networkenable = true
           wx.reLaunch({
             url: '/my/login/login',
           })
+        } else {
+          that.setData({
+            wifi_flag: false,
+            bssid_flag: false,
+            showTopTips: true,
+            errormsg: '请连接门店 WiFi 后再使用'
+          })
+          setTimeout(function () {
+            that.setData({ showTopTips: false })
+          }, 3000)
         }
       }
     },
@@ -1977,6 +1972,7 @@ module.exports = {
   get_PsStatusList: get_PsStatusList,
   get_emplarch_bymonth: get_emplarch_bymonth,
   checkNetwork: checkNetwork,
+  isDevEnvironment: isDevEnvironment,
   get_bssid: get_bssid,
   get_ssid: get_ssid,
   getWechatFunction: getWechatFunction,

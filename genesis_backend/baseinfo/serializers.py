@@ -118,15 +118,15 @@ class GoodsSerializer(serializers.HyperlinkedModelSerializer):
 
 class VipSerializer(serializers.HyperlinkedModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='vip-detail',lookup_field='uuid')
-    company =serializers.CharField(required=True,allow_blank=False)
-    storecode =serializers.CharField(required=True,allow_blank=False)
-    uuid = serializers.UUIDField(format='hex_verbose')
+    company =serializers.CharField(required=False,allow_blank=True)
+    storecode =serializers.CharField(required=False,allow_blank=True)
+    uuid = serializers.UUIDField(format='hex_verbose', read_only=True)
 
     # mtcode = serializers.SerializerMethodField()
 
     class Meta:
         model = Vip
-        fields = ('uuid','company','storecode','viptype','vcode','vname','viplevel','mtcode','ecode','ecode2','url','pinyin','birth','indate','source','occupation','vdesc')
+        fields = ('uuid','company','storecode','viptype','vcode','vname','viplevel','mtcode','ecode','ecode2','url','pinyin','birth','indate','source','occupation','vdesc','sex','telph','wechat','addr','email','qq','status')
 
     def create(self, validated_data):
         return Vip.objects.create(**validated_data)
@@ -134,14 +134,26 @@ class VipSerializer(serializers.HyperlinkedModelSerializer):
     def update(self, instance, validated_data):
         instance.mtcode = validated_data.get('mtcode', instance.mtcode)
         instance.vname = validated_data.get('vname',instance.vname)
+        instance.viplevel = validated_data.get('viplevel',instance.viplevel)
+        instance.sex = validated_data.get('sex',instance.sex)
+        instance.telph = validated_data.get('telph',instance.telph)
+        instance.wechat = validated_data.get('wechat',instance.wechat)
+        instance.status = validated_data.get('status',instance.status)
+        instance.viptype = validated_data.get('viptype',instance.viptype)
+        instance.ecode = validated_data.get('ecode',instance.ecode)
+        instance.source = validated_data.get('source',instance.source)
+        instance.addr = validated_data.get('addr',instance.addr)
+        instance.birth = validated_data.get('birth',instance.birth)
+        instance.indate = validated_data.get('indate',instance.indate)
         instance.save()
         return instance
-
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if instance.company in COMPANYLIST_WITHOUT_MTCODE:
-            data['mtcode']=''
+            data["mtcode"]=""
         return data
+
+
 
 
     # def get_mtcode(self,obj):

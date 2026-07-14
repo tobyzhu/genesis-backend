@@ -47,7 +47,25 @@ function getVipBaseInfo(that, options) {
     header: {
       'content-type': 'application/json' // 默认值
     },
-    success(res) {
+   success(res) {
+      // 来店渠道名称映射
+      if (res.data && app.globalData.sourcelist) {
+        for (var i = 0; i < app.globalData.sourcelist.length; i++) {
+          if (app.globalData.sourcelist[i].itemname == res.data.source) {
+            res.data.sourceName = app.globalData.sourcelist[i].itemvalues;
+            break;
+          }
+        }
+      }
+      // 等级名称映射
+      if (res.data && app.globalData.viplevellist) {
+        for (var i = 0; i < app.globalData.viplevellist.length; i++) {
+          if (app.globalData.viplevellist[i].itemname == res.data.viplevel) {
+            res.data.viplevelName = app.globalData.viplevellist[i].itemvalues;
+            break;
+          }
+        }
+      }
       that.setData({
         vip: res.data,
         vipuuid_s: vipuuid_s,
@@ -425,9 +443,11 @@ function getHungItem(that, options) {
         depositeflag: res.data[0].depositeflag,
         remark:res.data[0].remark,
         payccode: res.data[0].payccode || ''
+      });
 
       // 根据 payccode 自动选中付款卡
       var pc = that.data.payccode;
+      var found = -1;
       if (pc && that.data.paycardlist && that.data.paycardlist.length > 0) {
         for (var i = 0; i < that.data.paycardlist.length; i++) {
           var c = that.data.paycardlist[i];
@@ -438,7 +458,6 @@ function getHungItem(that, options) {
           that.setData({ paycardindex: found });
         }
       }
-      })
       if (that.data.ttype=='S'){
         that.setData({
           ttypename:'服务'

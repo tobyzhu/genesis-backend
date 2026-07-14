@@ -106,8 +106,21 @@ Page({
   /**
    * 用户点击右上角分享
    */
-  onShareAppMessage: function () {
+  bindShareReferral: function () {
+    var that = this;
+    that.setData({ showShareDialog: true });
+    wx.shareAppMessage({
+      title: '帮小主 - 美业门店管理系统，员工手机就能用',
+      path: '/my/login/login',
+    })
+  },
 
+  onShareAppMessage: function () {
+    return {
+      title: '帮小主 - 美业门店管理系统，员工手机就能用',
+      path: '/my/login/login',
+      imageUrl: '/images/logo_share.png',
+    }
   },
   bindLogout:function(){
     var app=getApp();

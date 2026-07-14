@@ -115,6 +115,43 @@ def heuristic_plan(
     if ranking_tools:
         tools.extend(ranking_tools)
 
+    if "vip_lifecycle_batch" in allowed_tools and not tools:
+        if re.search(r"生命周期|分级|分类管理|流失预警|预警客户|休眠客户|可能流失|有多少", msg) and (
+            "会员" in msg or "客户" in msg
+        ):
+            seg = ""
+            if re.search(r"预警|可能流失|趋势", msg):
+                seg = "at_risk"
+            elif re.search(r"休眠|沉睡|长期不来", msg):
+                seg = "sleeping"
+            elif re.search(r"活跃", msg):
+                seg = "active"
+            args: Dict[str, Any] = {"limit": _extract_top_n(msg, default=80)}
+            if seg:
+                args["segment"] = seg
+            tools.append({"name": "vip_lifecycle_batch", "args": args})
+
+    if "vip_lifecycle_create_crm_tasks" in allowed_tools and not tools:
+        if re.search(r"生成.*任务|回访任务|CRM任务|创建任务", msg) and re.search(
+            r"预警|休眠|生命周期|流失", msg
+        ):
+            seg = "sleeping" if re.search(r"休眠|沉睡", msg) else "at_risk"
+            dry = not re.search(r"确认|写库|执行", msg)
+            tools.append(
+                {
+                    "name": "vip_lifecycle_create_crm_tasks",
+                    "args": {"segment": seg, "dry_run": dry, "limit": 50},
+                }
+            )
+
+    if "vip_lifecycle_one" in allowed_tools and not tools:
+        plan_intent = bool(re.search(r"方案|怎么办|如何维护|怎么唤醒|运营建议|给.*建议", msg))
+        phone_m = re.search(r"1[3-9]\d{9}", msg)
+        if plan_intent and phone_m:
+            tools.append({"name": "vip_lifecycle_one", "args": {"telph": phone_m.group(0)}})
+        elif plan_intent and re.search(r"这个客户|该客户|这位", msg):
+            tools.append({"name": "vip_lifecycle_one", "args": {}})
+
     if "vip_sleeping_alert" in allowed_tools and not tools:
         if ("沉睡" in msg or "流失" in msg) and ("会员" in msg or "客户" in msg):
             tools.append(
@@ -142,10 +179,13 @@ def heuristic_plan(
 
     if not tools and profile_id == "vip_crm":
         phone_m = re.search(r"1[3-9]\d{9}", msg)
+        plan_intent = bool(re.search(r"方案|怎么办|如何维护|怎么唤醒", msg))
         profile_intent = bool(
             re.search(r"怎么样|如何|画像|分析|概况|情况|流失|风险|还回来|会来", msg)
         )
-        if phone_m and profile_intent:
+        if phone_m and plan_intent and "vip_lifecycle_one" in allowed_tools:
+            tools.append({"name": "vip_lifecycle_one", "args": {"telph": phone_m.group(0)}})
+        elif phone_m and profile_intent:
             telph = phone_m.group(0)
             if "vip_profile" in allowed_tools:
                 tools.append({"name": "vip_profile", "args": {"telph": telph}})

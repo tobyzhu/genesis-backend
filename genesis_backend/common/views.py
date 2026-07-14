@@ -29,6 +29,21 @@ from .models import WifiList,Sequence  #,CompanyItem,CompanyOrderItem,CompanyOrd
 from .serializers import WifiListSerializer   #,CompanyOrderSerializer,CompanyItemSerializer
 
 
+
+@csrf_exempt
+def company_stores(request):
+    """返回指定公司的门店列表（无需登录）。"""
+    from baseinfo.models import Storeinfo
+    company = request.GET.get('company', '')
+    storecode = request.GET.get('storecode', '')
+    qs = Storeinfo.objects.filter(flag='Y')
+    if company:
+        qs = qs.filter(company=company)
+    if storecode:
+        qs = qs.filter(storecode=storecode)
+    qs = qs.order_by('storecode')
+    stores = [{'storecode': s.storecode, 'storename': s.storename or ''} for s in qs]
+    return JsonResponse(stores, safe=False)
 def getserno(company,storecode, tablecode):
     try:
         sequence = Sequence.objects.get(company=company, storecode=storecode, tablecode=tablecode)
@@ -479,3 +494,71 @@ def check_userpwd(request):
 
 
 
+
+@csrf_exempt
+def company_list(request):
+     """返回所有启用的公司列表（基本信息，无需登录）。
+     用 Appoption(company='common', seg='company', flag='Y') 记录。
+     """
+     from baseinfo.models import Appoption
+     qs = Appoption.objects.filter(
+         company='common', seg='company', flag='Y'
+     ).order_by('itemname')
+     companies = []
+     for ao in qs:
+         companies.append({
+             'code': ao.itemname,
+             'name': ao.itemvalues or ao.itemname,
+         })
+     if not companies:
+         # 保底：从 Storeinfo 中提取所有公司（确保至少有 1 个可选）
+         from baseinfo.models import Storeinfo
+         codes = list(Storeinfo.objects.filter(flag='Y')
+                      .order_by().values_list('company', flat=True).distinct())
+         for c in codes:
+             if c and str(c).strip():
+                 companies.append({'code': str(c), 'name': str(c)})
+     return JsonResponse({'code': 200, 'companies': companies})
+
+
+@csrf_exempt
+
+@csrf_exempt
+def company_stores(request):
+    """返回指定公司的门店列表（无需登录）。"""
+    from baseinfo.models import Storeinfo
+    company = request.GET.get("company", "")
+    if not company:
+        return JsonResponse([], safe=False)
+    qs = Storeinfo.objects.filter(flag="Y", company=company).order_by("storecode")
+    stores = [{"storecode": s.storecode, "storename": s.storename or ""} for s in qs]
+    return JsonResponse(stores, safe=False)
+
+def switch_store(request):
+    """用户在登录后切换门店（已有有效会话）。"""
+    from common.models import GenesisUserProfile
+    try:
+        company = request.GET.get('company') or request.POST.get('company') or ''
+        storecode = request.GET.get('storecode') or request.POST.get('storecode') or ''
+        username = request.GET.get('username') or request.POST.get('username') or ''
+        if not company or not storecode or not username:
+            return JsonResponse({'code': 400, 'msg': '缺少参数 company / storecode / username'}, status=400)
+        profile = GenesisUserProfile.objects.select_related('user').get(
+            user__username=username, company=company, user__is_active=True
+        )
+        from common.genesis_auth import profile_can_access_store, serialize_genesis_session
+        if not profile_can_access_store(profile, storecode):
+            return JsonResponse({'code': 403, 'msg': '无权访问该门店'}, status=403)
+        return JsonResponse(serialize_genesis_session({
+            'auth_type': 'django',
+            'django_user': profile.user,
+            'profile': profile,
+            'hdsysuser': None,
+            'storecode': storecode,
+            'allowed_storecodes': profile.allowed_storecodes(),
+            'stores': [],
+        }))
+    except GenesisUserProfile.DoesNotExist:
+        return JsonResponse({'code': 404, 'msg': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'code': 500, 'msg': str(e)}, status=500)

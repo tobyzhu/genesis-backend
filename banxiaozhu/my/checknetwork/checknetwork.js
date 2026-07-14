@@ -1,6 +1,4 @@
-var now = new Date();
 var util = require('../../utils/util.js');
-var viputils = require('../../vip/viputils.js');
 var app = getApp();
 
 Page({
@@ -27,7 +25,7 @@ Page({
     username: '',
     password: '',
     last_login_time: '',
-    isDev:false,
+    showDevLogin: false,
     isLogin: false
   },
 
@@ -35,28 +33,44 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {
-    var that=this;
-    if (app.globalData.isDev){
-      console.log('is dev')
-      app.globalData.tempnetwork.networkenable = true
-      app.globalData.tempnetwork.company = app.globalData.democompany
-      app.globalData.tempnetwork.companyname=app.globalData.democompanyname
-      app.globalData.tempnetwork.storecode = app.globalData.demostorecode
-      app.globalData.tempnetwork.storename = app.globalData.demostorename
-      app.globalData.tempnetwork.local_SSID = that.data.local_SSID
-      app.globalData.tempnetwork.local_BSSID = that.data.local_BSSID
-      app.globalData.tempnetwork.networkType = that.data.networkType
-      app.globalData.tempnetwork.bssid_flag = that.data.bssid_flag
-      wx.reLaunch({
-        url: '/my/login/login',
-      })     
+    var that = this;
+    var app = getApp();
+    var devMode = util.isDevEnvironment();
 
-    } else {
-      util.checkNetwork(that)
-      console.log('checknework onLoad ,app.globalData.tempnetwork:', app.globalData.tempnetwork)
+    that.setData({ showDevLogin: devMode });
+
+    // 开发环境：跳过 WiFi 校验，直达登录
+    if (devMode) {
+      app.globalData.company = app.globalData.democompany || 'demo';
+      app.globalData.storecode = app.globalData.demostorecode || '88';
+      app.globalData.companyname = app.globalData.democompanyname || '';
+      app.globalData.storename = app.globalData.demostorename || '';
+      app.globalData.networkenable = true;
+      wx.reLaunch({
+        url: '/my/login/login'
+      });
+      return;
     }
 
+    util.checkNetwork(that);
+    console.log('checknework onLoad ,app.globalData.tempnetwork:', app.globalData.tempnetwork);
+  },
 
+  /** 仅开发环境：手动进入演示登录 */
+  goLogin: function () {
+    if (!util.isDevEnvironment()) {
+      wx.showToast({ title: '请先连接门店 WiFi', icon: 'none' });
+      return;
+    }
+    var app = getApp();
+    app.globalData.company = app.globalData.democompany || 'demo';
+    app.globalData.storecode = app.globalData.demostorecode || '88';
+    app.globalData.companyname = app.globalData.democompanyname || '';
+    app.globalData.storename = app.globalData.demostorename || '';
+    app.globalData.networkenable = true;
+    wx.reLaunch({
+      url: '/my/login/login'
+    });
   },
 
   /**
@@ -110,7 +124,6 @@ Page({
 
   bindCompanyChange: function (e) {
     var that = this;
-    var app = getApp();
     console.log(e)
     that.setData({
       company: e.detail.value
@@ -119,7 +132,6 @@ Page({
 
   bindStorecodeChange: function (e) {
     var that = this;
-    var app = getApp();
     console.log(e)
     that.setData({
       storecode: e.detail.value
@@ -128,7 +140,6 @@ Page({
 
   bindApplyNetWork: function(){
     var that = this;
-    var app = getApp();
     var ssid= util.get_ssid()
     var bssid = util.get_bssid()
     that.setData({
@@ -139,9 +150,6 @@ Page({
 
   bindCheckNetWork: function () {
     var that = this;
-    var app = getApp();
-
     util.checkNetwork(that)
-    console.log(that.data.isDev)
   }
 })

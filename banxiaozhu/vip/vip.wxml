@@ -12,6 +12,9 @@
             <view class='shipping-phone' bindtap='callGetPhone' data-getPhone='{{vip.mtcode}}'>手机：
               <text>{{vip.mtcode}}</text>
             </view>
+            <view wx:if="{{vip.indate}}">入会日期：{{vip.indate}}</view>
+            <view wx:if="{{vip.sourceName}}">来店渠道：{{vip.sourceName}}</view>
+            <view wx:if="{{vip.viplevelName || vip.viplevel}}">等级：{{vip.viplevelName || vip.viplevel}}</view>
         </view>
     </view>
 
@@ -32,4 +35,3 @@
         <image src="images/icon_footer.png" style="width: 84px; height: 19px;"></image>
     </view> -->
 </view>
-

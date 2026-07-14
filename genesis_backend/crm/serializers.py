@@ -65,7 +65,7 @@ class VipSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Vip
-        fields = ('uuid','vcode','vname','mtcode','url')
+        fields = ('uuid','vcode','vname','mtcode','viplevel','sex','birth','indate','status','viptype','ecode','ecode2','tags','source','telph','wechat','addr','email','qq','occupation','company','storecode','url')
 
     def create(self, validated_data):
         return Vip.objects.create(**validated_data)
@@ -73,5 +73,17 @@ class VipSerializer(serializers.HyperlinkedModelSerializer):
     def update(self, instance, validated_data):
         instance.mtcode = validated_data.get('mtcode', instance.mtcode)
         instance.vname = validated_data.get('vname',instance.vname)
+        instance.viplevel = validated_data.get('viplevel',instance.viplevel)
+        instance.sex = validated_data.get('sex',instance.sex)
+        instance.telph = validated_data.get('telph',instance.telph)
+        instance.wechat = validated_data.get('wechat',instance.wechat)
+        instance.status = validated_data.get('status',instance.status)
+        instance.viptype = validated_data.get('viptype',instance.viptype)
+        instance.ecode = validated_data.get('ecode',instance.ecode)
+        instance.source = validated_data.get('source',instance.source)
+        instance.tags = validated_data.get('tags',instance.tags)
+        instance.addr = validated_data.get('addr',instance.addr)
+        instance.birth = validated_data.get('birth',instance.birth)
+        instance.indate = validated_data.get('indate',instance.indate)
         instance.save()
         return instance

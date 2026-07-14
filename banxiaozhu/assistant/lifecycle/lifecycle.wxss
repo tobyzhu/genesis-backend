@@ -1,0 +1,155 @@
+.lifecycle-page {
+  padding-bottom: 80rpx;
+}
+
+.lifecycle-header {
+  padding: 24rpx 32rpx 8rpx;
+  background: #f8f8f8;
+}
+
+.lifecycle-header__store {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.lifecycle-header__cfg {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #888;
+}
+
+.segment-bar {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 16rpx 24rpx;
+  gap: 16rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #eee;
+}
+
+.segment-chip {
+  padding: 10rpx 24rpx;
+  font-size: 26rpx;
+  border-radius: 32rpx;
+  background: #f0f0f0;
+  color: #333;
+}
+
+.segment-chip--active {
+  background: #04be02;
+  color: #fff;
+}
+
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  padding: 20rpx 32rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.summary-warn {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.migrate-banner {
+  padding: 12rpx 32rpx 0;
+  font-size: 24rpx;
+  color: #e6a23c;
+}
+
+.migrate-scroll {
+  white-space: nowrap;
+  padding: 12rpx 24rpx;
+}
+
+.migrate-chip {
+  display: inline-block;
+  margin-right: 16rpx;
+  padding: 8rpx 20rpx;
+  font-size: 24rpx;
+  background: #fdf6ec;
+  border-radius: 24rpx;
+  color: #666;
+}
+
+.error-box,
+.loading-box,
+.empty-tip {
+  padding: 40rpx 32rpx;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.vip-list {
+  padding: 0 24rpx;
+}
+
+.vip-card {
+  margin-top: 20rpx;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.vip-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vip-card__name {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.vip-card__seg {
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+  background: #eee;
+}
+
+.vip-card__seg--at_risk {
+  background: #fdf6ec;
+  color: #e6a23c;
+}
+
+.vip-card__seg--sleeping {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.vip-card__seg--active {
+  background: #f0f9eb;
+  color: #67c23a;
+}
+
+.vip-card__meta {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #888;
+}
+
+.vip-card__actions {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #576b95;
+}
+
+.footer-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1rpx solid #eee;
+  text-align: center;
+}

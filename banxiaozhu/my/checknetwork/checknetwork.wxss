@@ -1,1 +1,25 @@
-/* my/checknetwork/checknetwork.wxss */
+.page__hd {
+  padding: 40rpx 32rpx 24rpx;
+}
+
+.page__title {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.page__desc {
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  color: #888;
+}
+
+.btn-group {
+  padding: 32rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.weui-toptips_warn {
+  margin: 24rpx 32rpx;
+}

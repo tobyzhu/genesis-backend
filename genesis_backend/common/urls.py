@@ -8,7 +8,7 @@ from django.conf import settings
 import uuid
 from django.conf.urls import include
 from rest_framework import routers
-from common.views import WifiListViewSet,check_WifiList,check_userpwd,init_baseinfo,init_baseinfo_bystore,init_baseinfo_salon,init_demo #,CompanyItemViewSet,CompanyOrderViewSet
+from common.views import WifiListViewSet,check_WifiList,check_userpwd,init_baseinfo,init_baseinfo_bystore,init_baseinfo_salon,init_demo,company_list,company_stores,switch_store #,CompanyItemViewSet,CompanyOrderViewSet
 from baseinfo.auth_api import hdsysuser_login_json, hdsysuser_stores, hdsysuser_permissions, api_v1_hdsysuser_login
 from . import views
 router = routers.DefaultRouter()
@@ -28,6 +28,10 @@ urlpatterns = [
     url(r'^init_baseinfo_bystore/', init_baseinfo_bystore),
     url(r'^init_baseinfo_salon/', init_baseinfo_salon),
     url(r'^init_demo/', init_demo),
+    url(r'^company_list/', company_list),
+    url(r'^switch_store/', switch_store),
+    url(r"^company_stores/", company_stores),
+
 
     url(r'^query_companyorder/', views.query_CompanyOrder),
 

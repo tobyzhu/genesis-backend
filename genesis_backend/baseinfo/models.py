@@ -66,6 +66,7 @@ SEGS_CORE = [
     ('casetype', '回访类型'),
     ('unit', '单位'),
     ('discountclass', '折扣分类'),
+    ('vip_lifecycle', '客户生命周期'),
 ]
 
 SEGS = SEGS_CORE + [

@@ -132,40 +132,25 @@ Page({
     // var userinfo = wx.getStorageSync('userinfo');
     if (app.globalData.isDev){
       that.setData({
-        company: app.globalData.democompany,
-        storecode: app.globalData.demostorecode,
-        companyname: app.globalData.democompanyname,
-        storename: app.globalData.demostorename,
-        // local_SSID: app.globalData.demolocal_SSID,
-        // local_BSSID: app.globalData.tempnetwork.local_BSSID,
+        company: app.globalData.democompany || 'demo',
+        storecode: app.globalData.demostorecode || '88',
+        companyname: app.globalData.democompanyname || '',
+        storename: app.globalData.demostorename || '',
         networkType: '4G',
         networkenable: true
-        // bssid_flag: app.globalData.tempnetwork.bssid_flag
-
-        // company: app.globalData.tempnetwork.company,
-        // storecode: app.globalData.tempnetwork.storecode,
-        // companyname: app.globalData.tempnetwork.companyname,
-        // storename: app.globalData.tempnetwork.storename,
-        // local_SSID: app.globalData.tempnetwork.local_SSID,
-        // local_BSSID: app.globalData.tempnetwork.local_BSSID,
-        // networkType: app.globalData.tempnetwork.networkType,
-        // networkenable: app.globalData.tempnetwork.networkenable,
-        // bssid_flag: app.globalData.tempnetwork.bssid_flag
-        // userinfo:userinfo
       })
       console.log('login onLoad:',app.globalData.isDev, that.data.company, that.data.storecode, that.data.usercode)
     } else{
       that.setData({
-        company: app.globalData.company,
-        companyname: app.globalData.companyname,
-        storecode: app.globalData.storecode,
-        storename: app.globalData.storename,
-        local_SSID: app.globalData.local_SSID,
-        local_BSSID: app.globalData.local_BSSID,
-        networkType:app.globalData.networkType,
+        company: app.globalData.company || app.globalData.democompany || 'demo',
+        companyname: app.globalData.companyname || app.globalData.democompanyname || '',
+        storecode: app.globalData.storecode || app.globalData.demostorecode || '88',
+        storename: app.globalData.storename || app.globalData.demostorename || '',
+        local_SSID: app.globalData.local_SSID || '',
+        local_BSSID: app.globalData.local_BSSID || '',
+        networkType:app.globalData.networkType || '',
         networkenable: app.globalData.networkenable,
         bssid_flag: app.globalData.bssid_flag
-        // userinfo:userinfo
       })
     }
     // that.reWXLogin()
@@ -254,6 +239,7 @@ Page({
           showTopTips: false
         });
       }, 3000);
+      return;
     }
     // var netflag = that.checkNetwork()
     var url = app.globalData.host + 'common/check_userpwd'

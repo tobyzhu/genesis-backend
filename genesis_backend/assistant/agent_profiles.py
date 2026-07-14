@@ -40,13 +40,26 @@ _VIP_SHARED_TOOL_NAMES = (
 )
 
 
+VIP_CRM_LIFECYCLE_CATALOG = """
+- vip_lifecycle_batch：门店客户生命周期分级（active 活跃 / at_risk 流失预警 / sleeping 休眠）。预警=近一周期消费或到店频次下降；休眠=公司统一 inactive_days 无有效消费。args: {} 或 {"segment":"at_risk|sleeping|active"}、{"viptype":"10"}、{"ecode":"顾问"}、{"limit":80}。含 recommended_actions 运营建议。
+- vip_lifecycle_one：单客生命周期分级 + 建议方案。args: {"telph":"..."} 或 {"vipuuid":"..."} / {"vcode":"..."}。
+- vip_lifecycle_create_crm_tasks：为 at_risk/sleeping 客户生成 CRM 回访任务（VipCaseDetail）。默认 dry_run 预览。args: {"segment":"at_risk|sleeping"}、{"ecode":"顾问"}、{"limit":50}、{"dry_run":false} 写库。
+""".strip()
+
+
 def _build_vip_tool_registry() -> Dict[str, ToolFn]:
+    from assistant.vip_lifecycle import tool_vip_lifecycle_batch, tool_vip_lifecycle_one
+    from assistant.vip_lifecycle_crm import tool_vip_lifecycle_create_crm_tasks
+
     reg: Dict[str, ToolFn] = {}
     for name in _VIP_SHARED_TOOL_NAMES:
         fn = TOOL_REGISTRY.get(name)
         if fn:
             reg[name] = fn
     reg.update(VIP_ONLY_REGISTRY)
+    reg["vip_lifecycle_batch"] = tool_vip_lifecycle_batch
+    reg["vip_lifecycle_one"] = tool_vip_lifecycle_one
+    reg["vip_lifecycle_create_crm_tasks"] = tool_vip_lifecycle_create_crm_tasks
     return reg
 
 
@@ -68,6 +81,8 @@ VIP_CRM_TOOL_CATALOG = (
     + _vip_shared_catalog_lines()
     + "\n"
     + VIP_ONLY_CATALOG_TEXT
+    + "\n"
+    + VIP_CRM_LIFECYCLE_CATALOG
 ).strip()
 
 VIP_CRM_PLANNER_EXTRA = """
@@ -83,10 +98,11 @@ VIP_CRM_PLANNER_EXTRA = """
 2. 用户问「这个客户怎么样/画像/分析」或给出手机号想了解概况时，优先 vip_profile；需要流失/风险判断时加 vip_churn_risk（可只传 telph）。
 3. 需要完整档案时用 get_vip_detail；需要消费历史用 list_vip_transactions 或 vip_consumption_summary。
 4. 回访/案例相关用 list_vip_crm_cases、list_vip_communications。
-5. 门店会员维护概览用 vip_maintenance_summary；沉睡/流失预警用 vip_sleeping_alert。
-6. 用户要导出查询结果时，说明每条助手回复下方有「导出结果」按钮（Excel/JSON/CSV/Markdown）；页顶维度统计、沉睡预警查询后也可导出。
-7. 查卡用 list_vip_cards / search_cards。
-8. 会员消费排行（勿用 readonly_sql）：
+5. 门店会员维护概览用 vip_maintenance_summary；客户生命周期分级/预警/休眠/运营方案用 vip_lifecycle_batch 或 vip_lifecycle_one（含 segment、recommended_actions、playbook_goals）；旧口径批量沉睡仍可用 vip_sleeping_alert。
+6. 用户问「这个客户怎么办/给方案/如何维护」时，优先 vip_lifecycle_one（可配合 vip_profile）；批量问「预警/休眠客户」用 vip_lifecycle_batch。
+7. 用户要导出查询结果时，说明每条助手回复下方有「导出结果」按钮（Excel/JSON/CSV/Markdown）；页顶维度统计、沉睡预警、生命周期面板查询后也可导出。
+8. 查卡用 list_vip_cards / search_cards。
+9. 会员消费排行（勿用 readonly_sql）：
    - 现金 → vip_top_cash_consumption
    - 卡付/刷卡 → vip_top_card_consumption
    - 赠送/赠金 → vip_top_send_consumption
@@ -115,7 +131,13 @@ VIP_CRM_ANSWER_EXTRA = """
 - 结合 viptype（10=会员/20=散客）、status、viplevel 解释客户状态。
 - 说明消费数据时注明统计区间与 date_field（vsdate/cdate）。
 - 会员消费排行结果含 indate（入会日期）、last_visit_date（最后一次有效到店日期）、ecode/adviser_name、ecode2/therapist_name、birth、viplevel 及各类消费金额字段。
-- 若会员有沉睡/流失风险，优先用 vip_churn_risk（单客）或 vip_sleeping_alert（批量）；说明预警口径为「N 天内无 valiflag=Y 的有效消费」及消费/到店趋势。
+- 若会员有沉睡/流失风险或需要运营方案，优先 vip_lifecycle_batch / vip_lifecycle_one（含 segment、risk_factors、playbook_goals、recommended_actions）；说明预警口径为「趋势下降=at_risk；>=inactive_days 无有效消费=sleeping」。
+- 当工具返回 recommended_actions 时，回答必须按以下结构组织（禁止编造 tool 中不存在的金额/日期/姓名）：
+  1. **客户现状**：segment 中文含义、末次到店/天数、消费与到店趋势
+  2. **风险原因**：逐条引用 risk_factors（若无则写「暂无额外风险因素」）
+  3. **运营目标**：引用 playbook_goals
+  4. **建议动作**：按 recommended_actions 的 priority 排序，每条含 title、detail；若有 suggested_script 则作为「参考话术」单独一行
+  5. **下一步**：明确顾问应在几天内完成的首个动作
 - 客户画像类问题用 vip_profile 结果组织自然语言：概括身份、累计消费、到店习惯、常做项目、末次到店。
 - 每条有查询数据的助手回复下方提供导出（Excel/JSON/CSV/Markdown）；页顶「管理维度营业」「沉睡会员预警」查询后也可导出。
 """.strip()

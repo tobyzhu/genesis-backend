@@ -490,6 +490,73 @@
       </div>
       <div id="vipSleepExportWrap"></div>
     </section>
+    <section class="dim-stats-panel" aria-labelledby="vip-lifecycle-heading">
+      <h2 id="vip-lifecycle-heading">客户生命周期分级</h2>
+      <p class="dim-hint">
+        按公司统一规则分级：<strong>active</strong> 活跃、<strong>at_risk</strong> 流失预警（消费/到店趋势下降）、<strong>sleeping</strong> 休眠（无有效消费超阈值）。
+        休眠客可一键回写 <code>vip.status</code>。
+      </p>
+      <div class="dim-stats-form">
+        <label>分级筛选
+          <select id="vipLifeSegment" aria-label="分级">
+            <option value="">全部</option>
+            <option value="at_risk">at_risk 预警</option>
+            <option value="sleeping">sleeping 休眠</option>
+            <option value="active">active 活跃</option>
+            <option value="high_value">high_value 高价值</option>
+          </select>
+        </label>
+        <label>会员类型
+          <select id="vipLifeViptype">
+            <option value="">全部</option>
+            <option value="10">10 会员</option>
+            <option value="20">20 散客</option>
+          </select>
+        </label>
+        <label>显示行数
+          <input type="number" id="vipLifeLimit" min="1" max="500" value="200" style="width:4rem" />
+        </label>
+        <div class="dim-actions">
+          <button type="button" id="vipLifeBtn">查询分级</button>
+          <button type="button" id="vipLifeExportBtn">导出 Excel</button>
+          <button type="button" id="vipLifeSyncBtn">同步休眠状态到 vip.status</button>
+          <button type="button" id="vipLifeMigrateBtn">查看分级迁移</button>
+          <button type="button" id="vipLifeCrmBtn">生成预警回访任务</button>
+        </div>
+      </div>
+      <div id="vipLifeError" class="bubble error dim-inline" style="display:none" role="alert"></div>
+      <p class="dim-stat-meta" id="vipLifeSummary" style="display:none"></p>
+      <p class="dim-stat-meta" id="vipLifeMigrateSummary" style="display:none"></p>
+      <div id="vipLifeMigrateWrap" class="dim-table-wrap" style="display:none">
+        <table class="dim-table">
+          <thead>
+            <tr>
+              <th>会员号</th>
+              <th>姓名</th>
+              <th>迁移</th>
+              <th>原 status</th>
+              <th>现 status</th>
+            </tr>
+          </thead>
+          <tbody id="vipLifeMigrateTbody"></tbody>
+        </table>
+      </div>
+      <div id="vipLifeTableWrap" class="dim-table-wrap" style="display:none">
+        <table class="dim-table" id="vipLifeTable">
+          <thead>
+            <tr>
+              <th>会员号</th>
+              <th>姓名</th>
+              <th>分级</th>
+              <th>未到店天数</th>
+              <th>趋势</th>
+              <th>建议动作</th>
+            </tr>
+          </thead>
+          <tbody id="vipLifeTbody"></tbody>
+        </table>
+      </div>
+    </section>
     <div id="log"></div>
   </main>
   <div class="composer">
@@ -1274,6 +1341,268 @@
       if (vipSleepBtn) vipSleepBtn.addEventListener("click", runVipSleepAlert);
       if (vipSleepExportBtn) vipSleepExportBtn.addEventListener("click", function () { downloadVipBatchExport("sleeping_vips"); });
       if (vipStoreExportBtn) vipStoreExportBtn.addEventListener("click", function () { downloadVipBatchExport("store_vips"); });
+
+      const vipLifeBtn = document.getElementById("vipLifeBtn");
+      const vipLifeExportBtn = document.getElementById("vipLifeExportBtn");
+      const vipLifeSyncBtn = document.getElementById("vipLifeSyncBtn");
+      const vipLifeSegmentEl = document.getElementById("vipLifeSegment");
+      const vipLifeViptypeEl = document.getElementById("vipLifeViptype");
+      const vipLifeLimitEl = document.getElementById("vipLifeLimit");
+      const vipLifeErrorEl = document.getElementById("vipLifeError");
+      const vipLifeSummaryEl = document.getElementById("vipLifeSummary");
+      const vipLifeTableWrap = document.getElementById("vipLifeTableWrap");
+      const vipLifeTbody = document.getElementById("vipLifeTbody");
+
+      function renderVipLifeRows(rows) {
+        vipLifeTbody.innerHTML = "";
+        (rows || []).forEach(function (r) {
+          const tr = document.createElement("tr");
+          const acts = (r.recommended_actions || []).map(function (a) { return a.title || a.type; }).join("；");
+          tr.innerHTML =
+            "<td>" + (r.vcode || "") + "</td>" +
+            "<td>" + (r.vname || "") + "</td>" +
+            "<td>" + (r.segment || "") + "</td>" +
+            "<td>" + (r.days_since_last_visit != null ? r.days_since_last_visit : "") + "</td>" +
+            "<td>" + (r.amount_trend || "") + "/" + (r.visit_trend || "") + "</td>" +
+            "<td>" + acts + "</td>";
+          vipLifeTbody.appendChild(tr);
+        });
+        vipLifeTableWrap.style.display = rows && rows.length ? "block" : "none";
+      }
+
+      async function runVipLifecycleQuery() {
+        vipLifeErrorEl.style.display = "none";
+        vipLifeSummaryEl.style.display = "none";
+        const company = companyEl.value.trim();
+        const storecode = storeEl.value.trim();
+        if (!company || !storecode) {
+          vipLifeErrorEl.textContent = "请先在页顶填写 company 与 storecode。";
+          vipLifeErrorEl.style.display = "block";
+          return;
+        }
+        const payload = {
+          company: company,
+          storecode: storecode,
+          segment: vipLifeSegmentEl.value || "",
+          viptype: vipLifeViptypeEl.value || "",
+          limit: parseInt(vipLifeLimitEl.value, 10) || 200,
+        };
+        vipLifeBtn.disabled = true;
+        try {
+          const csrftoken = getCookie("csrftoken");
+          const res = await fetch(AP.url_vip_lifecycle || "/assistant/api/vip/lifecycle/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await readApiJson(res);
+          if (!data.ok) throw new Error(data.error || "查询失败");
+          const d = data.data || {};
+          const cfg = data.config || {};
+          const sum = d.summary || {};
+          const counts = sum.segment_counts || {};
+          vipLifeSummaryEl.textContent =
+            "休眠阈值 " + (cfg.inactive_days || "") + " 天；预警=趋势下降。" +
+            " 活跃 " + (counts.active || 0) + "，预警 " + (counts.at_risk || 0) +
+            "，休眠 " + (counts.sleeping || 0) + "，未消费新客 " + (counts.never_visited || 0) +
+            "；本页 " + (sum.returned_count || 0) + " 条";
+          vipLifeSummaryEl.style.display = "block";
+          renderVipLifeRows(d.vips || []);
+        } catch (e) {
+          vipLifeErrorEl.textContent = "查询失败：" + e;
+          vipLifeErrorEl.style.display = "block";
+        } finally {
+          vipLifeBtn.disabled = false;
+        }
+      }
+
+      async function syncVipLifecycleStatus() {
+        const company = companyEl.value.trim();
+        const storecode = storeEl.value.trim();
+        if (!company || !storecode) {
+          vipLifeErrorEl.textContent = "请先在页顶填写 company 与 storecode。";
+          vipLifeErrorEl.style.display = "block";
+          return;
+        }
+        if (!confirm("将休眠客户 vip.status 写为休眠码，并将已活跃客户恢复为活跃码。确认？")) return;
+        vipLifeSyncBtn.disabled = true;
+        try {
+          const csrftoken = getCookie("csrftoken");
+          const res = await fetch(AP.url_vip_lifecycle_sync || "/assistant/api/vip/lifecycle/sync/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify({ company: company, storecode: storecode, dry_run: false }),
+          });
+          const data = await readApiJson(res);
+          if (!data.ok) throw new Error(data.error || "同步失败");
+          const r = data.result || {};
+          alert(
+            "同步完成：休眠写入 " + (r.updated_sleeping || 0) +
+            "，流失写入 " + (r.updated_lost || 0) +
+            "，恢复活跃 " + (r.updated_active || 0) +
+            "，跳过 " + (r.skipped || 0)
+          );
+        } catch (e) {
+          vipLifeErrorEl.textContent = "同步失败：" + e;
+          vipLifeErrorEl.style.display = "block";
+        } finally {
+          vipLifeSyncBtn.disabled = false;
+        }
+      }
+
+      async function exportVipLifecycle() {
+        const company = companyEl.value.trim();
+        const storecode = storeEl.value.trim();
+        if (!company || !storecode) {
+          vipLifeErrorEl.textContent = "请先在页顶填写 company 与 storecode。";
+          vipLifeErrorEl.style.display = "block";
+          return;
+        }
+        const payload = {
+          export_type: "lifecycle_vips",
+          company: company,
+          storecode: storecode,
+          segment: vipLifeSegmentEl.value || "",
+          viptype: vipLifeViptypeEl.value || "",
+          limit: 5000,
+        };
+        vipLifeExportBtn.disabled = true;
+        try {
+          const csrftoken = getCookie("csrftoken");
+          const res = await fetch(AP.url_vip_batch_export || "/assistant/api/vip/batch-export/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "vip-lifecycle.xlsx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          vipLifeErrorEl.textContent = "导出失败：" + e;
+          vipLifeErrorEl.style.display = "block";
+        } finally {
+          vipLifeExportBtn.disabled = false;
+        }
+      }
+
+      if (vipLifeBtn) vipLifeBtn.addEventListener("click", runVipLifecycleQuery);
+      if (vipLifeExportBtn) vipLifeExportBtn.addEventListener("click", exportVipLifecycle);
+      if (vipLifeSyncBtn) vipLifeSyncBtn.addEventListener("click", syncVipLifecycleStatus);
+
+      const vipLifeMigrateBtn = document.getElementById("vipLifeMigrateBtn");
+      const vipLifeMigrateSummaryEl = document.getElementById("vipLifeMigrateSummary");
+      const vipLifeMigrateWrap = document.getElementById("vipLifeMigrateWrap");
+      const vipLifeMigrateTbody = document.getElementById("vipLifeMigrateTbody");
+
+      async function runVipLifecycleMigrations() {
+        vipLifeErrorEl.style.display = "none";
+        vipLifeMigrateSummaryEl.style.display = "none";
+        vipLifeMigrateWrap.style.display = "none";
+        const company = companyEl.value.trim();
+        const storecode = storeEl.value.trim();
+        if (!company || !storecode) {
+          vipLifeErrorEl.textContent = "请先在页顶填写 company 与 storecode。";
+          vipLifeErrorEl.style.display = "block";
+          return;
+        }
+        vipLifeMigrateBtn.disabled = true;
+        try {
+          const q = new URLSearchParams({ company: company, storecode: storecode, days_back: "7", limit: "100" });
+          const res = await fetch((AP.url_vip_lifecycle_migrations || "/assistant/api/vip/lifecycle/migrations/") + "?" + q.toString(), {
+            credentials: "same-origin",
+          });
+          const data = await readApiJson(res);
+          if (!data.ok) throw new Error(data.error || "查询失败");
+          const d = data.data || {};
+          if (d.error) throw new Error(d.error);
+          const sum = d.summary || {};
+          const parts = Object.keys(sum).map(function (k) { return k + " " + sum[k]; });
+          vipLifeMigrateSummaryEl.textContent =
+            "对比 " + (d.from_date || "") + " → " + (d.to_date || "") +
+            "；迁移 " + (d.returned_count || 0) + " 条" +
+            (parts.length ? "（" + parts.join("，") + "）" : "");
+          vipLifeMigrateSummaryEl.style.display = "block";
+          vipLifeMigrateTbody.innerHTML = "";
+          (d.migrations || []).forEach(function (r) {
+            const tr = document.createElement("tr");
+            tr.innerHTML =
+              "<td>" + (r.vcode || "") + "</td>" +
+              "<td>" + (r.vname || "") + "</td>" +
+              "<td>" + (r.transition || "") + "</td>" +
+              "<td>" + (r.from_status || "") + "</td>" +
+              "<td>" + (r.to_status || "") + "</td>";
+            vipLifeMigrateTbody.appendChild(tr);
+          });
+          vipLifeMigrateWrap.style.display = (d.migrations && d.migrations.length) ? "block" : "none";
+        } catch (e) {
+          vipLifeErrorEl.textContent = "迁移查询失败：" + e;
+          vipLifeErrorEl.style.display = "block";
+        } finally {
+          vipLifeMigrateBtn.disabled = false;
+        }
+      }
+
+      if (vipLifeMigrateBtn) vipLifeMigrateBtn.addEventListener("click", runVipLifecycleMigrations);
+
+      const vipLifeCrmBtn = document.getElementById("vipLifeCrmBtn");
+      async function createVipLifecycleCrmTasks() {
+        const company = companyEl.value.trim();
+        const storecode = storeEl.value.trim();
+        if (!company || !storecode) {
+          vipLifeErrorEl.textContent = "请先在页顶填写 company 与 storecode。";
+          vipLifeErrorEl.style.display = "block";
+          return;
+        }
+        if (!confirm("为当前门店流失预警客户生成 CRM 回访任务？")) return;
+        vipLifeCrmBtn.disabled = true;
+        try {
+          const csrftoken = getCookie("csrftoken");
+          const res = await fetch(AP.url_vip_lifecycle_crm_tasks || "/assistant/api/vip/lifecycle/crm-tasks/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken || "",
+            },
+            body: JSON.stringify({
+              company: company,
+              storecode: storecode,
+              segment: "at_risk",
+              dry_run: false,
+              limit: 100,
+            }),
+          });
+          const data = await readApiJson(res);
+          if (!data.ok) throw new Error(data.error || "生成失败");
+          const r = data.result || {};
+          alert("已生成 " + (r.created || 0) + " 条任务，跳过 " + (r.skipped || 0) + " 条\n可在 ERP「计划回访」或小程序 todolist/planvipcase 中查看。");
+        } catch (e) {
+          vipLifeErrorEl.textContent = "生成任务失败：" + e;
+          vipLifeErrorEl.style.display = "block";
+        } finally {
+          vipLifeCrmBtn.disabled = false;
+        }
+      }
+      if (vipLifeCrmBtn) vipLifeCrmBtn.addEventListener("click", createVipLifecycleCrmTasks);
 
       let agents = [];
       try {
