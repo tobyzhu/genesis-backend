@@ -3652,9 +3652,14 @@ def get_hung_list(request):
     if not company:
         return JsonResponse([], safe=False)
 
-    qs = ExpvstollHung.objects.filter(
-        company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
-    )
+    if psstatus == '__void__':
+        qs = ExpvstollHung.objects.filter(
+            company=company, storecode=storecode, flag='Y', valiflag_hung='N',
+        )
+    else:
+        qs = ExpvstollHung.objects.filter(
+            company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
+        )
 
     if vipuuid:
         try:
@@ -3662,7 +3667,7 @@ def get_hung_list(request):
             qs = qs.filter(vipuuid=v_uuid)
         except Exception:
             pass
-    elif psstatus:
+    elif psstatus and psstatus != '__void__':
         qs = qs.filter(psstatus_hung=psstatus)
     else:
         open_status = ('10', '20', '30', '40', '50', '60')
@@ -3674,10 +3679,20 @@ def get_hung_list(request):
         qs = qs.filter(vsdate_hung__lte=vsdate_to)
 
     # 先查会员姓名（用独立 qs，避免切片后再过滤）
-    vip_qs = ExpvstollHung.objects.filter(
-        company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
-    )
-    if psstatus:
+    if psstatus == '__void__':
+        vip_qs = ExpvstollHung.objects.filter(
+            company=company, storecode=storecode, flag='Y', valiflag_hung='N',
+        )
+    else:
+        if psstatus == '__void__':
+            vip_qs = ExpvstollHung.objects.filter(
+                company=company, storecode=storecode, flag='Y', valiflag_hung='N',
+            )
+        else:
+            vip_qs = ExpvstollHung.objects.filter(
+                company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
+            )
+    if psstatus and psstatus != '__void__':
         vip_qs = vip_qs.filter(psstatus_hung=psstatus)
     elif not vipuuid:
         open_status = ('10', '20', '30', '40', '50', '60')
@@ -3712,6 +3727,8 @@ def get_hung_list(request):
             'psstatus': h.psstatus_hung or '',
             'paycode': h.ccode_hung or '',
             'cardtype': h.cardtype_hung or '',
+            'ttype': h.ttype_hung or '',
+            'valiflag': h.valiflag_hung or '',
             'itemcount': ExpenseHung.objects.filter(hunguuid=h.uuid, flag='Y').count(),
         })
 

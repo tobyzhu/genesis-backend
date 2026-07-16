@@ -13,8 +13,9 @@
           <el-radio-button value="50">可结账</el-radio-button>
           <el-radio-button value="60">挂账</el-radio-button>
           <el-radio-button value="70">已结账</el-radio-button>
+          <el-radio-button value="__void__">已作废</el-radio-button>
         </el-radio-group>
-        <el-date-picker v-if="filterStatus === '70'" v-model="dateRange" type="daterange"
+        <el-date-picker v-if="filterStatus === '70' || filterStatus === '__void__'" v-model="dateRange" type="daterange"
           range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"
           size="small" style="width:240px" value-format="YYYYMMDD"
           @change="fetchData" />
@@ -42,44 +43,54 @@
 
     <!-- 挂单列表 -->
     <el-card shadow="never" class="hung-card" style="flex:1;min-height:0;display:flex;flex-direction:column">
-      <div style="flex:5.5;min-height:0;overflow-y:auto">
-      <el-table :data="hungList" size="small" stripe v-loading="loading"
-        @row-click="selectRow" highlight-current-row>
-        <el-table-column label="挂单号" width="170">
-          <template #default="{ row }">{{ row.exptxserno }}</template>
-        </el-table-column>
-        <el-table-column label="会员" width="150">
-          <template #default="{ row }">{{ row.vname || '--' }}<span style="color:#909399;font-size:11px;margin-left:4px">（{{ row.vcode || '' }}）</span></template>
-        </el-table-column>
-        <el-table-column label="日期" width="90">
-          <template #default="{ row }">{{ row.vsdate ? row.vsdate.slice(0,8) : '--' }}</template>
-        </el-table-column>
-        <el-table-column label="时间" width="70">
-          <template #default="{ row }">{{ row.vstime || '--' }}</template>
-        </el-table-column>
-        <el-table-column label="金额" width="105" align="right">
-          <template #default="{ row }">¥{{ (row.totmount || 0).toFixed(2) }}</template>
-        </el-table-column>
-        <el-table-column label="项目数" width="60" align="center">
-          <template #default="{ row }">{{ row.itemcount || 0 }}</template>
-        </el-table-column>
-        <el-table-column label="付款卡" width="120">
-          <template #default="{ row }">{{ row.paycode || '--' }}</template>
-        </el-table-column>
-        <el-table-column label="状态" width="80">
-          <template #default="{ row }">
-            <el-tag :type="statusType(row.psstatus)" size="small" effect="dark" style="cursor:pointer" @click="filterStatus = row.psstatus; fetchData()">
-              {{ statusLabel(row.psstatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="{ row }">
-            <el-button v-if="row.psstatus !== '70'" text type="warning" size="small" @click.stop="checkout(row)">结账</el-button>
-            <el-button v-if="row.psstatus !== '70'" text type="danger" size="small" @click.stop="voidHung(row)">作废</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div style="flex:5.5;min-height:0;overflow-y:auto" v-loading="loading">
+      <div v-if="!hungList.length && !loading" style="padding:40px;text-align:center;color:#c0c4cc;font-size:14px">暂无开单管理</div>
+      <div v-for="group in groupedByDate" :key="group.date" class="date-group">
+        <div class="date-group-header">
+          📅 <span style="font-weight:600">{{ formatDate(group.date) }}</span>
+          <span class="date-count">{{ group.items.length }} 单</span>
+        </div>
+        <el-table :data="group.items" size="small" stripe
+          @row-click="selectRow" :row-class-name="selectedRowClass">
+          <el-table-column label="挂单号" width="170">
+            <template #default="{ row }">{{ row.exptxserno }}</template>
+          </el-table-column>
+          <el-table-column label="会员" width="150">
+            <template #default="{ row }">{{ row.vname || '--' }}<span style="color:#909399;font-size:11px;margin-left:4px">（{{ row.vcode || '' }}）</span></template>
+          </el-table-column>
+          <el-table-column label="日期" width="90">
+            <template #default="{ row }">{{ row.vsdate ? row.vsdate.slice(0,8) : '--' }}</template>
+          </el-table-column>
+          <el-table-column label="时间" width="70">
+            <template #default="{ row }">{{ row.vstime || '--' }}</template>
+          </el-table-column>
+          <el-table-column label="金额" width="105" align="right">
+            <template #default="{ row }">¥{{ (row.totmount || 0).toFixed(2) }}</template>
+          </el-table-column>
+          <el-table-column label="项目数" width="60" align="center">
+            <template #default="{ row }">{{ row.itemcount || 0 }}</template>
+          </el-table-column>
+          <el-table-column label="类型" width="55">
+            <template #default="{ row }">{{ ttypeLabel(row.ttype) }}</template>
+          </el-table-column>
+          <el-table-column label="付款卡" width="120">
+            <template #default="{ row }">{{ row.paycode || '--' }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag :type="statusType(row.psstatus)" size="small" effect="dark" style="cursor:pointer" @click="filterStatus = row.psstatus; fetchData()">
+                {{ statusLabel(row.psstatus) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button v-if="row.psstatus !== '70' && row.valiflag !== 'N'" text type="warning" size="small" @click.stop="checkout(row)">结账</el-button>
+              <el-button v-if="row.psstatus !== '70' && row.valiflag !== 'N'" text type="danger" size="small" @click.stop="voidHung(row)">作废</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
       </div>
       <el-card shadow="never" class="hung-detail-card" style="flex:4.5;min-height:0;display:flex;flex-direction:column;margin-top:12px">
         <template #header>
@@ -162,6 +173,23 @@ const hungList = computed(() => {
   return fullData.value.filter((h: any) => h.vcode === filterVip.value)
 })
 
+function formatDate(s: string): string {
+  if (!s || s.length < 8) return s || '--'
+  return s.slice(0,4) + '-' + s.slice(4,6) + '-' + s.slice(6,8)
+}
+
+const groupedByDate = computed(() => {
+  const map = new Map<string, any[]>()
+  for (const h of hungList.value) {
+    const d = (h.vsdate || '').slice(0, 8) || '未知'
+    if (!map.has(d)) map.set(d, [])
+    map.get(d)!.push(h)
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, items]) => ({ date, items }))
+})
+
 const loading = ref(false)
 const filterStatus = ref('')
 const filterVip = ref('')
@@ -178,6 +206,10 @@ const PSSTATUS_MAP: Record<string, { label: string; type: string }> = {
 
 function statusLabel(s: string): string { return PSSTATUS_MAP[s]?.label || s || '--' }
 function statusType(s: string): string { return PSSTATUS_MAP[s]?.type || 'info' }
+function ttypeLabel(t: string): string {
+  const map: Record<string, string> = { S: '服务', G: '商品', C: '售卡', I: '充值' }
+  return map[t] || t || '--'
+}
 
 // 从当前数据中提取 VIP 列表
 const vipList = computed(() => {
@@ -214,22 +246,27 @@ function removeVipFilter(vcode: string) {
 }
 
 function onStatusChange() {
-  if (filterStatus.value === '70' && (!dateRange.value || !dateRange.value.length)) {
+  const fmt = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return y + m + day
+  }
+  const today = fmt(new Date())
+  if (filterStatus.value === '__void__') {
+    dateRange.value = [today, today]
+  } else if (filterStatus.value === '70') {
     const end = new Date()
     const start = new Date()
     start.setDate(start.getDate() - 30)
-    const fmt = (d: Date) => {
-      const y = d.getFullYear()
-      const m = String(d.getMonth() + 1).padStart(2, '0')
-      const day = String(d.getDate()).padStart(2, '0')
-      return y + m + day
-    }
     dateRange.value = [fmt(start), fmt(end)]
   }
   fetchData()
 }
 
 async function fetchData() {
+  selectedOrder.value = null
+  detailItems.value = []
   loading.value = true
   try {
     const params: Record<string, string> = { company, storecode }
@@ -239,7 +276,7 @@ async function fetchData() {
     if (hdsysuserid) {
       params.hdsysuserid = hdsysuserid
     }
-    if (filterStatus.value === '70' && dateRange.value && dateRange.value.length === 2) {
+    if ((filterStatus.value === '70' || filterStatus.value === '__void__') && dateRange.value && dateRange.value.length === 2) {
       params.vsdate_from = dateRange.value[0]
       params.vsdate_to = dateRange.value[1]
     }
@@ -263,6 +300,10 @@ async function selectRow(row: any) {
     detailItems.value = Array.isArray(res.data) ? res.data : []
   } catch { detailItems.value = [] }
   finally { detailLoading.value = false }
+}
+
+function selectedRowClass({ row }: { row: any }): string {
+  return selectedOrder.value?.uuid === row.uuid ? 'selected-row' : ''
 }
 
 function viewHung(row: any) {
@@ -330,6 +371,11 @@ async function voidHung(row: any) {
 .hung-card :deep(.el-card__body) { flex:1; min-height:0; display:flex; flex-direction:column; padding:12px; }
 .hung-detail-card { display:flex; flex-direction:column; min-height:0; }
 .hung-detail-card :deep(.el-card__body) { flex:1; min-height:0; display:flex; flex-direction:column; overflow:auto; }
+.date-group { margin-bottom:10px; }
+.date-group-header { padding:6px 10px; font-size:13px; color:#606266; background:#f5f7fa; border-radius:4px; margin-bottom:2px; display:flex; align-items:center; gap:6px; }
+.date-count { font-weight:400; color:#909399; font-size:12px; margin-left:auto; }
+:deep(.selected-row) { background-color: var(--el-table-current-row-bg-color, #ecf5ff); }
+:deep(.selected-row td:first-child .cell)::before { content: "● "; color: #409eff; font-size:13px; font-weight:700; }
 .vip-chips { display:flex; flex-wrap:wrap; gap:4px; }
 .stats-bar { margin-top:12px; padding:8px 12px; background:#f5f7fa; border-radius:6px; font-size:13px; color:#606266; }
 </style>
