@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 import math
+from collections import defaultdict
 from datetime import datetime,timedelta
 from decimal import Decimal
 import traceback
@@ -3390,23 +3391,83 @@ def cardtype_service_items(request):
 
 
 @csrf_exempt
+def group_items_by_card(company, items):
+    """按付款卡号分组开单明细
+    储值卡同一组(现金归入缺口最大的), 计次卡独立成组, 全现金单独成组
+    售卡(C)和充值(I)单独挂账, 不混入服务/商品组"""
+    sg_items = [it for it in items if it.get('ttype') in ('S', 'G')]
+    card_sale_items = [it for it in items if it.get('ttype') == 'C']
+    recharge_items = [it for it in items if it.get('ttype') == 'I']
+    result = {}
+
+    # S/G 按卡号分组(原逻辑)
+    if sg_items:
+        all_ccodes = {it.get('card_ccode','') for it in sg_items if it.get('card_ccode','')}
+        card_info = {}
+        if all_ccodes:
+            cards = Cardinfo.objects.filter(company=company, ccode__in=all_ccodes, flag='Y')\
+                .select_related('cardtypeuuid')\
+                .values('ccode', 'cardtypeuuid__comptype', 'leftmoney')
+            for c in cards:
+                card_info[c['ccode']] = {
+                    'comptype': c['cardtypeuuid__comptype'],
+                    'balance': float(c['leftmoney'] or 0),
+                }
+        amount_groups = defaultdict(list)
+        times_groups = defaultdict(list)
+        cash_items = []
+        for it in sg_items:
+            card = it.get('card_ccode', '') or ''
+            if not card:
+                cash_items.append(it)
+            elif card_info.get(card, {}).get('comptype') == 'times':
+                times_groups[card].append(it)
+            else:
+                amount_groups[card].append(it)
+        deficits = {}
+        for ccode, citems in amount_groups.items():
+            total = sum(int(it.get('s_qty',1)) * float(it.get('s_price',0)) for it in citems)
+            bal = card_info.get(ccode, {}).get('balance', 0)
+            deficits[ccode] = total - bal
+        if cash_items:
+            needy = {c: d for c, d in deficits.items() if d > 0}
+            if needy:
+                target = max(needy, key=lambda c: needy[c])
+                amount_groups[target].extend(cash_items)
+            elif amount_groups:
+                amount_groups['__cash__'] = cash_items
+            else:
+                amount_groups['__cash__'] = cash_items
+        result.update(dict(amount_groups))
+        result.update(times_groups)
+
+    # 售卡: 每张独立成组
+    for idx, it in enumerate(card_sale_items):
+        result[f'__C_{idx}__'] = [it]
+
+    # 充值: 每笔独立成组
+    for idx, it in enumerate(recharge_items):
+        result[f'__I_{idx}__'] = [it]
+
+    return result
+@csrf_exempt
 def save_hung_order(request):
-    '''保存挂账单'''
+    """保存挂账单(按付款卡号拆分)"""
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'message': '仅支持 POST'})
     try:
         data = json.loads(request.body)
     except:
         data = request.POST.dict()
-    
+
     company = data.get('company', '')
     storecode = data.get('storecode', '01')
     vipuuid = data.get('vipuuid', '')
     items = data.get('items', [])
     if not company or not vipuuid or not items:
         return JsonResponse({'ok': False, 'message': '缺少必要参数'})
-    
-    # 校验活动一致性：如果有 promotionsid，所有项的必须相同
+
+    # 校验活动一致性
     promo_ids = set(str(it.get('promotionsid', '') or '') for it in items if it.get('promotionsid'))
     if len(promo_ids) > 1:
         return JsonResponse({'ok': False, 'message': '不同活动的项目不能挂在同一张单上'})
@@ -3415,132 +3476,136 @@ def save_hung_order(request):
         with transaction.atomic():
             today = datetime.now().strftime('%Y%m%d')
             serno = getserno(company, storecode, 'EXP')
-            exptxserno = f'{company}{storecode}_hung_{serno}'
-            # 查找 VIP 编码
+            base_exptxserno = f'{company}{storecode}_hung_{serno}'
+
             try:
                 vip_obj = Vip.objects.get(uuid=vipuuid)
                 vip_code = vip_obj.vcode
             except Vip.DoesNotExist:
                 vip_code = ''
-            
+
             order_promotionsid = next((it.get('promotionsid', '') for it in items if it.get('promotionsid', '')), '')
-            hung = ExpvstollHung.objects.create(
-                company=company, storecode=storecode,
-                ccode_hung=next((item.get('card_ccode', '') or item.get('srvcode', '') for item in items if item.get('card_ccode', '') or item.get('ttype') == 'I'), ''),
-                cardtype_hung=next((item.get('cardtype', '') for item in items if item.get('cardtype', '')), ''),
-                exptxserno_hung=exptxserno,
-                vsdate_hung=today,
-                vstime_hung=datetime.now().strftime('%H%M%S'),
-                vipuuid_id=vipuuid,
-                vcode_hung=vip_code,
-                vipcode=vip_code,
-                totmount_hung=sum(
-                    int(item.get('s_qty', 1)) * float(item.get('s_price', 0)) * float(item.get('secdisc', 1)) - float(item.get('srvmondisc', 0))
-                    for item in items
-                ),
-                psstatus_hung='10',
-                ttype_hung='S',
-                valiflag_hung='Y',
-                promotionsid=order_promotionsid,
-            )
-            
-            for idx, item in enumerate(items):
-                ttype = item.get('ttype', 'S')
-                srvcode = item.get('srvcode', '')
-                s_qty = int(item.get('s_qty', 1))
-                s_price = float(item.get('s_price', 0))
-                if s_price < 0:
-                    return JsonResponse({'ok': False, 'message': f'单价不能为负数: {item.get("srvcode", "?")}'})
-                secdisc = float(item.get('secdisc', 1))
-                srvmondisc = float(item.get('srvmondisc', 0))
-                s_mount = s_qty * s_price * secdisc - srvmondisc
-                stype = item.get('stype', 'N')
-                card_ccode = item.get('card_ccode', '')
-                pmcode = item.get('pmcode', '') or ''
-                asscode1 = item.get('asscode1', '') or ''
-                asscode2 = item.get('asscode2', '') or ''
-                
-                ExpenseHung.objects.create(
-                    company=company,
-                    storecode=storecode,
-                    hunguuid=hung,
-                    exptxserno_hung=exptxserno,
-                    ditem_hung=f'{idx+1:04d}',
-                    ttype_hung=ttype,
-                    stype_hung=stype,
-                    srvcode_hung=srvcode,
-                    s_qty_hung=s_qty,
-                    s_price_hung=s_price,
-                    secdisc_hung=secdisc,
-                    srvmondisc_hung=srvmondisc,
-                    s_mount_hung=s_mount,
-                    srvactmount_hung=s_mount,
-                    pmcode_hung=pmcode,
-                    asscode1_hung=asscode1,
-                    asscode2_hung=asscode2,
-                    depositeflag='N',
-                    otherserno_hung=card_ccode or '',
-                    flag='Y',
+
+            # 按卡号分组
+            groups = group_items_by_card(company, items)
+            group_items_list = list(groups.items())
+
+            exptxsernos = []
+            for gidx, (card_key, card_items) in enumerate(group_items_list):
+                if len(group_items_list) == 1:
+                    exptxserno = base_exptxserno
+                else:
+                    exptxserno = f'{base_exptxserno}-{gidx+1}'
+
+                if card_key.startswith('__C_') or card_key.startswith('__I_'):
+                    ccode_hung_val = card_items[0].get('card_ccode', '') or ''
+                elif card_key == '__cash__':
+                    ccode_hung_val = ''
+                else:
+                    ccode_hung_val = card_key
+
+                group_total = sum(
+                    int(it.get('s_qty', 1)) * float(it.get('s_price', 0)) * float(it.get('secdisc', 1)) - float(it.get('srvmondisc', 0))
+                    for it in card_items
                 )
-                
-                # 充值：更新卡余额
-                if ttype == 'I' and srvcode:
-                    try:
-                        card = Cardinfo.objects.select_related('cardtypeuuid').get(company=company, ccode=srvcode)
-                        if card.cardtypeuuid and card.cardtypeuuid.comptype == 'times':
-                            card.leftqty = (card.leftqty or Decimal('0')) + Decimal(str(s_price))
-                        else:
-                            card.leftmoney = (card.leftmoney or Decimal('0')) + Decimal(str(s_price))
-                        card.save()
-                    except Cardinfo.DoesNotExist:
-                        pass
-                    # 充值记录写入 cardtype_hung（复用 cardtype 字段）
-                    try:
-                        rc = card
-                        recharge_cardtype = rc.cardtype
-                    except Cardinfo.DoesNotExist:
-                        recharge_cardtype = ''
-                # 售卡：创建 cardinfo 挂账卡
-                if ttype == 'C' and srvcode:
-                    new_ccode = ''
-                    card_leftqty = 0
-                    card_leftmoney = 0
-                    try:
-                        ct = Cardtype.objects.filter(company=company, flag='Y', cardtype=srvcode).first()
-                        if ct:
-                            if ct.comptype == 'times':
-                                card_leftqty = int(item.get('s_qty', 1))
-                            elif ct.comptype == 'amount':
-                                card_leftmoney = s_price
-                    except Exception:
-                        pass
-                    try:
-                        vip_obj = Vip.objects.get(uuid=vipuuid)
-                        new_ccode = vip_obj.nextccode()
-                    except (Vip.DoesNotExist, Exception):
-                        new_ccode = getserno(company, storecode, 'CARD')
-                    Cardinfo.objects.create(
-                        company=company, storecode=storecode,
-                        ccode=new_ccode,
-                        cardtype=srvcode,
-                        status='P',
+
+                hung = ExpvstollHung.objects.create(
+                    company=company, storecode=storecode,
+                    ccode_hung=ccode_hung_val,
+                    cardtype_hung='',
+                    exptxserno_hung=exptxserno,
+                    vsdate_hung=today,
+                    vstime_hung=datetime.now().strftime('%H%M%S'),
+                    vipuuid_id=vipuuid,
+                    vcode_hung=vip_code,
+                    vipcode=vip_code,
+                    totmount_hung=group_total,
+                    psstatus_hung='10',
+                    ttype_hung='S',
+                    valiflag_hung='Y',
+                    promotionsid=order_promotionsid,
+                )
+
+                for idx, item in enumerate(card_items):
+                    ttype = item.get('ttype', 'S')
+                    srvcode = item.get('srvcode', '')
+                    s_qty = int(item.get('s_qty', 1))
+                    s_price = float(item.get('s_price', 0))
+                    if s_price < 0:
+                        return JsonResponse({'ok': False, 'message': f'单价不能为负数: {item.get("srvcode", "?")}'})
+                    secdisc = float(item.get('secdisc', 1))
+                    srvmondisc = float(item.get('srvmondisc', 0))
+                    s_mount = s_qty * s_price * secdisc - srvmondisc
+                    stype = item.get('stype', 'N')
+                    card_ccode = item.get('card_ccode', '')
+                    pmcode = item.get('pmcode', '') or ''
+                    asscode1 = item.get('asscode1', '') or ''
+                    asscode2 = item.get('asscode2', '') or ''
+
+                    ExpenseHung.objects.create(
+                        company=company,
+                        storecode=storecode,
+                        hunguuid=hung,
+                        exptxserno_hung=exptxserno,
+                        ditem_hung=f'{idx+1:04d}',
+                        ttype_hung=ttype,
+                        stype_hung=stype,
+                        srvcode_hung=srvcode,
+                        s_qty_hung=s_qty,
+                        s_price_hung=s_price,
+                        secdisc_hung=secdisc,
+                        srvmondisc_hung=srvmondisc,
+                        s_mount_hung=s_mount,
+                        srvactmount_hung=s_mount,
+                        pmcode_hung=pmcode,
+                        asscode1_hung=asscode1,
+                        asscode2_hung=asscode2,
+                        depositeflag='N',
+                        otherserno_hung=card_ccode or '',
                         flag='Y',
-                        isic='0',
-                        stype=stype,
-                        promotionsid=order_promotionsid or '0',
-                        s_price=s_price,
-                        leftmoney=card_leftmoney,
-                        leftqty=card_leftqty,
-                        vcode=vip_code,
-                        vipuuid_id=vipuuid,
-                        cardtypeuuid=Cardtype.objects.filter(company=company, flag='Y', cardtype=srvcode).first(),
                     )
-            
-            return JsonResponse({'ok': True, 'exptxserno': exptxserno})
+
+                    # 售卡：创建 cardinfo 挂账卡
+                    if ttype == 'C' and srvcode:
+                        new_ccode = ''
+                        card_leftqty = 0
+                        card_leftmoney = 0
+                        try:
+                            ct = Cardtype.objects.filter(company=company, flag='Y', cardtype=srvcode).first()
+                            if ct:
+                                if ct.comptype == 'times':
+                                    card_leftqty = int(item.get('s_qty', 1))
+                                elif ct.comptype == 'amount':
+                                    card_leftmoney = s_price
+                        except Exception:
+                            pass
+                        try:
+                            vip_obj = Vip.objects.get(uuid=vipuuid)
+                            new_ccode = vip_obj.nextccode()
+                        except (Vip.DoesNotExist, Exception):
+                            new_ccode = getserno(company, storecode, 'CARD')
+                        Cardinfo.objects.create(
+                            company=company, storecode=storecode,
+                            ccode=new_ccode,
+                            cardtype=srvcode,
+                            status='P',
+                            flag='Y',
+                            isic='0',
+                            stype=stype,
+                            promotionsid=order_promotionsid or '0',
+                            s_price=s_price,
+                            leftmoney=card_leftmoney,
+                            leftqty=card_leftqty,
+                            vcode=vip_code,
+                            vipuuid_id=vipuuid,
+                            cardtypeuuid=Cardtype.objects.filter(company=company, flag='Y', cardtype=srvcode).first(),
+                        )
+
+                exptxsernos.append(exptxserno)
+
+            return JsonResponse({'ok': True, 'count': len(exptxsernos), 'exptxsernos': exptxsernos})
     except Exception as e:
         return JsonResponse({'ok': False, 'message': str(e)})
-
-@csrf_exempt
 def cardtype_prices(request):
     '''获取卡类关联的疗程价格选项'''
     company = request.GET.get('company', '')
