@@ -53,6 +53,8 @@ urlpatterns=[
     url(r'get_hung_list/', views.get_hung_list),
     url(r'cardtype_service_items/?', views.cardtype_service_items),
     url(r'save_hung/?', views.save_hung_order),
+    url(r'update_hung_item_employees/', views.update_hung_item_employees),
+    url(r"void_hung_order/", views.void_hung_order),
 
     url(r'cardtype_prices/?', views.cardtype_prices),
 

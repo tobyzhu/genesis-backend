@@ -102,7 +102,7 @@ const menuGroups = [
     children: [
       { path: '/cashier', title: '手工开单' },
       { path: '/adviser/billing-v2', title: '手工开单-v2' },
-      { path: '/adviser/hungs', title: '已完成开单' },
+      { path: '/adviser/hungs', title: '开单管理' },
     ],
   },
   {

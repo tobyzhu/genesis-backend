@@ -3600,6 +3600,10 @@ def save_hung_order(request):
                             vipuuid_id=vipuuid,
                             cardtypeuuid=Cardtype.objects.filter(company=company, flag='Y', cardtype=srvcode).first(),
                         )
+                        # 记录新卡号到 dnote_hung，供作废时追溯
+                        ExpenseHung.objects.filter(
+                            company=company, hunguuid=hung, ditem_hung=f'{idx+1:04d}'
+                        ).update(dnote_hung=new_ccode)
 
                 exptxsernos.append(exptxserno)
 
@@ -3632,6 +3636,18 @@ def get_hung_list(request):
     storecode = request.GET.get('storecode', '88')
     vipuuid = request.GET.get('vipuuid', '')
     psstatus = request.GET.get('psstatus', '')
+    vsdate_from = request.GET.get('vsdate_from', '')
+    vsdate_to = request.GET.get('vsdate_to', '')
+    hdsysuserid = request.GET.get('hdsysuserid', '')
+
+    # report_fromdate 约束：开始日期不能早于用户的可查最早日期
+    if hdsysuserid and vsdate_from:
+        try:
+            hd = Hdsysuser.objects.filter(company=company, sys_userid=hdsysuserid).first()
+            if hd and hd.report_fromdate and vsdate_from < hd.report_fromdate:
+                vsdate_from = hd.report_fromdate
+        except Exception:
+            pass
 
     if not company:
         return JsonResponse([], safe=False)
@@ -3652,6 +3668,11 @@ def get_hung_list(request):
         open_status = ('10', '20', '30', '40', '50', '60')
         qs = qs.filter(psstatus_hung__in=open_status)
 
+    if vsdate_from:
+        qs = qs.filter(vsdate_hung__gte=vsdate_from)
+    if vsdate_to:
+        qs = qs.filter(vsdate_hung__lte=vsdate_to)
+
     # 先查会员姓名（用独立 qs，避免切片后再过滤）
     vip_qs = ExpvstollHung.objects.filter(
         company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
@@ -3661,6 +3682,10 @@ def get_hung_list(request):
     elif not vipuuid:
         open_status = ('10', '20', '30', '40', '50', '60')
         vip_qs = vip_qs.filter(psstatus_hung__in=open_status)
+    if vsdate_from:
+        vip_qs = vip_qs.filter(vsdate_hung__gte=vsdate_from)
+    if vsdate_to:
+        vip_qs = vip_qs.filter(vsdate_hung__lte=vsdate_to)
     vip_ids = list(vip_qs.exclude(vipuuid_id=None).values_list('vipuuid_id', flat=True).distinct())[:200]
     vip_name_map = {}
     if vip_ids:
@@ -3669,7 +3694,7 @@ def get_hung_list(request):
             if key not in vip_name_map:
                 vip_name_map[key] = v.vname
 
-    qs = qs.order_by('-vsdate_hung', '-vstime_hung')[:100]
+    qs = qs.order_by('-vsdate_hung', 'exptxserno_hung')[:100]
 
     data = []
     for h in qs:
@@ -3705,6 +3730,16 @@ def get_hung_detail(request):
         return JsonResponse([], safe=False)
 
     items = ExpenseHung.objects.filter(hunguuid=uuid_obj, flag='Y').order_by('ditem_hung')
+    ecodes = set()
+    for it in items:
+        if it.pmcode_hung: ecodes.add(it.pmcode_hung)
+        if it.asscode1_hung: ecodes.add(it.asscode1_hung)
+        if it.asscode2_hung: ecodes.add(it.asscode2_hung)
+    emp_map = {}
+    if ecodes:
+        for em in Empl.objects.filter(company=company, ecode__in=list(ecodes)).only('ecode', 'ename'):
+            emp_map[em.ecode] = em.ename
+
     data = []
     for item in items:
         ttype = item.ttype_hung or ''
@@ -3719,12 +3754,81 @@ def get_hung_detail(request):
             'qty': float(item.s_qty_hung or 0),
             'mount': float(item.s_mount_hung or 0),
             'stype': item.stype_hung or '',
+            'stypename': _hung_line_stypename(item.stype_hung),
+            'pmname': emp_map.get(item.pmcode_hung, ''),
+            'assname1': emp_map.get(item.asscode1_hung, ''),
+            'assname2': emp_map.get(item.asscode2_hung, ''),
+            'paycardno': item.otherserno_hung or '',
             'pmcode': item.pmcode_hung or '',
             'asscode1': item.asscode1_hung or '',
             'asscode2': item.asscode2_hung or '',
         })
     return JsonResponse(data, safe=False)
 
+
+@csrf_exempt
+def update_hung_item_employees(request):
+    '''更新挂单明细的员工信息'''
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        data = request.POST.dict()
+    ditem = data.get('ditem', '')
+    hunguuid = data.get('hunguuid', '')
+    company = data.get('company', '')
+    pmcode = data.get('pmcode', '') or ''
+    asscode1 = data.get('asscode1', '') or ''
+    asscode2 = data.get('asscode2', '') or ''
+    if not ditem or not hunguuid:
+        return JsonResponse({'ok': False, 'message': '缺少参数'})
+    try:
+        uuid_obj = _parse_uuid_loose(hunguuid)
+        ExpenseHung.objects.filter(
+            company=company, hunguuid=uuid_obj, ditem_hung=ditem, flag='Y'
+        ).update(
+            pmcode_hung=pmcode,
+            asscode1_hung=asscode1,
+            asscode2_hung=asscode2,
+        )
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+
+@csrf_exempt
+def void_hung_order(request):
+    '''作废挂账单：标记 valiflag_hung=N, 售卡创建的卡片 status=C'''
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        data = request.POST.dict()
+    hunguuid = data.get('hunguuid', '')
+    company = data.get('company', '')
+    if not hunguuid:
+        return JsonResponse({'ok': False, 'message': '缺少 hunguuid'})
+    try:
+        uuid_obj = _parse_uuid_loose(hunguuid)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 hunguuid'})
+    try:
+        with transaction.atomic():
+            hung = ExpvstollHung.objects.get(uuid=uuid_obj, company=company, flag='Y')
+            hung.valiflag_hung = 'N'
+            hung.save()
+            # 作废售卡生成的卡片
+            for item in ExpenseHung.objects.filter(company=company, hunguuid=hung, ttype_hung='C', flag='Y'):
+                ccode = item.dnote_hung or ''
+                if ccode:
+                    Cardinfo.objects.filter(company=company, ccode=ccode, status='P').update(status='C')
+            return JsonResponse({'ok': True})
+    except ExpvstollHung.DoesNotExist:
+        return JsonResponse({'ok': False, 'message': '挂账单不存在'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
 
 @csrf_exempt
 def categorized_items(request):
