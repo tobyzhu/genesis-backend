@@ -49,3 +49,13 @@ export function getVipCards(vipUuid: string) {
   const company = localStorage.getItem('genesis_pc_company') || ''
   return request.get('/adviser/get_vip_cardlist/', { params: { vipuuid: cleaned, company } })
 }
+
+
+/** 获取会员沟通回访记录 */
+export function getVipCommunication(vipUuid: string) {
+  const company = localStorage.getItem('genesis_pc_company') || ''
+  const cleaned = vipUuid.replace(/-/g, '')
+  return request.get('/crm/get_vipcasedetail_byvipuuid/', {
+    params: { company, vipuuid: cleaned },
+  })
+}

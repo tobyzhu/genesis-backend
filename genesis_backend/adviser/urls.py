@@ -49,11 +49,18 @@ urlpatterns=[
     url(r'get_instore_guests/', views.get_instore_vips),
     url(r'get_hungitem/', views.get_hungitem),
     url(r'update_hungitem/', views.update_hungitem),
+    url(r'get_hung_detail/', views.get_hung_detail),
     url(r'get_hung_list/', views.get_hung_list),
     url(r'cardtype_service_items/?', views.cardtype_service_items),
     url(r'save_hung/?', views.save_hung_order),
 
     url(r'cardtype_prices/?', views.cardtype_prices),
+
+    url(r'get_checkedout_orders/?', views.get_checkedout_orders),
+
+    url(r'active_promotions/?', views.active_promotions),
+
+    url(r'categorized_items/?', views.categorized_items),
 
 #    
     url(r'get_completed_hungs/?', views.get_completed_hungs),

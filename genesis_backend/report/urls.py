@@ -31,6 +31,8 @@ urlpatterns=[
     url(r'^get_monthlyreportno1/?', views.get_monthlyreportno1),
     url(r'^get_reportdata_leftmoney/?', views.get_reportdata_leftmoney),
     url(r'get_testdata/', views.get_testdata),
+    url(r'card_balance_report_api/', views.card_balance_report_api),
+    url(r'store_performance_api/', views.store_performance_api),
 
     # url(r'QueryBookingStatus/',views.QueryBookingStatus)
     url(r'^images/?',views.read_img)

@@ -15,6 +15,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/cashier',
+    name: 'Cashier',
+    component: () => import('@/views/cashier/CashierPage.vue'),
+    meta: { requiresAuth: true, title: '收银开单' },
+  },
+  {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     redirect: '/dashboard',
@@ -39,22 +45,22 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '会员详情', hidden: true },
       },
       {
-        path: '/cashier',
-        name: 'Cashier',
+        path: 'adviser/billing',
+        name: 'Billing',
         component: () => import('@/views/adviser/BillingPage.vue'),
         meta: { title: '手工开单', icon: 'Ticket' },
       },
       {
-        path: '/cashier/hungs',
+        path: 'adviser/billing-v2',
+        name: 'BillingV2',
+        component: () => import('@/views/adviser/BillingPageV2.vue'),
+        meta: { title: '手工开单-v2', icon: 'Ticket' },
+      },
+      {
+        path: 'adviser/hungs',
         name: 'HungOrders',
         component: () => import('@/views/adviser/HungOrdersPage.vue'),
         meta: { title: '挂单管理', icon: 'List' },
-      },
-      {
-        path: '/orders/completed',
-        name: 'CompletedOrders',
-        component: () => import('@/views/adviser/CompletedOrdersPage.vue'),
-        meta: { title: '已完成开单', icon: 'Finished' },
       },
 
       {
@@ -73,7 +79,13 @@ const routes: RouteRecordRaw[] = [
         path: '/report',
         name: 'Report',
         component: () => import('@/views/report/ReportPage.vue'),
-        meta: { title: '报表中心', icon: 'DataAnalysis' },
+        meta: { title: '卡余额汇总', icon: 'DataAnalysis' },
+      },
+      {
+        path: 'report/performance',
+        name: 'StorePerformance',
+        component: () => import('@/views/report/StorePerformancePage.vue'),
+        meta: { title: '门店业绩', icon: 'DataAnalysis' },
       },
       {
         path: '/crm',

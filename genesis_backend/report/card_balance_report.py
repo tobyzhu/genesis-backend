@@ -13,6 +13,8 @@ from decimal import Decimal
 from django.db.models import (
     Case,
     CharField,
+    OuterRef,
+    Subquery,
     Count,
     DecimalField,
     F,
@@ -27,6 +29,7 @@ from django.db.models.functions import Coalesce
 import common.constants
 from adviser.models import Cardinfo
 from baseinfo.models import Cardsupertype, Storeinfo, Appoption
+from baseinfo.models import Cardtype
 
 logger = logging.getLogger(__name__)
 
@@ -114,11 +117,55 @@ def build_card_balance_queryset(
     ).select_related('cardtypeuuid')
 
     qs = qs.annotate(
-        eff_suptype=Coalesce(F('cardtypeuuid__suptype'), F('suptype'), Value('')),
-        eff_comptype=Coalesce(F('cardtypeuuid__comptype'), Value('amount')),
-        eff_cardtype_code=Coalesce(F('cardtypeuuid__cardtype'), F('cardtype'), Value('')),
-        eff_cardtype_name=Coalesce(F('cardtypeuuid__cardname'), F('cardtype'), Value('')),
-        eff_brand=Coalesce(F('cardtypeuuid__brand'), Value('')),
+        _cardtype_subq=Subquery(
+            Cardtype.objects.filter(
+                company=OuterRef('company'), cardtype=OuterRef('cardtype'), flag='Y'
+            ).values('suptype')[:1],
+            output_field=CharField(),
+        ),
+        eff_suptype=Coalesce(F('cardtypeuuid__suptype'), F('_cardtype_subq'), F('suptype'), Value('')),
+        eff_comptype=Coalesce(
+            F('cardtypeuuid__comptype'),
+            Subquery(
+                Cardtype.objects.filter(
+                    company=OuterRef('company'), cardtype=OuterRef('cardtype'), flag='Y'
+                ).values('comptype')[:1],
+                output_field=CharField(),
+            ),
+            Value('amount'),
+        ),
+        eff_cardtype_code=Coalesce(
+            F('cardtypeuuid__cardtype'),
+            Subquery(
+                Cardtype.objects.filter(
+                    company=OuterRef('company'), cardtype=OuterRef('cardtype'), flag='Y'
+                ).values('cardtype')[:1],
+                output_field=CharField(),
+            ),
+            F('cardtype'),
+            Value(''),
+        ),
+        eff_cardtype_name=Coalesce(
+            F('cardtypeuuid__cardname'),
+            Subquery(
+                Cardtype.objects.filter(
+                    company=OuterRef('company'), cardtype=OuterRef('cardtype'), flag='Y'
+                ).values('cardname')[:1],
+                output_field=CharField(),
+            ),
+            F('cardtype'),
+            Value(''),
+        ),
+        eff_brand=Coalesce(
+            F('cardtypeuuid__brand'),
+            Subquery(
+                Cardtype.objects.filter(
+                    company=OuterRef('company'), cardtype=OuterRef('cardtype'), flag='Y'
+                ).values('brand')[:1],
+                output_field=CharField(),
+            ),
+            Value(''),
+        ),
         nature=Case(
             When(stype='P', then=Value('赠送')),
             default=Value('正常'),

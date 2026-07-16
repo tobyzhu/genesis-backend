@@ -186,7 +186,7 @@
             </div>
           </template>
 
-          <el-table :data="cart" size="small" stripe max-height="400">
+          <el-table :data="cart" size="small" stripe :row-class-name="tableRowClassName" max-height="400">
             <el-table-column label="项目" min-width="110">
               <template #default="{ row }">{{ row.name }}</template>
             </el-table-column>
@@ -216,9 +216,18 @@
               <template #default="{ row }">
                 <el-input-number v-model="row.srvmondisc" :min="0" :step="1" size="small" :controls="false" style="width:70px" />
               </template>
-            </el-table-column>
-            <el-table-column label="小计" width="115" align="right">
-              <template #default="{ row }">¥{{ (parseFloat(row.price ?? 0) * (row.qty ?? 1) * (row.secdisc ?? 1) - (row.srvmondisc ?? 0)).toFixed(2) }}</template>
+           </el-table-column>
+           <el-table-column label="小计" width="115" align="right">
+             <template #default="{ row }">¥{{ (parseFloat(row.price ?? 0) * (row.qty ?? 1) * (row.secdisc ?? 1) - (row.srvmondisc ?? 0)).toFixed(2) }}</template>
+           </el-table-column>
+            <el-table-column label="正/退" width="50" align="center">
+              <template #default="{ row }">
+                <template v-if="row.ttype === 'S' || row.ttype === 'G'">
+                 <el-button v-if="(row.qty ?? 0) >= 0" size="small" type="primary" :icon="Check" circle @click.stop="toggleRefund(row)" />
+                 <el-button v-else size="small" type="danger" :icon="Close" circle @click.stop="toggleRefund(row)" />
+                </template>
+                <span v-else style="color:#c0c4cc;font-size:12px">--</span>
+              </template>
             </el-table-column>
             <el-table-column label="扣款方式" width="150">
               <template #default="{ row }">
@@ -696,10 +705,19 @@ function onPayMethodChange(row: CartItem, val: string) {
 }
 
 function clearCart() { cart.value = [] }
+function toggleRefund(row: CartItem) {
+  if ((row.qty ?? 0) >= 0) { row.qty = -Math.abs(row.qty || 1) }
+  else { row.qty = Math.abs(row.qty || 1) }
+}
+
 
 const cartTotal = computed(() =>
   cart.value.reduce((s: number, i: CartItem) => s + i.price * i.qty * (i.secdisc ?? 1) - (i.srvmondisc ?? 0), 0)
 )
+
+function tableRowClassName({ row }: { row: CartItem }): string {
+  return (row.qty ?? 0) < 0 ? 'refund-row' : ''
+}
 
 // ---- 保存挂账 ----
 const saving = ref(false)
@@ -798,4 +816,6 @@ async function saveHung() {
 .cg-card-right { text-align:right; flex-shrink:0; }
 .cg-card-amount { font-size:13px; font-weight:600; color:#e6a23c; }
 .cg-card-expire { font-size:11px; color:#c0c4cc; margin-top:2px; }
+
+.el-table .refund-row { background: #fef0f0; }
 </style>

@@ -1922,3 +1922,87 @@ def get_testdata(request):
     # return JsonResponse( json_data )
     return  HttpResponse('200')
 
+
+
+@csrf_exempt
+def card_balance_report_api(request):
+    from report.card_balance_report import build_card_balance_report
+    '''卡余额汇总 API（JSON 版，替代 Django Admin）'''
+    company = request.GET.get('company', '')
+    storecode = request.GET.get('storecode', '')
+    comptype = request.GET.get('comptype', '')
+    nature = request.GET.get('nature', '')
+    keyword = request.GET.get('keyword', '')
+    only_with_balance = request.GET.get('only_with_balance', '1') != '0'
+
+    if not company:
+        return JsonResponse({'error': '缺少 company 参数'}, status=400)
+
+    result = build_card_balance_report(
+        company=company,
+        storecode=storecode,
+        suptype='',
+        comptype=comptype,
+        nature=nature,
+        keyword=keyword,
+        only_with_balance=only_with_balance,
+    )
+
+    # Decimal → float 递归转换
+    def _to_json(obj):
+        if isinstance(obj, dict):
+            return {k: _to_json(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [_to_json(i) for i in obj]
+        elif isinstance(obj, Decimal):
+            return float(obj)
+        return obj
+
+    return JsonResponse(_to_json(result), safe=False)
+
+@csrf_exempt
+def store_performance_api(request):
+    '''Store performance report from transaction tables (raw SQL)'''
+    company = request.GET.get('company', '')
+    storecode = request.GET.get('storecode', '')
+    from_date = request.GET.get('from_date', '')
+    to_date = request.GET.get('to_date', '')
+    if not company:
+        return JsonResponse([], safe=False)
+    from django.db import connection
+    sql = """
+        SELECT e.vsdate, e.storecode,
+               SUM(CASE WHEN x.TTYPE = 'S' THEN x.S_MOUNT ELSE 0 END) as am_S,
+               SUM(CASE WHEN x.TTYPE = 'G' THEN x.S_MOUNT ELSE 0 END) as am_G,
+               SUM(CASE WHEN x.TTYPE = 'C' THEN x.S_MOUNT ELSE 0 END) as am_C,
+               SUM(CASE WHEN x.TTYPE = 'I' THEN x.S_MOUNT ELSE 0 END) as am_I,
+               COUNT(DISTINCT e.uuid) as trans_count
+        FROM expvstoll e
+        INNER JOIN expense x ON e.uuid = x.transuuid
+        WHERE e.company = %s AND e.flag = 'Y' AND e.valiflag = 'Y' AND x.flag = 'Y'
+    """
+    params = [company]
+    if storecode:
+        sql += " AND e.storecode = %s"; params.append(storecode)
+    if from_date:
+        sql += " AND e.vsdate >= %s"; params.append(from_date)
+    if to_date:
+        sql += " AND e.vsdate <= %s"; params.append(to_date)
+    sql += " GROUP BY e.vsdate, e.storecode ORDER BY e.vsdate DESC, e.storecode"
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            cols = [d[0] for d in cursor.description]
+            rows = []
+            for row in cursor.fetchall():
+                d = dict(zip(cols, row))
+                d['am_S'] = float(d.get('am_S') or 0)
+                d['am_G'] = float(d.get('am_G') or 0)
+                d['am_C'] = float(d.get('am_C') or 0)
+                d['am_I'] = float(d.get('am_I') or 0)
+                d['trans_count'] = int(d.get('trans_count') or 0)
+                d['total'] = d['am_S'] + d['am_G'] + d['am_C'] + d['am_I']
+                rows.append(d)
+        return JsonResponse(rows, safe=False)
+    except Exception as exc:
+        return JsonResponse({'error': str(exc)}, status=500)

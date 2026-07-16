@@ -17,12 +17,6 @@
           </el-input>
         </el-form-item>
 
-        <el-form-item prop="storecode">
-          <el-input v-model="form.storecode" placeholder="门店编码（可选，不填自动选择）">
-            <template #prefix><el-icon><Shop /></el-icon></template>
-          </el-input>
-        </el-form-item>
-
         <el-form-item prop="usercode">
           <el-input v-model="form.usercode" placeholder="用户名">
             <template #prefix><el-icon><User /></el-icon></template>
@@ -52,7 +46,7 @@ import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '@/store/app'
 import { login } from '@/api/common'
-import { OfficeBuilding, Shop, User, Lock } from '@element-plus/icons-vue'
+import { OfficeBuilding, User, Lock } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 const router = useRouter()
@@ -65,7 +59,6 @@ const errorMsg = ref('')
 
 const form = reactive({
   company: (route.query.company as string) || '',
-  storecode: (route.query.storecode as string) || '',
   usercode: '',
   password: '',
 })
@@ -88,9 +81,6 @@ async function handleLogin() {
       company: form.company,
       usercode: form.usercode,
       password: form.password,
-    }
-    if (form.storecode) {
-      params.storecode = form.storecode
     }
 
     const res = await login(params)

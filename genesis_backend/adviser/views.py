@@ -30,7 +30,7 @@ from django.core.serializers import serialize
 
 from adviser.models import ExpvstollHung,ExpenseHung,Cardinfo,Bookingevent,Cardinfo,ShoppingCart
 from adviser.serializers import BookingeventSerializer,CardinfoSerializer
-from baseinfo.models import Serviece,Servieceprice,Goods,Srvtopty,Srvrptype,Goodsct,Vip,Cardtype,Cardsupertype,Empl,Paymode
+from baseinfo.models import Serviece,Servieceprice,Goods,Srvtopty,Srvrptype,Goodsct,Vip,Cardtype,Cardsupertype,Empl,Paymode,Appoption,Promotions,Promotionsdetail,Promotionsgroup,Promotionsgroupdetail
 from cashier.models import EarnestMoney, Expvstoll, Expense, Toll, Cardhistory
 import common.constants
 from common.models import Sequence
@@ -3406,6 +3406,11 @@ def save_hung_order(request):
     if not company or not vipuuid or not items:
         return JsonResponse({'ok': False, 'message': '缺少必要参数'})
     
+    # 校验活动一致性：如果有 promotionsid，所有项的必须相同
+    promo_ids = set(str(it.get('promotionsid', '') or '') for it in items if it.get('promotionsid'))
+    if len(promo_ids) > 1:
+        return JsonResponse({'ok': False, 'message': '不同活动的项目不能挂在同一张单上'})
+
     try:
         with transaction.atomic():
             today = datetime.now().strftime('%Y%m%d')
@@ -3418,6 +3423,7 @@ def save_hung_order(request):
             except Vip.DoesNotExist:
                 vip_code = ''
             
+            order_promotionsid = next((it.get('promotionsid', '') for it in items if it.get('promotionsid', '')), '')
             hung = ExpvstollHung.objects.create(
                 company=company, storecode=storecode,
                 ccode_hung=next((item.get('card_ccode', '') or item.get('srvcode', '') for item in items if item.get('card_ccode', '') or item.get('ttype') == 'I'), ''),
@@ -3428,10 +3434,14 @@ def save_hung_order(request):
                 vipuuid_id=vipuuid,
                 vcode_hung=vip_code,
                 vipcode=vip_code,
-                totmount_hung=sum(float(item.get('s_price', 0)) * int(item.get('s_qty', 1)) for item in items),
+                totmount_hung=sum(
+                    int(item.get('s_qty', 1)) * float(item.get('s_price', 0)) * float(item.get('secdisc', 1)) - float(item.get('srvmondisc', 0))
+                    for item in items
+                ),
                 psstatus_hung='10',
                 ttype_hung='S',
                 valiflag_hung='Y',
+                promotionsid=order_promotionsid,
             )
             
             for idx, item in enumerate(items):
@@ -3439,6 +3449,8 @@ def save_hung_order(request):
                 srvcode = item.get('srvcode', '')
                 s_qty = int(item.get('s_qty', 1))
                 s_price = float(item.get('s_price', 0))
+                if s_price < 0:
+                    return JsonResponse({'ok': False, 'message': f'单价不能为负数: {item.get("srvcode", "?")}'})
                 secdisc = float(item.get('secdisc', 1))
                 srvmondisc = float(item.get('srvmondisc', 0))
                 s_mount = s_qty * s_price * secdisc - srvmondisc
@@ -3515,7 +3527,7 @@ def save_hung_order(request):
                         flag='Y',
                         isic='0',
                         stype=stype,
-                        promotionsid='0',
+                        promotionsid=order_promotionsid or '0',
                         s_price=s_price,
                         leftmoney=card_leftmoney,
                         leftqty=card_leftqty,
@@ -3554,6 +3566,7 @@ def get_hung_list(request):
     company = request.GET.get('company', '')
     storecode = request.GET.get('storecode', '88')
     vipuuid = request.GET.get('vipuuid', '')
+    psstatus = request.GET.get('psstatus', '')
 
     if not company:
         return JsonResponse([], safe=False)
@@ -3568,18 +3581,40 @@ def get_hung_list(request):
             qs = qs.filter(vipuuid=v_uuid)
         except Exception:
             pass
+    elif psstatus:
+        qs = qs.filter(psstatus_hung=psstatus)
     else:
         open_status = ('10', '20', '30', '40', '50', '60')
         qs = qs.filter(psstatus_hung__in=open_status)
+
+    # 先查会员姓名（用独立 qs，避免切片后再过滤）
+    vip_qs = ExpvstollHung.objects.filter(
+        company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
+    )
+    if psstatus:
+        vip_qs = vip_qs.filter(psstatus_hung=psstatus)
+    elif not vipuuid:
+        open_status = ('10', '20', '30', '40', '50', '60')
+        vip_qs = vip_qs.filter(psstatus_hung__in=open_status)
+    vip_ids = list(vip_qs.exclude(vipuuid_id=None).values_list('vipuuid_id', flat=True).distinct())[:200]
+    vip_name_map = {}
+    if vip_ids:
+        for v in Vip.objects.filter(uuid__in=vip_ids).only('uuid', 'vname'):
+            key = str(v.uuid).replace('-', '')
+            if key not in vip_name_map:
+                vip_name_map[key] = v.vname
 
     qs = qs.order_by('-vsdate_hung', '-vstime_hung')[:100]
 
     data = []
     for h in qs:
+        uuid_key = str(h.vipuuid_id) if h.vipuuid_id else ''
+        vname = vip_name_map.get(uuid_key, vip_name_map.get(uuid_key.replace('-', ''), '')) if uuid_key else ''
         data.append({
             'uuid': str(h.uuid),
             'exptxserno': h.exptxserno_hung or '',
             'vcode': h.vcode_hung or '',
+            'vname': vname,
             'vipuuid': str(h.vipuuid_id) if h.vipuuid_id else '',
             'vsdate': h.vsdate_hung or '',
             'vstime': h.vstime_hung or '',
@@ -3591,3 +3626,241 @@ def get_hung_list(request):
         })
 
     return JsonResponse(data, safe=False)
+
+@csrf_exempt
+def get_hung_detail(request):
+    '''获取挂单的项目明细'''
+    hunguuid = request.GET.get('hunguuid', '')
+    company = request.GET.get('company', '')
+    if not hunguuid:
+        return JsonResponse([], safe=False)
+    try:
+        uuid_obj = _parse_uuid_loose(hunguuid)
+    except:
+        return JsonResponse([], safe=False)
+
+    items = ExpenseHung.objects.filter(hunguuid=uuid_obj, flag='Y').order_by('ditem_hung')
+    data = []
+    for item in items:
+        ttype = item.ttype_hung or ''
+        icode = item.srvcode_hung or ''
+        data.append({
+            'ditem': item.ditem_hung or '',
+            'ttype': ttype,
+            'ttypename': _hung_line_ttypename(ttype),
+            'srvcode': icode,
+            'itemname': _resolve_hung_itemname(company, ttype, icode),
+            'price': float(item.s_price_hung or 0),
+            'qty': float(item.s_qty_hung or 0),
+            'mount': float(item.s_mount_hung or 0),
+            'stype': item.stype_hung or '',
+            'pmcode': item.pmcode_hung or '',
+            'asscode1': item.asscode1_hung or '',
+            'asscode2': item.asscode2_hung or '',
+        })
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+def categorized_items(request):
+    """获取可售项目的分类树和项目列表（树 + 搜索用）"""
+    company = request.GET.get('company', '')
+    ttype = request.GET.get('ttype', 'S')
+    if not company:
+        return JsonResponse({'categories': [], 'items': []})
+
+    categories = []
+    items = []
+
+    if ttype == 'S':
+        cat_qs = Appoption.objects.filter(company=company, flag='Y', seg='srvdisplayclass1').values('itemname', 'itemvalues')
+        categories = [{'code': c['itemname'], 'name': c['itemvalues'], 'children': []} for c in cat_qs]
+        item_qs = Serviece.objects.filter(company=company, flag='Y').values('svrcdoe', 'svrname', 'price', 'displayclass1')
+        items = [{'code': r['svrcdoe'], 'name': r['svrname'], 'price': float(r['price'] or 0), 'ttype': 'S', 'category': r['displayclass1'] or ''} for r in item_qs]
+    elif ttype == 'G':
+        cat_qs = Appoption.objects.filter(company=company, flag='Y', seg='goodsdisplayclass1').values('itemname', 'itemvalues')
+        categories = [{'code': c['itemname'], 'name': c['itemvalues'], 'children': []} for c in cat_qs]
+        item_qs = Goods.objects.filter(company=company, flag='Y').values('gcode', 'gname', 'price', 'displayclass1')
+        items = [{'code': r['gcode'], 'name': r['gname'], 'price': float(r['price'] or 0), 'ttype': 'G', 'category': r['displayclass1'] or ''} for r in item_qs]
+    elif ttype == 'C':
+        item_qs = Cardtype.objects.filter(company=company, flag='Y').values('cardtype', 'cardname', 'price', 'suptype', 'comptype', 'brand')
+        # 用品牌（brand）分类——不按公司过滤，brand 是全局配置
+        cat_qs = Appoption.objects.filter(company=company, flag='Y', seg='brand').values('itemname', 'itemvalues')
+        print(f'[Debug] C-categories company={company} brand_count={cat_qs.count()}')
+        for _bc in cat_qs:
+            print(f'[Debug]   brand: {_bc}')
+        cat_list = list(cat_qs)
+        categories = [{'code': c['itemname'], 'name': c['itemvalues'], 'children': []} for c in cat_list]
+        # 无品牌数据时后备用 comptype
+        if not categories:
+            categories = [
+                {'code': 'amount', 'name': '储值卡', 'children': []},
+                {'code': 'times', 'name': '疗程卡', 'children': []},
+            ]
+        else:
+            categories.append({'code': '__other__', 'name': '其他', 'children': []})
+        items = [{
+            'code': r['cardtype'], 'name': r['cardname'],
+            'price': float(r['price'] or 0), 'ttype': 'C',
+            'comptype': r['comptype'] or '', 'suptype': r['suptype'] or '',
+            'category': r['brand'] or '__other__',
+        } for r in item_qs]
+
+    return JsonResponse({'categories': categories, 'items': items})
+
+
+@csrf_exempt
+def get_checkedout_orders(request):
+    """获取会员已结账的订单（用于退款），默认最近一个月"""
+    company = request.GET.get('company', '')
+    storecode = request.GET.get('storecode', '88')
+    vipuuid = request.GET.get('vipuuid', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    if not company or not vipuuid:
+        return JsonResponse([], safe=False)
+    try:
+        v_uuid = _parse_uuid_loose(vipuuid)
+    except:
+        return JsonResponse([], safe=False)
+
+    if not date_from:
+        date_from = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
+    if not date_to:
+        date_to = datetime.now().strftime('%Y%m%d')
+
+    qs = ExpvstollHung.objects.filter(
+        company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
+        psstatus_hung='70', vipuuid=v_uuid,
+        vsdate_hung__gte=date_from, vsdate_hung__lte=date_to,
+    ).order_by('-vsdate_hung', '-vstime_hung')[:100]
+
+    data = []
+    for h in qs:
+        vname = ''
+        if h.vipuuid_id:
+            try:
+                v = Vip.objects.get(uuid=h.vipuuid_id)
+                vname = v.vname
+            except:
+                pass
+        data.append({
+            'uuid': str(h.uuid),
+            'exptxserno': h.exptxserno_hung or '',
+            'vcode': h.vcode_hung or '',
+            'vname': vname,
+            'vsdate': h.vsdate_hung or '',
+            'vstime': h.vstime_hung or '',
+            'totmount': float(h.totmount_hung or 0),
+            'itemcount': ExpenseHung.objects.filter(hunguuid=h.uuid, flag='Y').count(),
+        })
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+def active_promotions(request):
+    """获取营销活动。无 uuid 参数则只返回列表，有 uuid 返回该活动完整明细"""
+    company = request.GET.get('company', '')
+    uuid_param = request.GET.get('uuid', '')
+    if not company:
+        return JsonResponse([], safe=False)
+
+    MAINTTYPE_NAMES = {'10': '特价活动', '20': '特殊折扣活动', '30': '组合销售活动'}
+
+    if uuid_param:
+        try:
+            p = Promotions.objects.get(company=company, flag='Y', promotionsstatus='active', uuid=_parse_uuid_loose(uuid_param))
+        except:
+            return JsonResponse({}, safe=False)
+
+        sv_map, gd_map = {}, {}
+        def _resolve(sgcode):
+            return sv_map.get(sgcode, gd_map.get(sgcode, sgcode))
+
+        items, group_items = [], []
+
+        if p.mainttype in ('10', '20') and p.mainpgroupid:
+            for d in Promotionsgroupdetail.objects.filter(pgroupid=p.mainpgroupid, flag='Y').values(
+                    'ttype', 'pgcode', 'qty1', 'price1', 'disc', 'amount1', 'oriprice'):
+                sgcode = d['pgcode'] or ''
+                all_codes = [d['pgcode']]
+                for sv in Serviece.objects.filter(company=company, svrcdoe__in=all_codes).only('svrcdoe', 'svrname'):
+                    sv_map[sv.svrcdoe] = sv.svrname
+                for g in Goods.objects.filter(company=company, gcode__in=all_codes).only('gcode', 'gname'):
+                    gd_map[g.gcode] = g.gname
+                pp = float(d['price1'] or 0)
+                items.append({
+                    'ttype': d['ttype'] or 'S', 'sgcode': sgcode,
+                    'itemname': _resolve(sgcode),
+                    's_qty': float(d['qty1'] or 1),
+                    's_price': float(d['oriprice'] or 0),
+                    'promotionsprice': pp,
+                    'promotionsqty': float(d['qty1'] or 0),
+                    'promotionsamount': float(d['amount1'] or 0) or (float(d['qty1'] or 1) * pp),
+                    'stype': 'N',
+                })
+        elif p.mainttype == '30':
+            combo_details = Promotionsdetail.objects.filter(promotionsid=p.promotionsid, flag='Y').values(
+                'ttype', 'sgcode', 's_qty', 's_price', 'promotionsprice', 'promotionsqty', 'promotionsamount', 'stype')
+            all_codes = [d['sgcode'] for d in combo_details if d.get('sgcode')]
+            for sv in Serviece.objects.filter(company=company, svrcdoe__in=all_codes).only('svrcdoe', 'svrname'):
+                sv_map[sv.svrcdoe] = sv.svrname
+            for g in Goods.objects.filter(company=company, gcode__in=all_codes).only('gcode', 'gname'):
+                gd_map[g.gcode] = g.gname
+            for d in combo_details:
+                sgcode = d['sgcode'] or ''
+                pp = float(d['promotionsprice'] or 0)
+                if not pp: pp = float(d['s_price'] or 0)
+                ct = d['ttype'] or ''
+                if not ct: ct = 'S' if sgcode in sv_map else ('G' if sgcode in gd_map else '')
+                group_items.append({
+                    'sgcode': sgcode, 'itemname': _resolve(sgcode),
+                    'qty': float(d['promotionsqty'] or 1),
+                    'price': pp, 'promotionsprice': pp,
+                    'amount': float(d['promotionsamount'] or 0) or (float(d['promotionsqty'] or 1) * pp),
+                    'ttype': ct,
+                })
+            items = list(Promotionsdetail.objects.filter(promotionsuuid=p.uuid, flag='Y').values(
+                'ttype', 'sgcode', 's_qty', 's_price', 'promotionsprice', 'promotionsqty', 'promotionsamount', 'stype'))
+        else:
+            items = list(Promotionsdetail.objects.filter(promotionsuuid=p.uuid, flag='Y').values(
+                'ttype', 'sgcode', 's_qty', 's_price', 'promotionsprice', 'promotionsqty', 'promotionsamount', 'stype'))
+
+        combo_total = sum(gi['amount'] for gi in group_items) if group_items else 0
+        return JsonResponse({
+            'uuid': str(p.uuid), 'promotionsid': p.promotionsid or '',
+            'promotionsname': p.promotionsname or '',
+            'mainttype': p.mainttype or '',
+            'mainttype_name': MAINTTYPE_NAMES.get(p.mainttype or '', ''),
+            'fromdate': p.fromdate or '', 'todate': p.todate or '',
+            'disc': float(p.disc) if p.disc else None,
+            's_price': float(p.s_price) if p.s_price else None,
+            'combo_total': combo_total,
+            'items': items, 'group_items': group_items,
+        })
+
+    # 无 uuid：只返回活动列表（不含明细，但组合活动附带 combo_total）
+    promos = list(Promotions.objects.filter(
+        company=company, flag='Y', promotionsstatus='active',
+    )[:30])
+
+    # 批量算 combo_total
+    combo_pids = [p.promotionsid for p in promos if p.mainttype == '30' and p.promotionsid]
+    combo_totals = {}
+    if combo_pids:
+        for d in Promotionsdetail.objects.filter(promotionsid__in=combo_pids, flag='Y').values(
+                'promotionsid', 'promotionsamount', 'promotionsqty', 'promotionsprice'):
+            pid = d['promotionsid'] or ''
+            amt = float(d['promotionsamount'] or 0) or (float(d['promotionsqty'] or 1) * float(d['promotionsprice'] or 0))
+            combo_totals[pid] = combo_totals.get(pid, 0) + amt
+
+    return JsonResponse([{
+        'uuid': str(p.uuid), 'promotionsid': p.promotionsid or '',
+        'promotionsname': p.promotionsname or '',
+        'mainttype': p.mainttype or '',
+        'mainttype_name': MAINTTYPE_NAMES.get(p.mainttype or '', ''),
+        'fromdate': p.fromdate or '', 'todate': p.todate or '',
+        'disc': float(p.disc) if p.disc else None,
+        's_price': float(p.s_price) if p.s_price else None,
+        'combo_total': combo_totals.get(p.promotionsid, 0) if p.mainttype == '30' else 0,
+    } for p in promos], safe=False)

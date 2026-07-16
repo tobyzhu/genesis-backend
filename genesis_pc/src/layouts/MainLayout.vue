@@ -8,18 +8,22 @@
       </div>
       <el-menu
         :default-active="route.path"
+        :default-openeds="menuGroups.map(g => g.key)"
         :collapse="appStore.sidebarCollapsed"
         :collapse-transition="false"
         router
         class="layout-menu"
       >
-        <template v-for="item in menuItems" :key="item.path">
-          <el-menu-item v-if="!item.meta?.hidden" :index="item.path">
-            <el-icon v-if="item.meta?.icon">
-              <component :is="item.meta.icon" />
-            </el-icon>
-            <template #title>{{ item.meta?.title }}</template>
-          </el-menu-item>
+        <template v-for="group in menuGroups" :key="group.key">
+          <el-sub-menu :index="group.key">
+            <template #title>
+              <el-icon><component :is="group.icon" /></el-icon>
+              <span>{{ group.title }}</span>
+            </template>
+            <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
+              <span>{{ item.title }}</span>
+            </el-menu-item>
+          </el-sub-menu>
         </template>
       </el-menu>
     </el-aside>
@@ -37,9 +41,20 @@
           </el-breadcrumb>
         </div>
         <div class="header-right">
-          <el-tag v-if="appStore.currentCompany" size="small" type="info" class="store-tag">
-            {{ appStore.currentCompany }} / {{ appStore.currentStoreName || appStore.currentStorecode }}
-          </el-tag>
+          <el-dropdown v-if="appStore.currentCompany" trigger="click" @command="handleSwitchStore">
+            <el-tag size="small" type="info" class="store-tag" style="cursor:pointer">
+              {{ appStore.currentStoreName || appStore.currentStorecode }}
+              <el-icon><ArrowDown /></el-icon>
+            </el-tag>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-for="s in appStore.allowedStores" :key="s.storecode"
+                  :command="s.storecode" :disabled="s.storecode === appStore.currentStorecode">
+                  {{ s.storename }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-dropdown trigger="click">
             <span class="user-info">
               <el-avatar :size="28" icon="UserFilled" />
@@ -73,10 +88,54 @@ const router = useRouter()
 const route = useRoute()
 const appStore = useAppStore()
 
-const menuItems = router
-  .getRoutes()
-  .find((r) => r.path === '/')
-  ?.children?.filter((c) => !c.meta?.hidden) ?? []
+const menuGroups = [
+  {
+    key: 'dashboard',
+    title: '工作台',
+    icon: 'Odometer',
+    children: [{ path: '/dashboard', title: '工作台' }],
+  },
+  {
+    key: 'kaidan',
+    title: '开单',
+    icon: 'Ticket',
+    children: [
+      { path: '/cashier', title: '手工开单' },
+      { path: '/adviser/billing-v2', title: '手工开单-v2' },
+      { path: '/adviser/hungs', title: '已完成开单' },
+    ],
+  },
+  {
+    key: 'customer',
+    title: '客户管理',
+    icon: 'User',
+    children: [
+      { path: '/vip', title: '会员管理' },
+      { path: '/crm', title: '客户关怀' },
+    ],
+  },
+  {
+    key: 'operation',
+    title: '业务运营',
+    icon: 'Calendar',
+    children: [
+      { path: '/booking', title: '预约管理' },
+      { path: '/goods', title: '商品管理' },
+      { path: '/campaign', title: '营销活动' },
+    ],
+  },
+  {
+    key: 'data',
+    title: '数据与分析',
+    icon: 'DataAnalysis',
+    children: [
+      { path: '/report', title: '卡余额汇总' },
+      { path: '/report/performance', title: '门店业绩' },
+      { path: '/assistant', title: 'AI 助手' },
+      { path: '/datamanage', title: '数据管理' },
+    ],
+  },
+]
 
 function handleLogout() {
   ElMessageBox.confirm('确定要退出登录吗？', '提示', { type: 'warning' }).then(async () => {
@@ -92,6 +151,10 @@ function handleLogout() {
 
 function showStoreSelector() {
   router.push('/select-store')
+}
+function handleSwitchStore(storecode: string) {
+  const store = appStore.allowedStores.find(s => s.storecode === storecode)
+  if (store) appStore.selectStore(storecode, store.storename)
 }
 </script>
 
