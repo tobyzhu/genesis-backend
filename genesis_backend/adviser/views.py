@@ -12,6 +12,7 @@ from django.template import loader
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.db.utils import OperationalError, ProgrammingError
+from django.db import models
 import uuid
 #from pyecharts import Line3D
 import json
@@ -3665,6 +3666,9 @@ def get_hung_list(request):
         try:
             v_uuid = _parse_uuid_loose(vipuuid)
             qs = qs.filter(vipuuid=v_uuid)
+            checkout_mode = request.GET.get('checkout_mode', '')
+            if checkout_mode:
+                qs = qs.filter(psstatus_hung__in=('10', '20', '30', '40', '50', '60'))
         except Exception:
             pass
     elif psstatus and psstatus != '__void__':
@@ -3732,6 +3736,66 @@ def get_hung_list(request):
             'itemcount': ExpenseHung.objects.filter(hunguuid=h.uuid, flag='Y').count(),
         })
 
+    # 批量查询明细项目名称和 stype
+    if data:
+        uuid_list = [d['uuid'] for d in data]
+        uuid_objs = [_parse_uuid_loose(u) for u in uuid_list if u]
+        if uuid_objs:
+            item_lines = ExpenseHung.objects.filter(
+                hunguuid__in=uuid_objs, flag='Y'
+            ).values('hunguuid_id', 'ttype_hung', 'srvcode_hung', 'stype_hung',
+                     's_qty_hung', 's_price_hung', 's_mount_hung',
+                     'pmcode_hung', 'asscode1_hung', 'asscode2_hung').order_by('ditem_hung')
+            stype_map = {}
+            item_map = {}
+            item_details_map = {}
+            for ln in item_lines:
+                key = str(ln['hunguuid_id']) if ln['hunguuid_id'] else ''
+                if not key:
+                    continue
+                if key not in stype_map:
+                    stype_map[key] = []
+                stype_map[key].append(ln['stype_hung'] or 'N')
+                if key not in item_map:
+                    item_map[key] = []
+                name = _resolve_hung_itemname(company, ln['ttype_hung'] or '', ln['srvcode_hung'] or '')
+                if name:
+                    item_map[key].append(name)
+                if key not in item_details_map:
+                    item_details_map[key] = []
+                ttype_val = ln['ttype_hung'] or ''
+                item_details_map[key].append({
+                    'name': name or ln['srvcode_hung'] or '',
+                    'qty': float(ln['s_qty_hung'] or 0),
+                    'price': float(ln['s_price_hung'] or 0),
+                    'subtotal': float(ln['s_mount_hung'] or 0),
+                    'ttypename': _hung_line_ttypename(ttype_val),
+                    'stypename': _hung_line_stypename(ln['stype_hung']),
+                    'pmcode': ln['pmcode_hung'] or '',
+                    'asscode1': ln['asscode1_hung'] or '',
+                    'asscode2': ln['asscode2_hung'] or '',
+                })
+            for d in data:
+                d['items'] = item_map.get(d['uuid'], [])
+                d['item_details'] = item_details_map.get(d['uuid'], [])
+                stypes = stype_map.get(d['uuid'], [])
+                if stypes and all(s == 'P' for s in stypes):
+                    d['stype_summary'] = 'all_gift'
+                elif stypes and any(s == 'P' for s in stypes):
+                    d['stype_summary'] = 'mixed'
+                else:
+                    d['stype_summary'] = 'all_normal'
+        else:
+            for d in data:
+                d['items'] = []
+                d['item_details'] = []
+                d['stype_summary'] = 'all_normal'
+    else:
+        for d in data:
+            d['items'] = []
+            d['item_details'] = []
+            d['stype_summary'] = 'all_normal'
+
     return JsonResponse(data, safe=False)
 
 @csrf_exempt
@@ -3784,6 +3848,231 @@ def get_hung_detail(request):
 
 
 @csrf_exempt
+@csrf_exempt
+def search_vip(request):
+    """搜索会员：按会员号、姓名、手机号模糊匹配"""
+    if request.method != 'GET':
+        return JsonResponse({'ok': False, 'message': '仅支持GET请求'})
+    company = request.GET.get('company', '')
+    keyword = request.GET.get('keyword', '').strip()
+    if not company or not keyword:
+        return JsonResponse([])
+    try:
+        qs = Vip.objects.filter(
+            company=company,
+            valiflag='Y',
+        ).filter(
+            models.Q(vcode__icontains=keyword) |
+            models.Q(vname__icontains=keyword) |
+            models.Q(mtcode__icontains=keyword)
+        ).order_by('vcode')[:20]
+        data = [{'uuid': str(v.uuid), 'vname': v.vname or '', 'vcode': v.vcode or '', 'mtcode': v.mtcode or ''} for v in qs]
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+def customer_checkout(request):
+    '''客户级结账汇总：按支付方式分类待结项目'''
+    company = request.GET.get('company', '')
+    storecode = request.GET.get('storecode', '01')
+    vipuuid = request.GET.get('vipuuid', '')
+    if not company or not vipuuid:
+        return JsonResponse({'ok': False, 'message': '缺少参数'})
+    try:
+        vip = Vip.objects.get(uuid=vipuuid)
+    except Vip.DoesNotExist:
+        return JsonResponse({'ok': False, 'message': '会员不存在'})
+    open_status = ('10', '20', '30', '40', '50', '60')
+    hungs = list(ExpvstollHung.objects.filter(
+        company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
+        psstatus_hung__in=open_status, vipuuid=vip,
+    ).order_by('ccode_hung'))
+    if not hungs:
+        return JsonResponse({'ok': True, 'total': 0, 'orders': 0, 'items': 0, 'summary': {}})
+    hung_uuids = [h.uuid for h in hungs]
+    item_qs = ExpenseHung.objects.filter(hunguuid__in=hung_uuids, flag='Y').values(
+        'hunguuid_id', 'ttype_hung', 'srvcode_hung', 'stype_hung',
+        's_qty_hung', 's_price_hung', 's_mount_hung',
+        'otherserno_hung', 'pmcode_hung', 'asscode1_hung', 'asscode2_hung'
+    ).order_by('ditem_hung')
+    all_items = list(item_qs)
+    all_ccodes = {it['otherserno_hung'] for it in all_items if it.get('otherserno_hung')}
+    card_info = {}
+    if all_ccodes:
+        for c in Cardinfo.objects.filter(company=company, ccode__in=list(all_ccodes), flag='Y')                .select_related('cardtypeuuid'):
+            card_info[c.ccode] = {
+                'comptype': c.cardtypeuuid.comptype if c.cardtypeuuid else '',
+                'balance': float(c.leftmoney or 0),
+                'leftqty': float(c.leftqty or 0),
+            }
+    from collections import defaultdict
+    times_map = defaultdict(list)
+    card_map = defaultdict(list)
+    gift_items = []
+    pending_items = []
+    total = 0
+    for it in all_items:
+        ccode = it.get('otherserno_hung', '') or ''
+        stype = it.get('stype_hung', '') or 'N'
+        mount = float(it.get('s_mount_hung', 0) or 0)
+        total += mount
+        ci = card_info.get(ccode)
+        if ccode and ci and ci['comptype'] == 'times':
+            times_map[ccode].append(it)
+        elif ccode and ci:
+            card_map[ccode].append(it)
+        elif stype == 'P':
+            gift_items.append(it)
+        else:
+            pending_items.append(it)
+    hung_order_map = {str(h.uuid): h.exptxserno_hung for h in hungs}
+    def resolve_item(it, status=''):
+        name = _resolve_hung_itemname(company, it.get('ttype_hung','') or '', it.get('srvcode_hung','') or '')
+        return {'name': name or it.get('srvcode_hung','') or '', 'order_no': hung_order_map.get(str(it.get('hunguuid_id','') or ''), '') or '',
+                'qty': float(it.get('s_qty_hung',0) or 0),
+                'price': float(it.get('s_price_hung',0) or 0),
+                'mount': float(it.get('s_mount_hung',0) or 0),
+                'stype': (it.get('stype_hung','') or 'N'),
+                'pmcode': it.get('pmcode_hung','') or '',
+                'asscode1': it.get('asscode1_hung','') or '',
+                'asscode2': it.get('asscode2_hung','') or ''}
+    times_cards = []
+    for ccode, its in times_map.items():
+        ci = card_info.get(ccode, {})
+        total_qty = int(sum(it.get('s_qty_hung',1) or 1 for it in its))
+        times_cards.append({
+            'ccode': ccode, 'comptype': 'times',
+            'leftqty': ci.get('leftqty', 0) if ci else 0,
+            'leftmoney': ci.get('balance', 0) if ci else 0,
+            'deduct_qty': total_qty,
+            'items': [resolve_item(it, 'times') for it in its],
+        })
+    auto_cards = []
+    for ccode, its in card_map.items():
+        ci = card_info.get(ccode, {})
+        total_amt = sum(float(it.get('s_mount_hung',0) or 0) for it in its)
+        auto_cards.append({
+            'ccode': ccode, 'comptype': 'amount',
+            'balance': ci.get('balance', 0) if ci else 0,
+            'deduct_amount': round(total_amt, 2),
+            'items': [resolve_item(it, 'times') for it in its],
+        })
+    gift_total = sum(float(it.get('s_mount_hung',0) or 0) for it in gift_items)
+    pending_total = sum(float(it.get('s_mount_hung',0) or 0) for it in pending_items)
+    return JsonResponse({
+        'ok': True,
+        'vipuuid': str(vip.uuid),
+        'vname': vip.vname or '',
+        'vcode': vip.vcode or '',
+        'total': round(total, 2),
+        'orders': len(hungs),
+        'items': len(all_items),
+        'summary': {
+            'times_cards': times_cards,
+            'auto_cards': auto_cards,
+            'gift': {'items': [resolve_item(it, 'gift') for it in gift_items], 'total': round(gift_total, 2)},
+            'pending': {'items': [resolve_item(it, 'pending') for it in pending_items], 'total': round(pending_total, 2)},
+        },
+    })
+
+
+@csrf_exempt
+def customer_checkout_confirm(request):
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '\u4ec5\u652f\u6301 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        data = request.POST.dict()
+    company = data.get('company', '')
+    storecode = data.get('storecode', '01')
+    vipuuid = data.get('vipuuid', '')
+    cashier = data.get('cashier', '')
+    payments = data.get('payments', [])
+    if not company or not vipuuid or not cashier:
+        return JsonResponse({'ok': False, 'message': '\u7f3a\u5c11\u5fc5\u8981\u53c2\u6570'})
+    try:
+        vip = Vip.objects.get(uuid=vipuuid)
+    except Vip.DoesNotExist:
+        return JsonResponse({'ok': False, 'message': '\u4f1a\u5458\u4e0d\u5b58\u5728'})
+    open_status = ('10', '20', '30', '40', '50', '60')
+    hungs = list(ExpvstollHung.objects.filter(
+        company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
+        psstatus_hung__in=open_status, vipuuid=vip,
+    ))
+    if not hungs:
+        return JsonResponse({'ok': False, 'message': '\u8be5\u4f1a\u5458\u6ca1\u6709\u5f85\u7ed3\u8d26\u7684\u6302\u5355'})
+    from cashier.views import hung_to_trans
+    from decimal import Decimal
+    results = []
+    total_amount = Decimal('0')
+    for hung in hungs:
+        try:
+            total_amount += hung.totmount_hung or Decimal('0')
+            tran = hung_to_trans(
+                company=company, storecode=storecode,
+                cashier=cashier,
+                hungserno=hung.exptxserno_hung,
+                hunguuid=str(hung.uuid),
+            )
+            tran.hunguuid_trans()
+            results.append({'uuid': str(hung.uuid), 'exptxserno': hung.exptxserno_hung, 'ok': True, 'amount': float(hung.totmount_hung or 0)})
+        except Exception as e:
+            results.append({'uuid': str(hung.uuid), 'ok': False, 'message': str(e)})
+    ok_count = sum(1 for r in results if r.get('ok'))
+    if payments and ok_count > 0:
+        succeeded = [r for r in results if r.get('ok')]
+        from cashier.models import Toll as TollModel
+        for p in payments:
+            pcode = str(p.get('pcode', '') or '')
+            amount = Decimal(str(p.get('amount', 0) or 0))
+            if amount <= 0:
+                continue
+            total_ok = sum(Decimal(str(r.get('amount', 0) or 0)) for r in succeeded)
+            for r in succeeded:
+                try:
+                    trans = Expvstoll.objects.filter(company=company, hungserno=r['exptxserno']).first()
+                    if not trans:
+                        continue
+                    ratio = Decimal(str(r['amount'])) / total_ok if total_ok > 0 else Decimal('1')
+                    split_amount = (amount * ratio).quantize(Decimal('0.01'))
+                    if split_amount > 0:
+                        toll = TollModel.objects.create(
+                            company=company, storecode=storecode,
+                            transuuid=trans, pcode=pcode,
+                            expvssvern='1', totmount=split_amount,
+                            ccode='', currency='RMB', custperc=1,
+                        )
+                        toll.exptxserno = trans.exptxserno if trans else ''
+                        toll.save()
+                except Exception:
+                    pass
+    return JsonResponse({
+        'ok': True,
+        'orders': ok_count,
+        'total': float(total_amount),
+        'results': results,
+        'payments': payments,
+    })
+
+@csrf_exempt
+def payment_methods(request):
+    '''获取付款方式列表（Paymode）+ 默认付款方式编码'''
+    company = request.GET.get('company', '')
+    paymodes = Paymode.objects.filter(company=company, flag='Y').values('pcode', 'pname', 'iscash').order_by('iscash', 'pcode')
+    pm_list = list(paymodes)
+    normal_def = next((p for p in pm_list if p['iscash'] == '1'), None)
+    send_def = next((p for p in pm_list if p['iscash'] == '2'), None)
+    return JsonResponse({
+        'paymodes': pm_list,
+        'defaults': {
+            'normal_pcode': normal_def['pcode'] if normal_def else '',
+            'send_pcode': send_def['pcode'] if send_def else '',
+        }
+    })
+
+
+@csrf_exempt
 def update_hung_item_employees(request):
     '''更新挂单明细的员工信息'''
     if request.method != 'POST':
@@ -3812,6 +4101,117 @@ def update_hung_item_employees(request):
         return JsonResponse({'ok': True})
     except Exception as e:
         return JsonResponse({'ok': False, 'message': str(e)})
+
+
+
+
+
+@csrf_exempt
+def batch_checkout(request):
+    '''批量结账：对指定的挂单进行结账（调用 cashier.hung_to_trans）'''
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        data = request.POST.dict()
+    company = data.get('company', '')
+    storecode = data.get('storecode', '01')
+    cashier = data.get('cashier', '')
+    uuids = data.get('uuids', [])
+    if not company or not uuids:
+        return JsonResponse({'ok': False, 'message': '缺少必要参数'})
+    if not cashier:
+        return JsonResponse({'ok': False, 'message': '请输入收银员工号'})
+
+    from cashier.views import hung_to_trans
+    payments = data.get('payments', {})
+
+    results = []
+    for hunguuid in uuids:
+        try:
+            uuid_obj = _parse_uuid_loose(hunguuid)
+            hung = ExpvstollHung.objects.get(uuid=uuid_obj, company=company, flag='Y', valiflag_hung='Y')
+            if hung.psstatus_hung == '70':
+                results.append({'uuid': hunguuid, 'exptxserno': hung.exptxserno_hung, 'ok': False, 'message': '已结账'})
+                continue
+            # 更新付款方式（结账时可修改）
+            if hunguuid in payments:
+                new_ccode = (payments[hunguuid] or '').strip()
+                if new_ccode != (hung.ccode_hung or ''):
+                    hung.ccode_hung = new_ccode
+                    hung.save(update_fields=['ccode_hung'])
+            # 多支付方式拆分
+            splits = data.get('splits', {})
+            hung_splits = splits.get(hunguuid, [])
+            if hung_splits and len(hung_splits) > 0:
+                # 使用 hung_to_trans 创建 expvstoll + expense，跳过 set_toll()
+                from cashier.models import Toll as TollModel
+                st = hung_to_trans(
+                    company=company, storecode=storecode,
+                    cashier=cashier,
+                    hungserno=hung.exptxserno_hung,
+                    hunguuid=str(hung.uuid),
+                )
+                st.hungtoexpvstoll()
+                # 手工创建多条 Toll 记录
+                total_split = 0
+                for sp in hung_splits:
+                    pcode = sp.get('pcode', '')
+                    ccode = sp.get('ccode', '') or ''
+                    amount = float(sp.get('amount', 0))
+                    if amount <= 0:
+                        continue
+                    total_split += amount
+                    toll, _ = TollModel.objects.get_or_create(
+                        company=company, storecode=storecode,
+                        transuuid=st.expvstoll, pcode=pcode,
+                        defaults={
+                            'expvssvern': '1', 'totmount': amount,
+                            'ccode': ccode, 'currency': 'RMB', 'custperc': 1,
+                        }
+                    )
+                    if not toll.pk:
+                        toll.expvssvern = '1'
+                        toll.totmount = amount
+                        toll.ccode = ccode
+                        toll.currency = 'RMB'
+                        toll.custperc = 1
+                    toll.totmount = amount
+                    toll.save()
+                    st.tolls.append(toll)
+                    # 卡付款：扣余额
+                    if ccode:
+                        try:
+                            card = Cardinfo.objects.get(company=company, ccode=ccode, flag='Y')
+                            ct = card.cardtypeuuid
+                            if ct and ct.comptype == 'amount' and (card.leftmoney or 0) >= Decimal(str(amount)):
+                                card.leftmoney = (card.leftmoney or Decimal('0')) - Decimal(str(amount))
+                                card.save()
+                            elif ct and ct.comptype == 'times' and (card.leftqty or 0) >= Decimal(str(amount)):
+                                card.leftqty = (card.leftqty or Decimal('0')) - Decimal(str(amount))
+                                card.save()
+                        except Cardinfo.DoesNotExist:
+                            pass
+                st.set_exptxserno()
+                hung.psstatus_hung = '70'
+                hung.save()
+                results.append({'uuid': hunguuid, 'exptxserno': hung.exptxserno_hung, 'ok': True})
+                continue
+            tran = hung_to_trans(
+                company=company, storecode=storecode,
+                cashier=cashier,
+                hungserno=hung.exptxserno_hung,
+                hunguuid=str(hung.uuid),
+            )
+            tran.hunguuid_trans()
+            results.append({'uuid': hunguuid, 'exptxserno': hung.exptxserno_hung, 'ok': True})
+        except ExpvstollHung.DoesNotExist:
+            results.append({'uuid': hunguuid, 'ok': False, 'message': '挂单不存在'})
+        except Exception as e:
+            results.append({'uuid': hunguuid, 'ok': False, 'message': str(e)})
+    ok_count = sum(1 for r in results if r.get('ok'))
+    return JsonResponse({'ok': True, 'total': len(results), 'success': ok_count, 'results': results})
 
 
 @csrf_exempt
@@ -4050,3 +4450,180 @@ def active_promotions(request):
         's_price': float(p.s_price) if p.s_price else None,
         'combo_total': combo_totals.get(p.promotionsid, 0) if p.mainttype == '30' else 0,
     } for p in promos], safe=False)
+
+
+@csrf_exempt
+def get_receipt(request):
+    '''获取已完成交易的消费单数据（按客人+日期聚合所有已结账记录）'''
+    company = request.GET.get('company', '')
+    hunguuid = request.GET.get('hunguuid', '')
+    if not company or not hunguuid:
+        return JsonResponse({'ok': False, 'message': '缺少必要参数'})
+    try:
+        from django.db.models import Q
+        uuid_obj = _parse_uuid_loose(hunguuid)
+        source_hung = ExpvstollHung.objects.get(
+            Q(uuid=uuid_obj) | Q(exptxserno_hung=hunguuid),
+            company=company, flag='Y'
+        )
+        vipuuid_id = source_hung.vipuuid_id
+        vsdate = source_hung.vsdate_hung or ''
+        # 获取会员信息
+        vip_name = ''
+        vip_code = ''
+        if vipuuid_id:
+            try:
+                vip = Vip.objects.get(uuid=vipuuid_id)
+                vip_name = vip.vname or ''
+                vip_code = vip.vcode or ''
+            except Vip.DoesNotExist:
+                pass
+        # 按客人+日期查找所有已结账的挂单
+        all_hungs = list(ExpvstollHung.objects.filter(
+            company=company, flag='Y', valiflag_hung='Y',
+            psstatus_hung='70',
+            vipuuid=vipuuid_id,
+            vsdate_hung=vsdate,
+        ).order_by('exptxserno_hung'))
+        if not all_hungs:
+            all_hungs = [source_hung]
+        # 批量查询所有关联的员工信息
+        all_trans = []
+        for hung in all_hungs:
+            trans = Expvstoll.objects.filter(
+                company=company, hungserno=hung.exptxserno_hung
+            ).first()
+            if trans:
+                all_trans.append((hung, trans))
+        # 一次性收集所有员工编码
+        all_emp_codes = set()
+        for hung, trans in all_trans:
+            exps = Expense.objects.filter(company=company, transuuid=trans.uuid).only(
+                'pmcode', 'asscode1', 'asscode2')
+            for ex in exps:
+                if ex.pmcode: all_emp_codes.add(ex.pmcode)
+                if ex.asscode1: all_emp_codes.add(ex.asscode1)
+                if ex.asscode2: all_emp_codes.add(ex.asscode2)
+        emp_map = {}
+        if all_emp_codes:
+            for em in Empl.objects.filter(company=company, ecode__in=list(all_emp_codes)).only('ecode', 'ename'):
+                emp_map[em.ecode] = em.ename
+        # 处理每个挂单
+        orders = []
+        all_items = []
+        payments = []
+        total = 0
+        all_ccodes = set()
+        for hung, trans in all_trans:
+            order_items = []
+            expenses = Expense.objects.filter(company=company, transuuid=trans.uuid).order_by('ditem')
+            for ex in expenses:
+                item_name = _resolve_hung_itemname(company, ex.ttype or '', ex.srvcode or '')
+                raw_stype = (ex.stype or 'N').strip().upper()
+                stype_name = '赠送' if raw_stype == 'P' else '正常'
+                emp_parts = []
+                if ex.pmcode and ex.pmcode in emp_map:
+                    emp_parts.append(emp_map[ex.pmcode])
+                if ex.asscode1 and ex.asscode1 in emp_map:
+                    emp_parts.append(emp_map[ex.asscode1])
+                if ex.asscode2 and ex.asscode2 in emp_map:
+                    emp_parts.append(emp_map[ex.asscode2])
+                amt = float(ex.s_mount or 0)
+                if ex.otherserno:
+                    all_ccodes.add(ex.otherserno)
+                item_dict = {
+                    'name': item_name or ex.srvcode or '',
+                    'qty': float(ex.s_qty or 0),
+                    'price': float(ex.s_price or 0),
+                    'amount': amt,
+                    'stype': stype_name,
+                    'stypeabbr': '赠' if raw_stype == 'P' else '',
+                    'empName': ', '.join(emp_parts),
+                }
+                order_items.append(item_dict)
+                all_items.append(item_dict)
+            orders.append({
+                'serno': hung.exptxserno_hung or '',
+                'items': order_items,
+            })
+            # 付款方式
+            tolls = Toll.objects.filter(company=company, transuuid=trans.uuid).order_by('pcode')
+            for tl in tolls:
+                if tl.ccode:
+                    all_ccodes.add(tl.ccode)
+                pcode = (tl.pcode or '').strip()
+                if pcode:
+                    try:
+                        pm = Paymode.objects.get(company=company, flag='Y', pcode=pcode)
+                        pname = pm.pname or pcode
+                    except Paymode.DoesNotExist:
+                        pname = pcode
+                else:
+                    ccode = (tl.ccode or '').strip()
+                    if ccode:
+                        try:
+                            ci = Cardinfo.objects.filter(company=company, ccode=ccode, flag='Y').select_related('cardtypeuuid').first()
+                            if ci and ci.cardtypeuuid:
+                                pname = ci.cardtypeuuid.cardname or '卡付'
+                            else:
+                                pname = '卡付'
+                        except Exception:
+                            pname = '卡付'
+                    else:
+                        raw = (tl.pcode or '').strip()
+                        pname = raw if raw else '卡付（未指定）'
+                amt = float(tl.totmount or 0)
+                payments.append({'method': pname, 'amount': amt})
+                total += amt
+        # 金额校验：项目合计 vs 付款合计
+        item_total = sum(it['amount'] for it in all_items)
+        if payments and abs(item_total - total) > 0.01:
+            diff = round(total - item_total, 2)
+            diff_item = {
+                'name': '（充值/售卡）',
+                'qty': 1,
+                'price': diff,
+                'amount': diff,
+                'stype': '正常', 'stypeabbr': '', 'empName': '',
+            }
+            if orders:
+                orders[-1]['items'].append(diff_item)
+            all_items.append(diff_item)
+        if not payments:
+            total = float(source_hung.totmount_hung or 0)
+        # 卡余额
+        cards = []
+        for ccode in all_ccodes:
+            if not ccode: continue
+            try:
+                ci = Cardinfo.objects.filter(company=company, ccode=ccode, flag='Y').select_related('cardtypeuuid').first()
+                if ci:
+                    ct = ci.cardtypeuuid
+                    cards.append({
+                        'ccode': ccode,
+                        'cardname': ct.cardname if ct else '',
+                        'comptype': ct.comptype if ct else 'amount',
+                        'leftmoney': float(ci.leftmoney or 0),
+                        'leftqty': float(ci.leftqty or 0),
+                    })
+            except Exception:
+                pass
+        cashier_name = source_hung.ecode_hung or ''
+        return JsonResponse({
+            'ok': True,
+            'vipName': vip_name,
+            'vipCode': vip_code,
+            'date': (vsdate or '')[:8] if vsdate else '',
+            'orders': orders,
+            'cards': cards,
+            'payments': payments,
+            'total': total,
+            'cashierName': cashier_name,
+            'cashierCode': cashier_name,
+        })
+    except ExpvstollHung.DoesNotExist:
+        return JsonResponse({'ok': False, 'message': '挂单不存在'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+

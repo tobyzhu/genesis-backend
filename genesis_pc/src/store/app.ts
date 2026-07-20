@@ -5,6 +5,8 @@ import { getUser, setUser, setToken, clearAuth } from '@/utils/storage'
 export const useAppStore = defineStore('app', () => {
   const user = ref<Record<string, any> | null>(getUser())
   const sidebarCollapsed = ref(false)
+const cashierCode = ref<string>(localStorage.getItem('genesis_pc_cashier_code') ?? '')
+const cashierName = ref<string>(localStorage.getItem('genesis_pc_cashier_name') ?? '')
 
   const currentCompany = ref<string>(localStorage.getItem('genesis_pc_company') ?? '')
   const currentStorecode = ref<string>(localStorage.getItem('genesis_pc_storecode') ?? '')
@@ -14,6 +16,29 @@ export const useAppStore = defineStore('app', () => {
   const isLoggedIn = computed(() => !!user.value && !!currentCompany.value)
   const userName = computed(() => user.value?.username ?? '')
   const displayName = computed(() => user.value?.sys_fullname ?? user.value?.username ?? '')
+const ecode = computed(() => user.value?.sys_userid ?? '')
+const fullname = computed(() => user.value?.sys_fullname ?? '')
+const permissions = computed(() => (user.value?.permissions ?? []) as Array<{module:string;read:string;write:string;modulegrp:string}>)
+function hasPerm(module: string, operation: 'read' | 'write'): boolean {
+  if (!user.value) return false
+  if (user.value?.sys_adm === 'Y') return true
+  const perms = user.value?.permissions ?? []
+  const found = perms.find((p: any) => p.module === module)
+  if (!found) return false
+  if (operation === 'write') return found.write === 'Y'
+  return found.read === 'Y'
+}
+function setCashier(code: string, name: string) {
+  cashierCode.value = code
+  cashierName.value = name
+  localStorage.setItem('genesis_pc_cashier_code', code)
+  localStorage.setItem('genesis_pc_cashier_name', name)
+}
+function resetCashier() {
+  if (user.value) {
+    setCashier(ecode.value, fullname.value)
+  }
+}
 
   function loginSuccess(token: string, userData: Record<string, any>) {
     setToken(token)
@@ -59,6 +84,10 @@ export const useAppStore = defineStore('app', () => {
     localStorage.removeItem('genesis_pc_company')
     localStorage.removeItem('genesis_pc_storecode')
     localStorage.removeItem('genesis_pc_storename')
+    cashierCode.value = ''
+    cashierName.value = ''
+    localStorage.removeItem('genesis_pc_cashier_code')
+    localStorage.removeItem('genesis_pc_cashier_name')
   }
 
   function toggleSidebar() {
@@ -68,6 +97,8 @@ export const useAppStore = defineStore('app', () => {
   return {
     user,
     sidebarCollapsed,
+    cashierCode,
+    cashierName,
     currentCompany,
     currentStorecode,
     currentStoreName,
@@ -75,6 +106,12 @@ export const useAppStore = defineStore('app', () => {
     isLoggedIn,
     userName,
     displayName,
+    ecode,
+    fullname,
+    permissions,
+    hasPerm,
+    setCashier,
+    resetCashier,
     loginSuccess,
     selectStore,
     setAllowedStores,

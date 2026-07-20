@@ -116,6 +116,39 @@ def hdsysuser_permissions(request):
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
+
+@csrf_exempt
+def hdsysuser_search_json(request):
+    """搜索 Hdsysuser：按工号或姓名模糊匹配，限定同一公司"""
+    if request.method != 'GET':
+        return JsonResponse({'code': 405, 'msg': 'method not allowed'}, status=405)
+    company = request.GET.get('company', '').strip()
+    keyword = request.GET.get('keyword', '').strip()
+    if not company or not keyword:
+        return JsonResponse([])
+    try:
+        from django.db.models import Q
+        from baseinfo.models import Hdsysuser
+        qs = Hdsysuser.objects.filter(
+            company=company,
+            sys_userstatus=1,
+        ).filter(
+            Q(sys_userid__icontains=keyword) |
+            Q(sys_fullname__icontains=keyword)
+        ).order_by('sys_userid')[:30]
+        data = []
+        for u in qs:
+            sl = u.parse_storelist_codes() if hasattr(u, 'parse_storelist_codes') else []
+            data.append({
+                'uuid': str(u.uuid),
+                'sys_userid': u.sys_userid or '',
+                'sys_fullname': u.sys_fullname or '',
+                'storelist': ', '.join(sl) if sl else '',
+            })
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
 def api_v1_hdsysuser_login(request):
     """DRF 版登录（/baseinfo/api/v1/auth/login/）。"""
     data = request.data if request.method == 'POST' and isinstance(request.data, dict) else {}
