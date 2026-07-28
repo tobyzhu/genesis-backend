@@ -43,8 +43,6 @@ urlpatterns=[
     url(r'shoppingcarthung/?', views.ShoppingCartHung),
     url(r'addhung/', views.AddHung),
     url(r'get_hung_byvipuuid/', views.get_hung_byvipuuid),
-    url(r'checkout_hungs/', views.checkout_hungs),
-    url(r'get_checkout_shortfall/', views.get_checkout_shortfall),
     url(r'get_instore_vips/', views.get_instore_vips),
     url(r'get_instore_guests/', views.get_instore_vips),
     url(r'get_hungitem/', views.get_hungitem),
@@ -52,18 +50,16 @@ urlpatterns=[
     url(r'get_hung_detail/', views.get_hung_detail),
     url(r'get_hung_list/', views.get_hung_list),
     url(r'cardtype_service_items/?', views.cardtype_service_items),
+    url(r'service_items/?', views.service_items),
+    url(r'goods_items/?', views.goods_items),
+    url(r'cardtype_items/?', views.cardtype_items),
     url(r'save_hung/?', views.save_hung_order),
     url(r'search_vip/', views.search_vip),
-    url(r'customer_checkout/', views.customer_checkout),
-    url(r'payment_methods/', views.payment_methods),
     url(r'update_hung_item_employees/', views.update_hung_item_employees),
-    url(r'customer_checkout_confirm/', views.customer_checkout_confirm),
-    url(r'batch_checkout/', views.batch_checkout),
     url(r"void_hung_order/", views.void_hung_order),
 
     url(r'cardtype_prices/?', views.cardtype_prices),
 
-    url(r'get_checkedout_orders/?', views.get_checkedout_orders),
 
     url(r'active_promotions/?', views.active_promotions),
 
@@ -71,7 +67,6 @@ urlpatterns=[
 
 #    
     url(r'get_completed_hungs/?', views.get_completed_hungs),
-    url(r'get_receipt/', views.get_receipt),
     url(r'get_completed_order_detail/?', views.get_completed_order_detail),
 #    url(r'^images$',)
 ]

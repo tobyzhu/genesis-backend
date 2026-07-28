@@ -43,6 +43,9 @@ urlpatterns=[
     url(r'^getcrmcase_yiren/', getcrmcase_yiren),
     url(r'^get_crmsubreport/?', views.get_crmsubreport),
     url(r'^vip_filter_options/?', views.get_vip_filter_options),
+    url(r'^vip_insight/', views.vip_insight),
+    url(r'^health_records/(?P<uuid>[^/]+)/', views.health_record_detail),
+    url(r'^health_records/', views.health_record_list),
 
 
     # url(r'queryroom/',views.queryroom),

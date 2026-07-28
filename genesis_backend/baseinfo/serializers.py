@@ -114,7 +114,7 @@ class GoodsSerializer(serializers.HyperlinkedModelSerializer):
     # url = serializers.HyperlinkedIdentityField(view_name='serivece-detail',lookup_field='uuid')
     class Meta:
         model = Goods
-        fields =('gcode','gname','price','displayclass1','tags')
+        fields = ("uuid","gcode","gname","brand","spec","barcode","unit","price","price2","price3","buyprc","qty","minivalues","maxvalues","displayclass1","displayclass2","marketclass1","marketclass2","goodsct","discountclass","saleflag","valiflag","supplierid","location","desc1","tags","storelist","costprc",)
 
 class VipSerializer(serializers.HyperlinkedModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='vip-detail',lookup_field='uuid')
@@ -126,7 +126,7 @@ class VipSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Vip
-        fields = ('uuid','company','storecode','viptype','vcode','vname','viplevel','mtcode','ecode','ecode2','url','pinyin','birth','indate','source','occupation','vdesc','sex','telph','wechat','addr','email','qq','status')
+        fields = ('uuid','company','storecode','viptype','vcode','vname','viplevel','mtcode','ecode','ecode2','url','pinyin','birth','indate','source','occupation','vdesc','sex','telph','wechat','addr','email','qq','status','tags')
 
     def create(self, validated_data):
         return Vip.objects.create(**validated_data)

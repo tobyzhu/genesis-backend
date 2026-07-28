@@ -79,7 +79,7 @@
                   </div>
                   <div class="cg-card-right">
                     <div class="cg-card-amount">
-                      {{ card.comptype === 'times' ? (card.leftqty ?? 0) + '次' : '¥' + parseFloat(card.leftmoney ?? 0).toFixed(0) }}
+                      {{ card.comptype === 'times' ? (card.leftqty ?? 0) + '次 × ¥' + parseFloat(card.s_price ?? 0).toFixed(0) + ' = ¥' + parseFloat(card.leftmoney ?? 0).toFixed(0) : '¥' + parseFloat(card.leftmoney ?? 0).toFixed(0) }}
                     </div>
                     <div v-if="card.valdate" class="cg-card-expire">{{ card.valdate ? formatCardDate(card.valdate) : '' }}</div>
                   </div>

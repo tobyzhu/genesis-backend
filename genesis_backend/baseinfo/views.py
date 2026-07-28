@@ -8,7 +8,7 @@ from rest_framework.parsers import JSONParser
 from pypinyin import pinyin
 from pytz import unicode
 import json
-from rest_framework import  pagination,viewsets,generics
+from rest_framework import  pagination,viewsets,generics, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.core import serializers
 from django.core.serializers.json import DjangoJSONEncoder
@@ -77,10 +77,26 @@ class SerieceViewSet(viewsets.ModelViewSet):
 #     serializers_class = ServiecepriceSerializer
 
 class GoodsViewSet(viewsets.ModelViewSet):
-    # lookup_field = 'uuid'
-    queryset = Goods.objects.filter(company=common.constants.COMPANYID,saleflag='Y',flag='Y',valiflag='Y').order_by('gcode')
+    lookup_field = "uuid"
+    queryset = Goods.objects.filter(saleflag="Y", flag="Y", valiflag="Y")
     serializer_class = GoodsSerializer
+    ordering = ["gcode"]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company = self.request.query_params.get("company", common.constants.COMPANYID)
+        qs = qs.filter(company=company)
+        brand = self.request.query_params.get("brand")
+        if brand:
+            qs = qs.filter(brand=brand)
+        dc1 = self.request.query_params.get("displayclass1")
+        if dc1:
+            qs = qs.filter(displayclass1=dc1)
+        search = self.request.query_params.get("search")
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(gcode__icontains=search) | Q(gname__icontains=search) | Q(barcode__icontains=search))
+        return qs
 
 class EmplViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
@@ -372,6 +388,11 @@ def update_Vip(request):
         vip.vdesc = vdesc
     except:
         vdesc = vip.occupation
+    try:
+        tags = request.GET['tags']
+        vip.tags = tags
+    except:
+        tags = vip.tags
 
     try:
         viplevel = request.GET['viplevel']

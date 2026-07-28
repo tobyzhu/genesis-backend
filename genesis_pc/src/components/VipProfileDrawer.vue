@@ -10,8 +10,10 @@
         <el-descriptions :column="2" border size="small" style="margin-bottom:16px">
           <el-descriptions-item label="姓名">{{ basicInfo.vname }}</el-descriptions-item>
           <el-descriptions-item label="会员号">{{ basicInfo.vcode }}</el-descriptions-item>
-          <el-descriptions-item label="手机">{{ basicInfo.mtcode }}</el-descriptions-item>
+          <el-descriptions-item label="手机">{{ maskPhone(basicInfo.mtcode) }}</el-descriptions-item>
           <el-descriptions-item label="等级">{{ basicInfo.viplevel || '--' }}</el-descriptions-item>
+          <el-descriptions-item label="生日">{{ formatBirth(basicInfo.birth) }}</el-descriptions-item>
+          <el-descriptions-item label="入会时间">{{ formatBirth(basicInfo.indate) }}</el-descriptions-item>
           <el-descriptions-item label="顾问">{{ empName(basicInfo.ecode) }}</el-descriptions-item>
           <el-descriptions-item label="美疗师">{{ empName(basicInfo.ecode2) }}</el-descriptions-item>
         </el-descriptions>
@@ -43,8 +45,8 @@
             <div v-if="consumption.length" class="profile-list">
               <div v-for="(c, i) in consumption" :key="i" class="profile-list-item">
                 <span class="pli-date">{{ c.vsdate || '--' }}</span>
-                <span class="pli-name">{{ c.srvname || c.srvcode || '--' }}</span>
-                <span class="pli-amount">¥{{ (c.s_amount || 0).toFixed(0) }}</span>
+                <span class="pli-name">{{ c.itemname || c.srvcode || '--' }}</span>
+                <span class="pli-amount">¥{{ Number(c.amount ?? 0).toFixed(0) }}</span>
                 <el-tag size="small" :type="c.psstatus === '70' ? 'success' : 'warning'">
                   {{ c.psstatus === '70' ? '已结账' : '挂账' }}
                 </el-tag>
@@ -78,6 +80,7 @@ import { useVipProfile } from '@/composables/useVipProfile'
 
 const props = defineProps<{
   profile: ReturnType<typeof useVipProfile>
+  employees?: Array<{ecode: string; ename: string}>
 }>()
 
 const { drawerVisible, loading, basicInfo, cards, consumption, communications, closeProfile } = props.profile
@@ -90,12 +93,29 @@ const title = computed(() => {
 })
 
 function empName(ecode: string): string {
-  return ecode || '--'
+  if (!ecode) return '--'
+  const emp = props.employees?.find((e: any) => e.ecode === ecode)
+  return emp ? emp.ename + ' (' + ecode + ')' : ecode
 }
 
 function commTypeTag(t: string): string {
   const map: Record<string, string> = { '10': 'info', '20': 'warning', '30': 'success' }
   return map[t] || 'info'
+}
+
+function maskPhone(phone: string): string {
+  if (!phone) return '--'
+  const s = phone.trim()
+  if (s.length >= 11) return s.slice(0, 3) + '****' + s.slice(-4)
+  if (s.length >= 7) return s.slice(0, 3) + '****' + s.slice(-3)
+  return s
+}
+
+function formatBirth(birth: string): string {
+  if (!birth) return '--'
+  const s = birth.trim()
+  if (/^\d{8}$/.test(s)) return s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8)
+  return s
 }
 </script>
 

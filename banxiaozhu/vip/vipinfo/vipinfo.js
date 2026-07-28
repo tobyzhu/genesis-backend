@@ -52,6 +52,8 @@ Page({
     sourceid: '',
     sourcename: '',
     vdesc: ''
+    ,tagOptions: []
+    ,selectedTags: []
   },
 
   /**
@@ -110,6 +112,59 @@ Page({
       code: that.data.vip.viplevellist
     }
     viputils.getIndexByCode(that, vipleveloption)
+
+    // 加载标签选项
+    console.log("[vipinfo] onLoad, currentvip.tags:", app.globalData.currentvip.tags);
+    that.loadTagOptions();
+  },
+
+  loadTagOptions: function () {
+    var that = this;
+    var app = getApp();
+    var company = app.globalData.company;
+    var url = app.globalData.host + 'baseinfo/get_appoption_byseg/';
+    var rawTags = app.globalData.currentvip.tags;
+    var currentTags = Array.isArray(rawTags) ? rawTags.slice() : ((rawTags || '').split(',').filter(function(t) { return t.trim(); }));
+    that.setData({ selectedTags: currentTags });
+    wx.request({
+      method: 'GET',
+      url: url,
+      data: { company: company, seg: 'viptags' },
+      header: { 'content-type': 'application/json' },
+      success: function (res) {
+        if (res.statusCode === 200 && res.data) {
+          var opts = [];
+          var list = Array.isArray(res.data) ? res.data : [];
+          for (var i = 0; i < list.length; i++) {
+            var v = list[i].itemvalues || list[i].itemname || '';
+            if (v) opts.push(v);
+          }
+          var tagObjs = opts.map(function(t) {
+            return { name: t, cls: currentTags.indexOf(t) > -1 ? 'tag-active' : '' };
+          });
+          that.setData({ tagOptions: tagObjs });
+        }
+      },
+    });
+  },
+
+  toggleTag: function (e) {
+    var that = this;
+    console.log("[toggleTag] called, tag:", e.currentTarget.dataset.tag, "selectedTags before:", that.data.selectedTags);
+    var tag = e.currentTarget.dataset.tag;
+    var selected = (that.data.selectedTags || []).slice();
+    var idx = selected.indexOf(tag);
+    if (idx > -1) {
+      selected.splice(idx, 1);
+    } else {
+      selected.push(tag);
+    }
+    console.log("[toggleTag] selectedTags after:", selected);
+    var tagOptions = that.data.tagOptions || [];
+    tagOptions.forEach(function(t) {
+      t.cls = selected.indexOf(t.name) > -1 ? 'tag-active' : '';
+    });
+    that.setData({ tagOptions: tagOptions, selectedTags: selected });
   },
 
   /**
@@ -284,7 +339,8 @@ Page({
         ecode2: that.data.seccode,
         source: that.data.sourceid,
         vdesc: that.data.vdesc,
-        viplevel: that.data.viplevel
+        viplevel: that.data.viplevel,
+        tags: that.data.selectedTags.join(',')
       },
       header: {
         'content-type': 'application/json' // 默认值

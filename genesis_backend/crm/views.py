@@ -13,7 +13,7 @@ from django.db import models
 import uuid
 import django.utils.timezone as timezone
 import time,datetime
-from django.db.models import Q
+from django.db.models import Q, Sum, Count
 import traceback
 
 # from .serializers import UserSerializer, GroupSerializer
@@ -777,3 +777,212 @@ def get_vip_filter_options(request):
         .distinct().order_by('viplevel')
     )
     return Response({'viplevels': levels})
+
+# ===== VIP 洞察 =====
+
+@csrf_exempt
+def vip_insight(request):
+    """GET /crm/vip_insight/ - 客户消费洞察聚合"""
+    company = request.GET.get('company', '')
+    vipuuid = request.GET.get('vipuuid', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    if not company or not vipuuid:
+        return JsonResponse({'error': '缺少参数'}, status=400)
+
+    # 默认统计范围：最近 12 个月
+    if not date_from:
+        date_from = (datetime.date.today() - datetime.timedelta(days=365)).strftime('%Y%m%d')
+    if not date_to:
+        date_to = datetime.date.today().strftime('%Y%m%d')
+
+    visits = Expvstoll.objects.filter(
+        company=company, vipuuid=vipuuid, flag='Y', valiflag='Y',
+        vsdate__gte=date_from, vsdate__lte=date_to,
+    )
+    total_visits = visits.count()
+    visit_uuids = list(visits.values_list('uuid', flat=True))
+    exp_items = Expense.objects.filter(company=company, transuuid__in=visit_uuids, flag='Y', stype='N', ttype__in=('S', 'G'))
+
+    # 汇总
+    total_spent = float(exp_items.aggregate(s=Sum('s_mount'))['s'] or 0)
+    avg_spend = round(total_spent / total_visits, 2) if total_visits > 0 else 0
+
+    # 最近消费
+    last_visit = visits.order_by('-vsdate').first()
+    last_visit_date = last_visit.vsdate if last_visit else None
+    days_since = None
+    if last_visit_date:
+        try:
+            d = datetime.datetime.strptime(last_visit_date, '%Y%m%d').date()
+            days_since = (datetime.date.today() - d).days
+        except ValueError:
+            pass
+
+    # 平均到店周期
+    if total_visits >= 2:
+        dates = sorted(visits.values_list('vsdate', flat=True))
+        deltas = []
+        for i in range(1, len(dates)):
+            try:
+                d1 = datetime.datetime.strptime(dates[i-1], '%Y%m%d').date()
+                d2 = datetime.datetime.strptime(dates[i], '%Y%m%d').date()
+                deltas.append((d2 - d1).days)
+            except ValueError:
+                pass
+        avg_cycle = round(sum(deltas) / len(deltas), 1) if deltas else None
+    else:
+        avg_cycle = None
+
+    # 偏好项目（按消费次数取 TOP 5）
+    item_agg = exp_items.values('srvcode', 'ttype').annotate(
+        cnt=Count('uuid'), total=Sum('s_mount')
+    ).order_by('-cnt')[:5]
+    # 从 Serviece/Goods 表查询名称
+    srv_codes = [i['srvcode'] for i in item_agg if i['srvcode']]
+    from baseinfo.models import Serviece, Goods
+    srv_names = dict(Serviece.objects.filter(company=company, svrcdoe__in=srv_codes).values_list('svrcdoe', 'svrname'))
+    goods_names = dict(Goods.objects.filter(company=company, gcode__in=srv_codes).values_list('gcode', 'gname'))
+    preferred_items = [
+        {
+            'srvcode': i['srvcode'],
+            'srvname': srv_names.get(i['srvcode']) or goods_names.get(i['srvcode']) or '',
+            'count': i['cnt'],
+            'total_amount': float(i['total'] or 0),
+        }
+        for i in item_agg
+    ]
+
+    # 偏好的员工
+    emp_agg = exp_items.values('pmcode').annotate(cnt=Count('uuid')).order_by('-cnt').first()
+    preferred_employee = None
+    if emp_agg:
+        ename = ''
+        try:
+            empl = Empl.objects.filter(company=company, ecode=emp_agg['pmcode']).first()
+            if empl:
+                ename = empl.ename or ''
+        except:
+            pass
+        preferred_employee = {'ecode': emp_agg['pmcode'], 'ename': ename, 'count': emp_agg['cnt']}
+
+    # 卡数统计
+    from adviser.models import Cardinfo
+    card_count = Cardinfo.objects.filter(company=company, vipuuid=vipuuid, flag='Y', status='Y').count()
+
+    return JsonResponse({
+        'total_visits': total_visits,
+        'total_spent': total_spent,
+        'avg_spend': avg_spend,
+        'last_visit_date': last_visit_date,
+        'days_since_last_visit': days_since,
+        'avg_visit_cycle': avg_cycle,
+        'preferred_items': preferred_items,
+        'preferred_employee': preferred_employee,
+        'card_count': card_count,
+        'date_from': date_from,
+        'date_to': date_to,
+    })
+
+
+# ===== 健康档案 CRUD =====
+
+from .models import VipHealthRecord
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+
+@csrf_exempt
+def health_record_list(request):
+    """GET/POST /crm/health_records/"""
+    company = request.GET.get('company', '')
+    if request.method == 'GET':
+        vipuuid = request.GET.get('vipuuid', '')
+        if not company or not vipuuid:
+            return JsonResponse({'error': '缺少参数'}, status=400)
+        qs = VipHealthRecord.objects.filter(company=company, vipuuid=vipuuid).order_by('-record_date')
+        data = []
+        for r in qs:
+            data.append({
+                'uuid': r.uuid,
+                'vipuuid': str(r.vipuuid.uuid) if r.vipuuid else '',
+                'record_date': r.record_date.isoformat() if r.record_date else '',
+                'skin_type': r.skin_type or '',
+                'allergies': r.allergies or '',
+                'body_concerns': r.body_concerns or '',
+                'contraindications': r.contraindications or '',
+                'notes': r.notes or '',
+                'create_time': r.create_time.isoformat() if r.create_time else '',
+            })
+        return JsonResponse(data, safe=False)
+
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'invalid JSON'}, status=400)
+        vipuuid = body.get('vipuuid', '')
+        try:
+            vip = Vip.objects.get(company=body.get('company', ''), uuid=vipuuid)
+        except Vip.DoesNotExist:
+            return JsonResponse({'error': '客户不存在'}, status=400)
+        record = VipHealthRecord.objects.create(
+            company=body.get('company', ''),
+            vipuuid=vip,
+            skin_type=body.get('skin_type', ''),
+            allergies=body.get('allergies', ''),
+            body_concerns=body.get('body_concerns', ''),
+            contraindications=body.get('contraindications', ''),
+            notes=body.get('notes', ''),
+            creater=body.get('creater', ''),
+        )
+        return JsonResponse({
+            'uuid': record.uuid,
+            'skin_type': record.skin_type or '',
+            'allergies': record.allergies or '',
+            'body_concerns': record.body_concerns or '',
+            'contraindications': record.contraindications or '',
+            'notes': record.notes or '',
+            'record_date': record.record_date.isoformat() if record.record_date else '',
+        }, status=201)
+
+@csrf_exempt
+def health_record_detail(request, uuid):
+    """GET/PUT/DELETE /crm/health_records/<uuid>/"""
+    try:
+        record = VipHealthRecord.objects.get(uuid=uuid)
+    except VipHealthRecord.DoesNotExist:
+        return JsonResponse({'error': '记录不存在'}, status=404)
+
+    if request.method == 'GET':
+        return JsonResponse({
+            'uuid': record.uuid,
+            'vipuuid': str(record.vipuuid.uuid) if record.vipuuid else '',
+            'record_date': record.record_date.isoformat() if record.record_date else '',
+            'skin_type': record.skin_type or '',
+            'allergies': record.allergies or '',
+            'body_concerns': record.body_concerns or '',
+            'contraindications': record.contraindications or '',
+            'notes': record.notes or '',
+        })
+
+    if request.method == 'PUT':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'invalid JSON'}, status=400)
+        for f in ('skin_type', 'allergies', 'body_concerns', 'contraindications', 'notes'):
+            if f in body:
+                setattr(record, f, body[f])
+        record.save()
+        return JsonResponse({
+            'uuid': record.uuid,
+            'skin_type': record.skin_type or '',
+            'allergies': record.allergies or '',
+            'body_concerns': record.body_concerns or '',
+            'contraindications': record.contraindications or '',
+            'notes': record.notes or '',
+        })
+
+    if request.method == 'DELETE':
+        record.delete()
+        return JsonResponse({}, status=204)

@@ -265,9 +265,8 @@ class Expvstoll(GenesisModel):
             cardhistory.save()
             cardhistory.recalamount()
 
-        if self.ttype in ('C','I'):
-            cards = Expense.objects.filter(company=self.company, storecode=self.storecode, flag='Y', transuuid = self.uuid,ttype__in=('C','I'))
-            for card in cards:
+        cards = Expense.objects.filter(company=self.company, storecode=self.storecode, flag='Y', transuuid = self.uuid,ttype__in=('C','I'))
+        for card in cards:
                 cardinfo = Cardinfo.objects.get(company=self.company,flag='Y',ccode=card.srvcode)
                 cardhistory = Cardhistory.objects.get_or_create(company=self.company,storecode=self.storecode,vsdate=self.vsdate, ccode=card.srvcode,exptxserno=self.exptxserno)[0]
                 cardhistory.create_time = self.create_time

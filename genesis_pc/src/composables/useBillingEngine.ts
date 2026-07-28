@@ -385,12 +385,18 @@ export function useBillingEngine() {
     rechargeAmounts.value[card.ccode] = 0
   }
 
-  function addCardRefund(card: VipCard) {
-    const amount = rechargeAmounts.value[card.ccode] || 0
-    if (amount <= 0) { ElMessage.warning('请输入金额'); return }
+ function addCardRefund(card: VipCard) {
+   const qtyOrAmt = rechargeAmounts.value[card.ccode] || 0
+   if (qtyOrAmt <= 0) {
+     ElMessage.warning(card.comptype === 'times' ? '请输入退卡次数' : '请输入金额');
+     return
+   }
+    const isTimes = card.comptype === 'times'
+    const unitPrice = isTimes ? parseFloat(card.s_price ?? 0) : qtyOrAmt
+    const refundQty = isTimes ? -qtyOrAmt : -1
     const defaultEmp = getDefaultEmployees()
     cart.value.push({
-      code: card.ccode, name: card.cardname + ' 退款', price: -amount, qty: 1,
+      code: card.ccode, name: card.cardname + ' 退款', price: unitPrice, qty: refundQty,
       ttype: 'I', stype: 'N', secdisc: 1, srvmondisc: 0,
       payMethod: 'cash', pmcode: defaultEmp.pmcode, asscode1: defaultEmp.asscode1, asscode2: defaultEmp.asscode2,
       availableCards: [],
@@ -555,14 +561,17 @@ export function useBillingEngine() {
   }
 
   // ── 卡片交互 ──
-  function selectCard(card: VipCard) {
-    selectedCard.value = card
-    cart.value.forEach((item) => {
-      if (!item.availableCards.find((c) => c.ccode === card.ccode)) {
-        item.availableCards.unshift(card)
-      }
-    })
-  }
+ function selectCard(card: VipCard) {
+   selectedCard.value = card
+   cart.value.forEach((item) => {
+     if (!item.availableCards.find((c) => c.ccode === card.ccode)) {
+       item.availableCards.unshift(card)
+     }
+   })
+    if (card.comptype === 'times') {
+      setTimeout(() => autoAddCardItems(card), 100)
+    }
+ }
 
   // ── 购物车操作 ──
   const clickGuard = new Map<string, number>()

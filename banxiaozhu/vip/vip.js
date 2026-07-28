@@ -57,7 +57,21 @@ Page({
         url: "../vip/shoppingcar/shoppingcar",
         image: "../images/cart.png"
       },
+      {
+        id: 10,
+        text: "客户洞察",
+        url: "./insight/insight",
+        image: "../images/insight.png"
+      },
+      {
+        id: 11,
+        text: "健康档案",
+        url: "./health/health",
+        image: "../images/health.png"
+      },
     ]  ,    
+    tagList:[],
+    tagOptions:[],
     cardtype_10_list:[],
     cardtype_20_list:[],
     item_s_list:[],
@@ -216,7 +230,8 @@ Page({
         that.setData({
           vip: res.data,
           vipuuid_s: vipuuid_s,
-          vipuuid_u: vipuuid_u
+          vipuuid_u: vipuuid_u,
+          tagList: Array.isArray(res.data.tags) ? res.data.tags : ((res.data.tags || '').split(',').filter(function(t) { return t.trim(); })),
         }),
         wx.setStorage({
           key: 'currentvip',

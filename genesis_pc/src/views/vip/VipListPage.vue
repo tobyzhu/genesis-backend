@@ -20,7 +20,7 @@
             style="width: 140px"
           >
             <el-option
-              v-for="lv in viplevelOptions"
+              v-for="opt in viplevelSelectOptions"
               :key="lv"
               :label="lv"
               :value="lv"
@@ -199,6 +199,11 @@
             placeholder="备注信息"
           />
         </el-form-item>
+        <el-form-item label="标签">
+          <el-select v-model="formTags" multiple filterable allow-create clearable placeholder="选择或输入标签" style="width:100%">
+            <el-option v-for="t in tagOptions" :key="t.itemname" :label="t.itemvalues" :value="t.itemname" />
+          </el-select>
+        </el-form-item>
       </el-form>
 
       <template #footer>
@@ -247,12 +252,22 @@ function getSourceName(code: string): string {
 
 // ---- 会员等级选项 ----
 const viplevelSelectOptions = ref<Array<{itemname: string, itemvalues: string}>>([])
+const tagOptions = ref<Array<{itemname: string, itemvalues: string}>>([])
+const formTags = ref<string[]>([])
 async function fetchViplevelSelectOptions() {
   try {
     const res = await getAppoptionBySeg('viplevel')
     viplevelSelectOptions.value = res.data
   } catch {
     viplevelSelectOptions.value = []
+  }
+}
+async function fetchTagOptions() {
+  try {
+    const res = await getAppoptionBySeg('viptags')
+    tagOptions.value = res.data
+  } catch {
+    tagOptions.value = []
   }
 }
 
@@ -277,6 +292,7 @@ const emptyForm = (): Partial<Vip> => ({
   source: '',
   occupation: '',
   vdesc: '',
+  tags: '',
 })
 
 const form = reactive<Partial<Vip>>(emptyForm())
@@ -291,6 +307,7 @@ onMounted(() => {
   fetchList()
   fetchSourceOptions()
   fetchViplevelSelectOptions()
+  fetchTagOptions()
 })
 
 // ---- 方法 ----
@@ -354,6 +371,7 @@ function openEditDialog(row: Vip) {
     occupation: row.occupation || '',
     vdesc: row.vdesc || '',
   })
+  formTags.value = (row.tags || '').split(',').filter(Boolean)
   formRef.value?.clearValidate()
   dialogVisible.value = true
 }
@@ -367,9 +385,11 @@ async function handleSubmit() {
   try {
     const data = { ...form }
     if (isEdit.value) {
+      data.tags = formTags.value.join(',')
       await updateVip(editingUuid.value, data)
       ElMessage.success('编辑成功')
     } else {
+      data.tags = formTags.value.join(',')
       await createVip(data)
       ElMessage.success('创建成功')
     }

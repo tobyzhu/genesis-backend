@@ -15,12 +15,6 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/cashier',
-    name: 'Cashier',
-    component: () => import('@/views/cashier/CashierPage.vue'),
-    meta: { requiresAuth: true, title: '收银开单' },
-  },
-  {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     redirect: '/dashboard',
@@ -54,13 +48,37 @@ const routes: RouteRecordRaw[] = [
         path: 'adviser/billing-v2',
         name: 'BillingV2',
         component: () => import('@/views/adviser/BillingPageV2.vue'),
-        meta: { title: '手工开单-v2', icon: 'Ticket' },
+        meta: { title: '手工开单', icon: 'Ticket' },
       },
       {
         path: 'adviser/hungs',
         name: 'HungOrders',
         component: () => import('@/views/adviser/HungOrdersPage.vue'),
         meta: { title: '挂单管理', icon: 'List' },
+      },
+      {
+        path: '/cashier/checkout',
+        name: 'CashierCheckout',
+        component: () => import('@/views/cashier/CheckoutPage.vue'),
+        meta: { title: '收银结账', icon: 'Coin' },
+      },
+      {
+        path: '/cashier/modify',
+        name: 'CashierModify',
+        component: () => import('@/views/cashier/ModifyPage.vue'),
+        meta: { title: '修改单据', icon: 'Edit' },
+      },
+      {
+        path: '/cashier/void',
+        name: 'CashierVoid',
+        component: () => import('@/views/cashier/VoidPage.vue'),
+        meta: { title: '作废单据', icon: 'Delete' },
+      },
+      {
+        path: '/cashier/shift',
+        name: 'CashierShift',
+        component: () => import('@/views/cashier/ShiftPage.vue'),
+        meta: { title: '交班日结', icon: 'Transfer' },
       },
 
       {
@@ -74,6 +92,12 @@ const routes: RouteRecordRaw[] = [
         name: 'Goods',
         component: () => import('@/views/goods/GoodsPage.vue'),
         meta: { title: '商品管理', icon: 'Goods' },
+      },
+      {
+        path: "/goods/stock",
+        name: "GoodsStock",
+        component: () => import("@/views/goods/StockPage.vue"),
+        meta: { title: "进出货管理", icon: "Box" },
       },
       {
         path: '/report',

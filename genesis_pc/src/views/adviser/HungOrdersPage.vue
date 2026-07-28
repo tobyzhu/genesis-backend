@@ -191,7 +191,7 @@
             </div>
             <div style="display:flex;align-items:center;padding:3px 10px;background:#fafafa;font-size:11px;color:#909399;border-bottom:1px solid #f0f0f0">
               <span style="width:16px"></span>
-              <span style="flex:1">项目</span>
+              <span style="flex:1">交易类型 - 项目</span>
               <span style="width:24px;text-align:center">量</span>
               <span style="width:55px;text-align:right">单价</span>
               <span style="width:55px;text-align:right">金额</span>
@@ -217,11 +217,11 @@
             <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">📊 结算汇总</div>
             <div v-for="ac in custCheckoutData.summary.auto_cards" :key="ac.ccode" style="display:flex;align-items:center;font-size:12px;padding:3px 0">
               <span>✅ 💳 {{ ac.ccode }}</span><span style="color:#909399;margin-left:4px;font-size:11px">余额 ¥{{ ac.balance.toFixed(0) }}</span>
-              <span style="margin-left:auto;font-weight:600;color:#67c23a">-¥{{ ac.deduct_amount.toFixed(2) }}</span>
+              <span style="margin-left:auto;font-weight:600;color:#67c23a">¥{{ ac.deduct_amount.toFixed(2) }}</span>
             </div>
             <div v-for="tc in custCheckoutData.summary.times_cards" :key="tc.ccode" style="display:flex;align-items:center;font-size:12px;padding:3px 0">
               <span>✅ 💳 {{ tc.ccode }}</span><span style="color:#909399;margin-left:4px;font-size:11px">余 {{ tc.leftqty }} 次</span>
-              <span style="margin-left:auto;font-weight:600;color:#e6a23c">-{{ tc.deduct_qty }} 次</span>
+              <span style="margin-left:auto;font-weight:600;color:#e6a23c">{{ tc.deduct_qty }} 次</span>
             </div>
             <div v-if="custCheckoutData.summary.gift.total > 0" style="display:flex;align-items:center;font-size:12px;padding:3px 0">
               <span>✅ 🎁 赠送</span>
@@ -234,14 +234,14 @@
             </div>
           </div>
           <!-- 待付付款分配 -->
-          <div v-if="custCheckoutData.summary.pending.total > 0.01" style="border:2px solid #e6a23c;border-radius:6px;padding:8px;margin-bottom:6px">
-            <div style="font-size:12px;font-weight:600;color:#e6a23c;margin-bottom:6px">💳 付款分配（待付金额 ¥{{ custCheckoutData.summary.pending.total.toFixed(2) }}）</div>
+          <div v-if="custCheckoutData.summary.pending.total !== undefined" style="border:2px solid #e6a23c;border-radius:6px;padding:8px;margin-bottom:6px">
+            <div style="font-size:12px;font-weight:600;color:#e6a23c;margin-bottom:6px">💳 付款分配（金额 ¥{{ custCheckoutData.summary.pending.total.toFixed(2) }}）</div>
             <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">
               <div v-for="(pm, pi) in custCheckoutPayments" :key="pi" style="display:inline-flex;align-items:center;gap:2px;padding:2px 4px;background:#fff;border:1px solid #ebeef5;border-radius:4px;font-size:12px">
-                <el-select v-model="pm.pcode" size="small" style="width:130px" filterable>
+                <el-select v-model="pm.pcode" size="small" style="width:130px" filterable @change="custOnPmChange(pi)">
                   <el-option v-for="opt in allPaymodeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
                 </el-select>
-                <el-input-number v-model="pm.amount" :min="0" :max="custCheckoutData.summary.pending.total" size="small" :controls="false" :precision="2" style="width:110px" @change="custOnAmountChange" />
+                <el-input-number v-model="pm.amount" :min="0" :max="Math.abs(custCheckoutData.summary.pending.total)" size="small" :controls="false" :precision="2" style="width:110px" @change="custOnAmountChange" />
                 <span style="font-size:10px;color:#909399">元</span>
                 <el-button v-if="custCheckoutPayments.length > 1" text type="danger" size="small" style="padding:0" @click="custRemovePayment(pi)">✕</el-button>
               </div>
@@ -254,7 +254,7 @@
               </b>
             </div>
           </div>
-          <div v-else-if="custCheckoutData.summary.pending.total <= 0.01" style="padding:8px;text-align:center;background:#f0f9eb;border-radius:6px;color:#67c23a;font-size:13px">✅ 所有项目已自动结算，无需额外付款</div>
+          <div v-else-if="custCheckoutData.summary.pending.total < 0" style="padding:8px;text-align:center;background:#f0f9eb;border-radius:6px;color:#67c23a;font-size:13px">✅ 所有项目已自动结算，无需额外付款</div>
         </div>
         <!-- 收银员 -->
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fafafa;border-radius:6px">
@@ -285,7 +285,7 @@
               <div style="font-size:15px;font-weight:600;color:#303133">👤 {{ checkoutVipName }}</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:13px;color:#606266">待结 <b style="color:#e6a23c;font-size:18px">{{ checkoutOrders.length }}</b> 单</div>
+              <div style="font-size:13px;color:#606266"><b style="color:#e6a23c;font-size:18px">{{ checkoutSelectedCount }}</b><span style="font-size:13px;color:#c0c4cc">/{{ checkoutOrders.length }}</span> 单</div>
               <div style="font-size:15px;font-weight:700;color:#e6a23c">合计 ¥{{ checkoutTotal.toFixed(2) }}</div>
             </div>
           </div>
@@ -317,11 +317,7 @@
               <div style="flex:1;min-width:0">
                 <div style="display:flex;align-items:center;gap:6px">
                   <span style="font-family:monospace;font-size:12px;color:#303133">{{ o.exptxserno }}</span>
-                  <el-tag size="small" :type="o.ttype === 'C' ? 'warning' : o.ttype === 'I' ? 'success' : ''" effect="plain">{{ ttypeLabel(o.ttype) }}</el-tag>
                   <span style="font-size:11px;color:#909399">{{ (o.vsdate||'').slice(0,4) }}/{{ (o.vsdate||'').slice(4,6) }}/{{ (o.vsdate||'').slice(6,8) }}</span>
-                </div>
-                <div v-if="o.items?.length" style="font-size:12px;color:#606266;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                  {{ o.items.join('、') }}
                 </div>
               </div>
               <span style="width:100px;text-align:right;font-weight:600;color:#e6a23c">¥{{ (o.totmount||0).toFixed(2) }}</span>
@@ -349,25 +345,38 @@
             </div>
             <div v-if="o.item_details?.length" style="padding:4px 10px 4px 46px;background:#f8f8f8;border-bottom:1px solid #f0f0f0;font-size:12px">
               <div style="display:flex;gap:6px;padding:2px 0;color:#909399;font-weight:500;border-bottom:1px solid #ebeef5">
-                <span style="flex:1">项目</span>
+                <span style="flex:1">交易类型 - 项目</span>
                 <span style="width:38px;text-align:center">数量</span>
                 <span style="width:60px;text-align:right">单价</span><span style="width:60px;text-align:right">金额</span>
                 <span style="width:44px;text-align:center">属性</span>
                 <span style="width:95px;text-align:center">员工</span>
               </div>
               <div v-for="d in o.item_details" :key="d.name" style="display:flex;gap:6px;align-items:center;padding:3px 0;color:#606266;border-bottom:1px solid #f5f5f5">
-                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.name }}</span>
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ (d.ttypename ? d.ttypename + '-' : '') + d.name + (['售卡','充值'].includes(d.ttypename) && d.ccode ? '（' + d.ccode.split('-').pop() + '）' : '') }}</span>
                 <span style="width:38px;text-align:center;color:#606266">×{{ Number(d.qty).toFixed(0) }}</span>
                 <span style="width:60px;text-align:right">¥{{ Number(d.price).toFixed(2) }}</span>
                 <span style="width:60px;text-align:right;font-weight:500;color:#e6a23c">¥{{ Number(d.subtotal).toFixed(2) }}</span>
-                <span style="width:44px;text-align:center"><el-tag size="small" effect="plain" :type="d.stypename === '赠送' ? 'warning' : ''">{{ d.stypename }}</el-tag></span>
+                <span style="width:44px;text-align:center"><el-tag size="small" effect="plain" :type="d.stypename === '赠送' ? 'warning' : undefined">{{ d.stypename }}</el-tag></span>
                 <span style="width:95px;text-align:center;font-size:11px;color:#909399;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ empNamesFromCodes(d.pmcode, d.asscode1, d.asscode2) }}</span>
               </div>
             </div>
             </template>
           </div>
 
-          <!-- 收银员 -->
+          <!-- 付款汇总 -->
+          <div v-if="Object.keys(checkoutPaymentSummary).length > 0" style="border:1px solid #ebeef5;border-radius:6px;padding:8px;margin:10px 0">
+            <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">💰 付款汇总</div>
+            <div v-for="(total, pcode) in checkoutPaymentSummary" :key="pcode" style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
+              <span>{{ findPaymodeName(pcode) }}</span>
+              <span style="font-weight:600">¥{{ total.toFixed(2) }}</span>
+            </div>
+            <div style="border-top:1px dashed #dcdfe6;margin:4px 0 2px"></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:3px 0;color:#303133">
+              <span>合计</span>
+              <span style="color:#e6a23c">¥{{ checkoutTotal.toFixed(2) }}</span>
+            </div>
+          </div>
+
           <div style="margin-top:14px;display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fafafa;border-radius:6px">
             <span style="font-size:13px;font-weight:500;color:#606266;white-space:nowrap">🔑 收银员：</span>
             <span style="font-size:14px;color:#303133">👤 {{ checkoutCashierName }}（{{ checkoutCashier }}）</span>
@@ -423,6 +432,7 @@
               <span style="margin-left:auto;font-size:10px;font-family:monospace;color:#c0c4cc">{{ o.serno }}</span>
             </div>
             <div style="display:flex;align-items:center;padding:4px 10px;background:#fafafa;font-size:11px;color:#909399;border-bottom:1px solid #f0f0f0">
+              <span style="width:30px;text-align:center">类别</span>
               <span style="flex:3">项目</span>
               <span style="width:38px;text-align:center">数量</span>
               <span style="width:70px;text-align:right">单价</span>
@@ -430,14 +440,21 @@
               <span style="width:38px;text-align:center">属性</span>
               <span style="width:80px;text-align:center">员工</span>
             </div>
-            <div v-for="(item, ii) in o.items" :key="ii" style="display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid #f5f5f5;font-size:13px">
-              <span style="flex:3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</span>
-              <span style="width:38px;text-align:center;color:#606266">×{{ Number(item.qty).toFixed(0) }}</span>
-              <span style="width:70px;text-align:right">¥{{ Number(item.price).toFixed(2) }}</span>
-              <span style="width:70px;text-align:right;font-weight:500">¥{{ Number(item.amount).toFixed(2) }}</span>
-              <span style="width:38px;text-align:center"><el-tag size="small" effect="plain" :type="item.stype === '赠送' ? 'warning' : undefined"" style="font-size:10px">{{ item.stypeabbr || item.stype }}</el-tag></span>
-              <span style="width:80px;text-align:center;font-size:11px;color:#909399;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.empName }}</span>
-            </div>
+            <template v-for="grp in groupedItems(o.items)" :key="grp.type">
+              <div v-for="(item, ii) in grp.items" :key="ii" style="display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid #f5f5f5;font-size:13px">
+                <span style="width:30px;text-align:center;font-size:11px;color:#909399">{{ ii === 0 ? grp.type : '' }}</span>
+                <span style="flex:3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</span>
+                <span style="width:38px;text-align:center;color:#606266">×{{ Number(item.qty).toFixed(0) }}</span>
+                <span style="width:70px;text-align:right">¥{{ Number(item.price).toFixed(2) }}</span>
+                <span style="width:70px;text-align:right;font-weight:500">¥{{ Number(item.amount).toFixed(2) }}</span>
+                <span style="width:38px;text-align:center"><el-tag size="small" effect="plain" :type="item.stype === '赠送' ? 'warning' : undefined" style="font-size:10px">{{ item.stypeabbr || item.stype }}</el-tag></span>
+                <span style="width:80px;text-align:center;font-size:11px;color:#909399;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.empName }}</span>
+              </div>
+              <div style="display:flex;justify-content:flex-end;padding:3px 10px;gap:10px;font-size:12px;color:#303133;font-weight:500;border-bottom:1px dashed #e0e0e0">
+                <span>{{ grp.type }}小计</span>
+                <span style="color:#e6a23c">¥{{ grp.subtotal.toFixed(2) }}</span>
+              </div>
+            </template>
           </div>
           <div style="border:1px solid #ebeef5;border-radius:6px;padding:8px;margin-bottom:8px">
             <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">💳 付款方式</div>
@@ -447,9 +464,19 @@
             </div>
             <div v-if="receiptData.cards?.length" style="border-top:1px dashed #ebeef5;margin-top:6px;padding-top:6px">
               <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">💳 卡余额</div>
-              <div v-for="(c, ci) in receiptData.cards" :key="ci" style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
-                <span>{{ c.comptype === 'times' ? '📋' : '💳' }} {{ c.cardname || c.ccode }}</span>
-                <span style="font-weight:500;color:#67c23a">{{ c.comptype === 'times' ? '剩余 ' + Number(c.leftqty).toFixed(0) + ' 次' : '¥' + Number(c.leftmoney).toFixed(2) }}</span>
+              <div v-for="(c, ci) in receiptData.cards" :key="ci" style="display:flex;gap:6px;font-size:12px;padding:2px 0">
+                <span style="flex:1">{{ c.comptype === 'times' ? '📋' : '💳' }} {{ c.cardname || c.ccode }}</span>
+                <div style="text-align:right">
+                  <template v-if="c.comptype === 'times'">
+                    <div v-if="c.added_qty && Number(c.added_qty) > 0" style="font-weight:500;color:#409eff">充值 {{ Number(c.added_qty || 0).toFixed(0) }} 次</div>
+                    <div style="font-weight:500;color:#e6a23c">消费 {{ Number(c.consumed_qty || 0).toFixed(0) }} 次</div>
+                  </template>
+                  <template v-else>
+                    <div v-if="c.added_amount && Number(c.added_amount) > 0" style="font-weight:500;color:#409eff">充值 ¥{{ Number(c.added_amount || 0).toFixed(2) }}</div>
+                    <div style="font-weight:500;color:#e6a23c">消费 ¥{{ Number(c.consumed_amount || 0).toFixed(2) }}</div>
+                  </template>
+                  <div style="font-weight:500;color:#67c23a">{{ c.comptype === 'times' ? '剩余 ' + Number(c.leftqty).toFixed(0) + ' 次' : '剩余 ¥' + Number(c.leftmoney).toFixed(2) }}</div>
+                </div>
               </div>
             </div>
             <div style="border-top:2px solid #303133;margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-size:15px;font-weight:700">
@@ -571,13 +598,13 @@ async function selectCheckoutVip(vip: any) {
   custCheckoutLoading.value = true
   custCheckoutPayments.value = []
   try {
-    const res = await request.get('/adviser/customer_checkout/', { params: { company, storecode, vipuuid: vip.uuid } })
+    const res = await request.get('/cashier/customer_checkout/', { params: { company, storecode, vipuuid: vip.uuid } })
     if (res.data?.ok) {
       custCheckoutData.value = res.data
       const pendingTotal = res.data.summary?.pending?.total || 0
       if (pendingTotal > 0.01) {
         const defPcode = paymentDefaults.value?.normal_pcode || ''
-        custCheckoutPayments.value = [{ pcode: defPcode, amount: pendingTotal }]
+        custCheckoutPayments.value = [{ pcode: defPcode, amount: pendingTotal, _default: true }]
       }
     } else {
       ElMessage.warning(res.data?.message || '无法获取结账汇总')
@@ -594,8 +621,25 @@ const paymodes = ref<any[]>([])
 const paymentDefaults = ref<Record<string, string>>({})
 const checkoutSplits = ref<Record<string, any[]>>({})
 
-const checkoutTotal = computed(() => checkoutOrders.value.reduce((s: number, o: any) => s + (o.totmount || 0), 0))
+const checkoutTotal = computed(() =>
+  checkoutOrders.value
+    .filter((o: any) => checkoutSelections.value[o.uuid])
+    .reduce((s: number, o: any) => s + (o.totmount || 0), 0)
+)
 const checkoutSelectedCount = computed(() => Object.values(checkoutSelections.value).filter(Boolean).length)
+const checkoutPaymentSummary = computed(() => {
+  const summary: Record<string, number> = {}
+  for (const o of checkoutOrders.value) {
+    if (!checkoutSelections.value[o.uuid]) continue
+    const sps = checkoutSplits.value[o.uuid] || []
+    for (const sp of sps) {
+      const key = sp.pcode || '__default__'
+      summary[key] = (summary[key] || 0) + (sp.amount || 0)
+    }
+  }
+  return summary
+})
+
 const checkoutIndeterminate = computed(() => {
   const vals = Object.values(checkoutSelections.value)
   return vals.some(Boolean) && !vals.every(Boolean)
@@ -657,30 +701,51 @@ function initCheckoutSplitsForOrder(o: any) {
   const total = o.totmount || 0
   const sps: any[] = []
   const defPcode = paymentDefaults.value?.normal_pcode || ''
-  if (o.paycode) {
-    const card = vipCheckoutCards.value.find((c: any) => c.ccode === o.paycode)
-    const bal = parseFloat(card?.leftmoney || 0)
-    sps.push({ pcode: defPcode, ccode: o.paycode, amount: Math.min(total, bal), cardBalance: bal, _isCard: true })
-  }
-  const remaining = total - sps.reduce((s: number, sp: any) => s + sp.amount, 0)
-  if (remaining > 0.01) {
+ if (o.paycode) {
+   const card = vipCheckoutCards.value.find((c: any) => c.ccode === o.paycode)
+   const bal = parseFloat(card?.leftmoney || 0)
+    const cardPcode = (o.paytype && paymodes.value.find((pm: any) => pm.pcode === o.paytype)) ? o.paytype : defPcode
+    sps.push({ pcode: cardPcode, ccode: o.paycode, amount: Math.min(total, bal), cardBalance: bal, _isCard: true })
+ }
+ const remaining = total - sps.reduce((s: number, sp: any) => s + sp.amount, 0)
+  if (remaining > 0.01 || sps.length === 0) {
     sps.push({ pcode: defPcode, ccode: '', amount: Math.round(remaining * 100) / 100, _default: true })
   }
   return sps
 }
 
+function rebalanceSplits(o: any) {
+  const sps = checkoutSplits.value[o.uuid]
+  if (!sps || !sps.length) return
+  const total = o.totmount || 0
+  const paid = sps.reduce((s: number, sp: any) => s + (sp.amount || 0), 0)
+  const diff = paid - total
+  if (diff > 0.01) {
+    ElMessage.warning('多付了※实际应付 ¥' + total.toFixed(2))
+    for (let i = sps.length - 1; i >= 0; i--) {
+      if (!sps[i]._default) {
+        sps[i].amount = Math.max(0, Math.round((sps[i].amount - diff) * 100) / 100)
+        break
+      }
+    }
+  } else if (diff < -0.01) {
+    const def = sps.find((sp: any) => sp._default)
+    if (def) {
+      def.amount = Math.max(0, Math.round((total - (paid - (def.amount || 0))) * 100) / 100)
+    } else {
+      const defPcode = paymentDefaults.value?.normal_pcode || ''
+      sps.push({ pcode: defPcode, ccode: '', amount: Math.round(-diff * 100) / 100, _default: true })
+    }
+  }
+}
+
 function onSplitAmountChange(o: any, si: number) {
   const sps = checkoutSplits.value[o.uuid]
   if (!sps || si >= sps.length) return
-  const total = o.totmount || 0
   const sp = sps[si]
   if (sp._isCard && sp.cardBalance && sp.amount > sp.cardBalance) sp.amount = sp.cardBalance
   if (sp.amount < 0) sp.amount = 0
-  const fixed = sps.reduce((s: number, sp2: any, i: number) => s + (i !== si && !sp2._default ? sp2.amount : 0), 0)
-  const defaultIdx = sps.findIndex((s: any) => s._default)
-  if (defaultIdx >= 0) {
-    sps[defaultIdx].amount = Math.max(0, total - fixed - (si !== defaultIdx && !sp._default ? sp.amount : 0))
-  }
+  rebalanceSplits(o)
 }
 
 function onSplitMethodChange(o: any, si: number) {
@@ -719,11 +784,8 @@ function addSplitMethod(o: any) {
 function removeSplit(o: any, si: number) {
   const sps = checkoutSplits.value[o.uuid]
   if (!sps || si >= sps.length || sps.length <= 1) return
-  const removed = sps.splice(si, 1)[0]
-  const total = o.totmount || 0
-  const fixed = sps.reduce((s: number, sp2: any) => s + (!sp2._default ? sp2.amount : 0), 0)
-  const defaultIdx = sps.findIndex((s: any) => s._default)
-  if (defaultIdx >= 0) sps[defaultIdx].amount = Math.max(0, total - fixed)
+  sps.splice(si, 1)
+  rebalanceSplits(o)
 }
 
 function splitRemaining(o: any) {
@@ -755,8 +817,8 @@ function availableSplitsForSplit(o: any, currentSp: any) {
 
 function findPaymodeName(pcode: string): string {
   if (!pcode) return '未指定'
-  const m = paymodeOptions.value.find(p => p.value === pcode)
-  return m ? m.label : pcode
+  const m = paymodes.value.find((p: any) => p.pcode === pcode)
+  return m ? m.pname : pcode
 }
 
 const paymodeOptions = ref<{label:string;value:string;iscash:string}[]>([])
@@ -889,10 +951,10 @@ async function checkout(row: any) {
     const list = Array.isArray(res.data) ? res.data : []
     checkoutOrders.value = list
     checkoutPayments.value = {}
-    checkoutSplits.value = {}
-    for (const o of list) { 
-      checkoutSelections.value[o.uuid] = true
-      checkoutPayments.value[o.uuid] = o.paycode || (paymentDefaults.value?.normal_pcode || paymentDefaults.value?.send_pcode || '')
+      checkoutSplits.value = {}
+      for (const o of list) { 
+      checkoutSelections.value[o.uuid] = (o.uuid === row.uuid)
+       checkoutPayments.value[o.uuid] = o.paycode || (paymentDefaults.value?.normal_pcode || paymentDefaults.value?.send_pcode || '')
       // 初始化付款拆分
       const total = o.totmount || 0
       const sps: any[] = []
@@ -900,17 +962,18 @@ async function checkout(row: any) {
       const defPm = paymodes.value.find((pm: any) => pm.pcode === defPcode)
       if (o.paycode) {
         const card = vipCheckoutCards.value.find((c: any) => c.ccode === o.paycode)
-        const bal = parseFloat(card?.leftmoney || 0)
-        const cardAmt = Math.min(total, bal)
-        sps.push({ pcode: defPcode, ccode: o.paycode, amount: cardAmt, cardBalance: bal, _isCard: true })
-      }
-      const remaining = total - sps.reduce((s: number, sp: any) => s + sp.amount, 0)
-      if (remaining > 0.01) {
+       const bal = parseFloat(card?.leftmoney || 0)
+       const cardAmt = Math.min(total, bal)
+        const cardPcode = (o.paytype && paymodes.value.find((pm: any) => pm.pcode === o.paytype)) ? o.paytype : defPcode
+        sps.push({ pcode: cardPcode, ccode: o.paycode, amount: cardAmt, cardBalance: bal, _isCard: true })
+     }
+     const remaining = total - sps.reduce((s: number, sp: any) => s + sp.amount, 0)
+      if (remaining > 0.01 || sps.length === 0) {
         sps.push({ pcode: defPcode, ccode: '', amount: Math.round(remaining * 100) / 100, _default: true })
       }
       checkoutSplits.value[o.uuid] = sps
     }
-    checkoutSelectAll.value = true
+    checkoutSelectAll.value = false
     // 获取会员可用卡片
     try {
       const cardRes = await request.get('/adviser/get_vip_cardlist/', { params: { company, vipuuid } })
@@ -922,7 +985,7 @@ async function checkout(row: any) {
     } catch { vipCheckoutCards.value = [] }
     // 加载付款方式列表
     try {
-      const pmRes = await request.get('/adviser/payment_methods/', { params: { company } })
+      const pmRes = await request.get('/cashier/payment_methods/', { params: { company } })
       if (pmRes.data?.paymodes) {
         paymodes.value = pmRes.data.paymodes
         paymentDefaults.value = pmRes.data.defaults || {}
@@ -943,6 +1006,7 @@ async function confirmCheckout() {
   if (!uuids.length) return
   checkoutSubmitting.value = true
   try {
+  console.log('[confirmCheckout] uuids:', uuids)
     const splits: Record<string, any[]> = {}
     for (const uuid of uuids) {
       const sp = checkoutSplits.value[uuid]
@@ -950,9 +1014,12 @@ async function confirmCheckout() {
         splits[uuid] = sp.map((s: any) => ({ pcode: s.pcode, ccode: s.ccode || '', amount: s.amount }))
       }
     }
-    const res = await request.post('/adviser/batch_checkout/', {
+  console.log('[confirmCheckout] splits:', JSON.parse(JSON.stringify(splits)))
+    const res = await request.post('/cashier/batch_checkout/', {
       company, storecode, cashier: checkoutCashier.value, uuids, splits,
+      payments: checkoutPayments.value,
     })
+  console.log('[confirmCheckout] response:', res.data)
     if (res.data?.ok) {
       const s = res.data.success || 0
       ElMessage.success(`结账完成：${s}/${res.data.total || uuids.length} 单成功`)
@@ -1062,7 +1129,7 @@ function groupedItems(details: any[]) {
     const t = d.ttypename || '\u5176\u4ed6'
     if (!groups[t]) groups[t] = { type: t, items: [], subtotal: 0 }
     groups[t].items.push(d)
-    groups[t].subtotal += Number(d.subtotal || 0)
+    groups[t].subtotal += Number(d.subtotal || d.amount || 0)
   }
   return Object.values(groups)
 }
@@ -1135,7 +1202,7 @@ function copyReceiptText() {
 
 async function showReceiptForRow(row: any) {
   try {
-    const res = await request.get('/adviser/get_receipt/', { params: { hunguuid: row.uuid, company } })
+    const res = await request.get('/cashier/get_receipt/', { params: { hunguuid: row.uuid, company } })
     if (res.data?.ok) {
       showReceipt(res.data)
     } else {
@@ -1154,12 +1221,22 @@ async function openCustomerCheckout() {
     checkoutCashier.value = appStore.cashierCode || appStore.ecode
     checkoutCashierName.value = appStore.cashierName || appStore.fullname
   }
+  // 加载付款方式
+  if (!paymodes.value.length) {
+    try {
+      const pmRes = await request.get('/cashier/payment_methods/', { params: { company } })
+      if (pmRes.data?.paymodes) {
+        paymodes.value = pmRes.data.paymodes
+        paymentDefaults.value = pmRes.data.defaults || {}
+      }
+    } catch {}
+  }
   custCheckoutVisible.value = true
   custCheckoutLoading.value = true
   custCheckoutData.value = null
   custCheckoutPayments.value = []
   try {
-    const res = await request.get('/adviser/customer_checkout/', {
+    const res = await request.get('/cashier/customer_checkout/', {
       params: { company, storecode, vipuuid: vip.vipuuid }
     })
     if (res.data?.ok) {
@@ -1168,7 +1245,7 @@ async function openCustomerCheckout() {
       const pendingTotal = res.data.summary?.pending?.total || 0
       if (pendingTotal > 0.01) {
         const defPcode = paymentDefaults.value?.normal_pcode || ''
-        custCheckoutPayments.value = [{ pcode: defPcode, amount: pendingTotal }]
+        custCheckoutPayments.value = [{ pcode: defPcode, amount: pendingTotal, _default: true }]
       }
     } else {
       ElMessage.warning(res.data?.message || '无法获取结账汇总')
@@ -1211,7 +1288,7 @@ async function confirmCustomerCheckout() {
   }
   checkoutSubmitting.value = true
   try {
-    const res = await request.post('/adviser/customer_checkout_confirm/', {
+    const res = await request.post('/cashier/customer_checkout_confirm/', {
       company, storecode,
       vipuuid: custCheckoutVipUuid.value,
       cashier: checkoutCashier.value,
@@ -1264,28 +1341,57 @@ function custAddPayment() {
   if (!avail) { ElMessage.info('没有更多可用的付款方式'); return }
   const remaining = custRemaining.value
   if (remaining <= 0.01) { ElMessage.info('金额已分配完毕'); return }
-  custCheckoutPayments.value.push({ pcode: avail.pcode, amount: Math.round(remaining * 100) / 100 })
+  custCheckoutPayments.value.push({ pcode: avail.pcode, amount: Math.round(remaining * 100) / 100, _default: false })
 }
 
 function custRemovePayment(idx: number) {
   if (custCheckoutPayments.value.length <= 1) return
   custCheckoutPayments.value.splice(idx, 1)
-  // 自动调整最后一个的金额
+  rebalancePayments()
+}
+
+function rebalancePayments() {
   const total = custPendingTotal.value
+  if (total <= 0) return
   const paid = custCheckoutPayments.value.reduce((s: number, p: any) => s + (p.amount || 0), 0)
-  if (custCheckoutPayments.value.length > 0) {
-    custCheckoutPayments.value[custCheckoutPayments.value.length - 1].amount = Math.max(0, Math.round((total - paid + custCheckoutPayments.value[custCheckoutPayments.value.length - 1].amount) * 100) / 100)
+  const diff = paid - total
+  if (diff > 0.01) {
+    // 超付：警告并截断最后一个非默认项
+    ElMessage.warning('多付了※实际应付 ¥' + total.toFixed(2))
+    for (let i = custCheckoutPayments.value.length - 1; i >= 0; i--) {
+      const p = custCheckoutPayments.value[i]
+      if (!p._default) {
+        const cut = Math.min(p.amount, diff)
+        p.amount = Math.max(0, Math.round((p.amount - cut) * 100) / 100)
+        break
+      }
+    }
+  } else if (diff < -0.01) {
+    // 少付：找默认项补足，无默认项时自动添加
+    const def = custCheckoutPayments.value.find((p: any) => p._default)
+    if (def) {
+      // 有默认项 → 调整其金额使合计 = 待付金额
+      def.amount = Math.round((total - (paid - (def.amount || 0))) * 100) / 100
+    } else {
+      // 无默认项（用户改了付款方式）→ 自动添加一行默认付款金额 = 差额
+      const defPcode = paymentDefaults.value?.normal_pcode || ''
+      custCheckoutPayments.value.push({ pcode: defPcode, amount: Math.round(-diff * 100) / 100, _default: true })
+    }
   }
+  // 强制刷新剩余显示
 }
 
 function custOnAmountChange() {
-  const total = custPendingTotal.value
-  const paid = custCheckoutPayments.value.reduce((s: number, p: any) => s + (p.amount || 0), 0)
-  if (paid > total + 0.01 && custCheckoutPayments.value.length > 0) {
-    // 超额时调最后一个
-    const last = custCheckoutPayments.value[custCheckoutPayments.value.length - 1]
-    last.amount = Math.max(0, last.amount - (paid - total))
+  rebalancePayments()
+}
+
+function custOnPmChange(idx: number) {
+  const pm = custCheckoutPayments.value[idx]
+  if (pm?._default) {
+    // 默认项被改了付款方式，仅取消其默认标记，不新增行
+    pm._default = false
   }
+  rebalancePayments()
 }
 
 </script>

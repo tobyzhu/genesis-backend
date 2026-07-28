@@ -100,9 +100,19 @@ const menuGroups = [
     title: '开单',
     icon: 'Ticket',
     children: [
-      { path: '/cashier', title: '手工开单' },
-      { path: '/adviser/billing-v2', title: '手工开单-v2' },
+      { path: '/adviser/billing-v2', title: '手工开单' },
       { path: '/adviser/hungs', title: '开单管理' },
+    ],
+  },
+  {
+    key: 'cashdesk',
+    title: '收银台',
+    icon: 'Coin',
+    children: [
+      { path: '/cashier/checkout', title: '收银结账' },
+      { path: '/cashier/modify', title: '修改单据' },
+      { path: '/cashier/void', title: '作废单据' },
+      { path: '/cashier/shift', title: '交班日结' },
     ],
   },
   {
@@ -120,8 +130,16 @@ const menuGroups = [
     icon: 'Calendar',
     children: [
       { path: '/booking', title: '预约管理' },
-      { path: '/goods', title: '商品管理' },
       { path: '/campaign', title: '营销活动' },
+    ],
+  },
+  {
+    key: "goods",
+    title: "商品/库存",
+    icon: "Goods",
+    children: [
+      { path: "/goods", title: "商品管理" },
+      { path: "/goods/stock", title: "进出货管理" },
     ],
   },
   {

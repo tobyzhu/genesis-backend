@@ -16,6 +16,13 @@
             <view wx:if="{{vip.sourceName}}">来店渠道：{{vip.sourceName}}</view>
             <view wx:if="{{vip.viplevelName || vip.viplevel}}">等级：{{vip.viplevelName || vip.viplevel}}</view>
         </view>
+        <view wx:if="{{vip.tags}}" class="page__desc">
+            <view class="vip-tags-wrap">
+                <block wx:for="{{tagList}}" wx:key="item">
+                    <view class="vip-tag">{{item}}</view>
+                </block>
+            </view>
+        </view>
     </view>
 
 

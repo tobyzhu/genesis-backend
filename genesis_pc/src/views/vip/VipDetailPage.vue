@@ -88,7 +88,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="消费记录" name="consumption">
-          <el-table
+<el-table
             v-if="consumptions.length"
             :data="consumptions"
             v-loading="consumptionLoading"
@@ -122,6 +122,99 @@
           </el-table>
           <el-empty v-else v-loading="consumptionLoading" description="暂无消费记录" />
         </el-tab-pane>
+          <el-tab-pane label="沟通记录" name="communication">
+            <el-empty description="沟通记录功能开发中" />
+          </el-tab-pane>
+          <el-tab-pane label="客户洞察" name="insight">
+            <el-form :inline="true" size="small" style="margin-bottom:12px">
+              <el-form-item label="统计期间">
+                <el-date-picker v-model="insightDateFrom" type="date" value-format="YYYYMMDD" style="width:140px" placeholder="开始日期" />
+                <span style="margin:0 4px">~</span>
+                <el-date-picker v-model="insightDateTo" type="date" value-format="YYYYMMDD" style="width:140px" placeholder="结束日期" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" size="small" @click="loadInsight">查询</el-button>
+              </el-form-item>
+            </el-form>
+            <div v-if="insightData" v-loading="insightLoading">
+              <el-descriptions :column="3" border size="small" style="margin-bottom:16px">
+                <el-descriptions-item label="统计范围">{{ insightData.date_from || insightDateFrom }} ~ {{ insightData.date_to || insightDateTo }}</el-descriptions-item>
+                <el-descriptions-item label="最近到店">{{ insightData.last_visit_date || '暂无' }}</el-descriptions-item>
+                <el-descriptions-item label="平均到店周期">{{ insightData.avg_visit_cycle ?? '—' }} 天</el-descriptions-item>
+              </el-descriptions>
+              <el-row :gutter="16" style="margin-bottom:16px">
+                <el-col :span="8"><el-statistic title="累计到店" :value="insightData.total_visits" /></el-col>
+                <el-col :span="8"><el-statistic title="累计消费" :value="insightData.total_spent" prefix="¥" :precision="2" /></el-col>
+                <el-col :span="8"><el-statistic title="平均客单价" :value="insightData.avg_spend" prefix="¥" :precision="2" /></el-col>
+              </el-row>
+              <div v-if="insightData.preferred_items?.length" style="margin-top:16px">
+                <h4 style="margin:0 0 8px 0">偏好项目 TOP 5</h4>
+                <el-table :data="insightData.preferred_items" stripe size="small">
+                  <el-table-column prop="srvname" label="项目名称" min-width="140" />
+                  <el-table-column prop="count" label="消费次数" width="100" align="center" />
+                  <el-table-column label="累计金额" width="120" align="right">
+                    <template #default="{row}">¥{{ Number(row.total_amount).toFixed(2) }}</template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <div v-if="insightData.preferred_employee" style="margin-top:12px">
+                <el-tag type="info">偏好员工：{{ insightData.preferred_employee.ename || insightData.preferred_employee.ecode }}（{{ insightData.preferred_employee.count }} 次服务）</el-tag>
+              </div>
+              <div v-if="insightData.card_count !== undefined" style="margin-top:12px">
+                <el-tag type="success">当前活跃卡 {{ insightData.card_count }} 张</el-tag>
+              </div>
+            </div>
+            <el-empty v-else description="请选择日期范围点击查询" />
+          </el-tab-pane>
+          <el-tab-pane label="健康档案" name="health">
+            <el-form :inline="true" size="small" :model="healthForm" style="margin-bottom:12px">
+              <el-form-item label="肤质">
+                <el-select v-model="healthForm.skin_type" placeholder="选择" clearable style="width:120px">
+                  <el-option label="干性" value="dry" /><el-option label="油性" value="oily" />
+                  <el-option label="混合性" value="mixed" /><el-option label="敏感性" value="sensitive" />
+                  <el-option label="中性" value="normal" /><el-option label="其他" value="other" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="过敏信息">
+                <el-select v-model="healthForm.allergies" multiple filterable allow-create clearable placeholder="选择或输入" style="width:220px">
+                  <el-option v-for="o in allergyOptions" :key="o" :label="o" :value="o" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="身体问题">
+                <el-select v-model="healthForm.body_concerns" multiple filterable allow-create clearable placeholder="选择或输入" style="width:220px">
+                  <el-option v-for="o in bodyConcernOptions" :key="o" :label="o" :value="o" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="操作禁忌">
+                <el-select v-model="healthForm.contraindications" multiple filterable allow-create clearable placeholder="选择或输入" style="width:220px">
+                  <el-option v-for="o in contraindicationOptions" :key="o" :label="o" :value="o" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="备注"><el-input v-model="healthForm.notes" style="width:160px" /></el-form-item>
+              <el-form-item>
+                <el-button type="primary" size="small" :loading="healthSaving" @click="saveHealthRecord">{{ editingHealth ? '保存修改' : '新增记录' }}</el-button>
+                <el-button v-if="healthRecords.length" size="small" @click="fillFromLastRecord">基于上次</el-button>
+                <el-button v-if="editingHealth" size="small" @click="cancelEditHealth">取消</el-button>
+              </el-form-item>
+            </el-form>
+            <el-table :data="healthRecords" v-loading="healthLoading" stripe size="small" max-height="360">
+              <el-table-column prop="record_date" label="记录日期" width="100" />
+              <el-table-column label="肤质" width="80">
+                <template #default="{row}">{{ {dry:'干性',oily:'油性',mixed:'混合性',sensitive:'敏感性',normal:'中性',other:'其他'}[row.skin_type] || row.skin_type }}</template>
+              </el-table-column>
+              <el-table-column prop="allergies" label="过敏" width="120" show-overflow-tooltip />
+              <el-table-column prop="body_concerns" label="身体问题" width="140" show-overflow-tooltip />
+              <el-table-column prop="contraindications" label="禁忌" width="120" show-overflow-tooltip />
+              <el-table-column prop="notes" label="备注" width="140" show-overflow-tooltip />
+              <el-table-column label="操作" width="100" fixed="right">
+                <template #default="{row}">
+                  <el-button link type="primary" size="small" @click="editHealthRecord(row)">编辑</el-button>
+                  <el-button link type="danger" size="small" @click="deleteHealthRecord(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="!healthLoading && healthRecords.length === 0" description="暂无健康档案，请在上方表单中添加" />
+          </el-tab-pane>
       </el-tabs>
     </el-card>
 
@@ -130,11 +223,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getVipDetail, getVipCards, getVipConsumption, getAppoptionBySeg } from '@/api/vip'
+import { getVipDetail, getVipCards, getVipConsumption, getAppoptionBySeg,
+  getVipInsight, getHealthRecords, createHealthRecord, updateHealthRecord, deleteHealthRecord,
+} from '@/api/vip'
 import type { Vip } from '@/types'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const vipUuid = route.params.id as string
@@ -351,9 +446,130 @@ function handleConsumeSort() {
   buildConsumeSpanMap()
 }
 
-function handleTabChange(name: string) {
-  if (name === 'cards') fetchCards()
-  if (name === 'consumption') fetchConsumptions()
+
+// ---- 客户洞察 ----
+const insightDateFrom = ref('')
+const insightDateTo = ref('')
+const insightData = ref<any>(null)
+const insightLoading = ref(false)
+function initInsightDates() {
+  const now = new Date()
+  const fmt = (dt: Date) => "" + dt.getFullYear() + String(dt.getMonth()+1).padStart(2,'0') + String(dt.getDate()).padStart(2,'0')
+  const lastYear = new Date(now); lastYear.setFullYear(now.getFullYear() - 1)
+  insightDateFrom.value = fmt(lastYear)
+  insightDateTo.value = fmt(now)
+}
+initInsightDates()
+async function loadInsight() {
+  if (!vipUuid) return
+  insightLoading.value = true
+  try {
+    const res = await getVipInsight(vipUuid, insightDateFrom.value || undefined, insightDateTo.value || undefined)
+    insightData.value = res.data
+  } catch { /* ignore */ }
+  finally { insightLoading.value = false }
+}
+
+// ---- 健康档案 ----
+const healthRecords = ref<any[]>([])
+const allergyOptions = ref<string[]>([])
+const bodyConcernOptions = ref<string[]>([])
+const contraindicationOptions = ref<string[]>([])
+const healthLoading = ref(false)
+const healthSaving = ref(false)
+const editingHealth = ref(false)
+const editingHealthUuid = ref('')
+const healthForm = reactive({ skin_type: '', allergies: [] as string[], body_concerns: [] as string[], contraindications: [] as string[], notes: '' })
+
+function resetHealthForm() {
+  healthForm.skin_type = ''; healthForm.allergies = []; healthForm.body_concerns = []
+  healthForm.contraindications = []; healthForm.notes = ''
+  editingHealth.value = false; editingHealthUuid.value = ''
+}
+
+async function loadHealthOptions() {
+  try {
+    const res = await getAppoptionBySeg('health_allergies')
+    allergyOptions.value = res.data.map((o: any) => o.itemvalues || o.itemname)
+  } catch { allergyOptions.value = [] }
+  try {
+    const res = await getAppoptionBySeg('health_body_concerns')
+    bodyConcernOptions.value = res.data.map((o: any) => o.itemvalues || o.itemname)
+  } catch { bodyConcernOptions.value = [] }
+  try {
+    const res = await getAppoptionBySeg('health_contraindications')
+    contraindicationOptions.value = res.data.map((o: any) => o.itemvalues || o.itemname)
+  } catch { contraindicationOptions.value = [] }
+}
+
+async function loadHealthRecords() {
+  if (!vipUuid) return
+  healthLoading.value = true
+  try {
+    const res = await getHealthRecords(vipUuid)
+    healthRecords.value = res.data
+  } catch { healthRecords.value = [] }
+  finally { healthLoading.value = false }
+}
+
+async function saveHealthRecord() {
+  healthSaving.value = true
+  try {
+    const data = { 
+      vipuuid: vipUuid, skin_type: healthForm.skin_type,
+      allergies: healthForm.allergies.join(','), 
+      body_concerns: healthForm.body_concerns.join(','),
+      contraindications: healthForm.contraindications.join(','),
+      notes: healthForm.notes,
+    }
+    if (editingHealth.value) {
+      await updateHealthRecord(editingHealthUuid.value, data)
+    } else {
+      await createHealthRecord(data)
+    }
+    resetHealthForm()
+    await loadHealthRecords()
+  } catch { /* ignore */ }
+  finally { healthSaving.value = false }
+}
+
+function editHealthRecord(row: any) {
+  editingHealth.value = true
+  editingHealthUuid.value = row.uuid
+  healthForm.skin_type = row.skin_type || ''
+  healthForm.allergies = (row.allergies || '').split(',').filter(Boolean)
+  healthForm.body_concerns = (row.body_concerns || '').split(',').filter(Boolean)
+  healthForm.contraindications = (row.contraindications || '').split(',').filter(Boolean)
+  healthForm.notes = row.notes || ''
+}
+
+function cancelEditHealth() { resetHealthForm() }
+
+function fillFromLastRecord() {
+  if (!healthRecords.value.length) return
+  const last = healthRecords.value[0]
+  healthForm.skin_type = last.skin_type || ''
+  healthForm.allergies = (last.allergies || '').split(',').filter(Boolean)
+  healthForm.body_concerns = (last.body_concerns || '').split(',').filter(Boolean)
+  healthForm.contraindications = (last.contraindications || '').split(',').filter(Boolean)
+  healthForm.notes = last.notes || ''
+  editingHealth.value = false; editingHealthUuid.value = ''
+}
+
+function deleteHealthRecord(row: any) {
+  ElMessageBox.confirm('删除此健康档案记录？', '确认', { type: 'warning' }).then(async () => {
+    await deleteHealthRecord(row.uuid)
+    ElMessage.success('已删除')
+    loadHealthRecords()
+  }).catch(() => {})
+}
+
+// ---- Tab 切换 ----
+function handleTabChange(tab: string) {
+  if (tab === 'cards') fetchCards()
+  else if (tab === 'consumption') fetchConsumptions()
+  else if (tab === 'insight') loadInsight()
+  else if (tab === 'health') { loadHealthRecords(); loadHealthOptions() }
 }
 </script>
 

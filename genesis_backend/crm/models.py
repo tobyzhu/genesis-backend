@@ -163,3 +163,27 @@ class CrmInfoItemChoice(CompanyCommonBaseModel):
 
     def __str__(self):
         return self.choiceitemname
+
+# ===== 健康档案 =====
+
+class VipHealthRecord(GenesisModel):
+    SKIN_TYPE = (
+        ('dry', '干性'), ('oily', '油性'),
+        ('mixed', '混合性'), ('sensitive', '敏感性'),
+        ('normal', '中性'), ('other', '其他'),
+    )
+    vipuuid = models.ForeignKey(Vip, db_column='vipuuid', on_delete=models.CASCADE,
+                                verbose_name='客户')
+    record_date = models.DateField(auto_now_add=True, verbose_name='记录日期')
+    skin_type = models.CharField(max_length=20, choices=SKIN_TYPE, blank=True, null=True,
+                                 verbose_name='肤质')
+    allergies = models.TextField(blank=True, null=True, verbose_name='过敏信息')
+    body_concerns = models.TextField(blank=True, null=True, verbose_name='身体问题')
+    contraindications = models.TextField(blank=True, null=True, verbose_name='操作禁忌')
+    notes = models.TextField(blank=True, null=True, verbose_name='备注')
+
+    class Meta:
+        verbose_name = '健康档案'
+        verbose_name_plural = '健康档案'
+        managed = True
+        db_table = 'vip_health_record'

@@ -50,6 +50,7 @@ SEGS_CORE = [
     ('viplevel', '会员级别'),
     ('brand', '品牌'),
     ('tags', '标签'),
+    ('viptags','会员标签'),
     ('financeclass1', '财务分类（一）'),
     ('financeclass2', '财务分类（二）'),
     ('displayclass1', '显示分类(方法一)'),
@@ -166,7 +167,12 @@ class Storeinfo(BaseModel):
     def __str__(self):
         return self.storename
 
-STOREINFO = Storeinfo.objects.filter(company=COMPANY).values_list('storecode', 'storename')
+try:
+    # 提前求值为列表，避免 MultiSelectField.__init__ 中重复查询
+    STOREINFO = list(Storeinfo.objects.filter(company=COMPANY).values_list('storecode', 'storename'))
+except Exception:
+    # 测试或无数据库连接时兜底，不影响运行时通过 AppConfig.ready() 获取实时数据
+    STOREINFO = []
 
 class BankAccount(BaseModel):
     accountcode = models.CharField(max_length=16, blank=True, null=True, verbose_name='编号')
@@ -778,7 +784,7 @@ class Vip(GenesisModel):
     source = models.CharField(max_length=32, blank=True, null=True, verbose_name='来店渠道')
     pinyin = models.CharField(max_length=32, blank=True, null=True, verbose_name='拼音')
     occupation = models.CharField(max_length=16, blank=True, null=True, verbose_name='职业')
-    tags = MultiSelectField(choices=VIPTAGS, max_length=64, blank=True, null=True, verbose_name='标签')
+    tags = MultiSelectField(choices=VIPTAGS, max_length=500, blank=True, null=True, verbose_name='标签')
     referreruuid = models.UUIDField(blank=True, null=True, verbose_name='推荐人UUID')
     referrervcode = models.CharField(max_length=16, blank=True, null=True, verbose_name='推荐人姓名')
     openid = models.CharField(max_length=32, blank=True, null=True, verbose_name='微信openid')

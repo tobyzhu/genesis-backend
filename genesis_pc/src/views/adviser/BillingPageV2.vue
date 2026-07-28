@@ -28,7 +28,7 @@
             <div class="vip-card-name">{{ selectedVip.vname }}
               <el-tag size="small" type="info">{{ selectedVip.viplevel || '无' }}</el-tag>
               <el-tag size="small">{{ selectedVip.viptype === '10' ? '会员' : '散客' }}</el-tag>
-              <el-button text type="primary" size="small" style="margin-left:auto" @click="openVipProfile(selectedVip.uuid)">查看详情</el-button>
+              <el-button text type="primary" size="small" style="margin-left:auto" @click="vipProfile.showProfile(selectedVip.uuid)">查看详情</el-button>
             </div>
             <div class="vip-card-info"><span>会员号: {{ selectedVip.vcode }}</span><span>手机: {{ selectedVip.mtcode }}</span></div>
             <div v-if="selectedVip.ecode || selectedVip.ecode2" class="vip-card-emp">
@@ -55,7 +55,7 @@
                     </div>
                   </div>
                   <div class="cg-card-right">
-                    <div class="cg-card-amount">{{ card.comptype === 'times' ? (card.leftqty ?? 0) + '次' : '¥' + parseFloat(card.leftmoney ?? 0).toFixed(0) }}</div>
+                    <div class="cg-card-amount">{{ card.comptype === 'times' ? (card.leftqty ?? 0) + '次 × ¥' + parseFloat(card.s_price ?? 0).toFixed(0) + ' = ¥' + parseFloat(card.leftmoney ?? 0).toFixed(0) : '¥' + parseFloat(card.leftmoney ?? 0).toFixed(0) }}</div>
                     <div v-if="card.valdate" class="cg-card-expire">{{ String(card.valdate).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3') }}</div>
                   </div>
                 </div>
@@ -100,12 +100,13 @@
                     </div>
                   </template>
                 </div>
-                <div class="item-grid-panel">
-                  <div class="item-grid">
-                    <div v-for="item in filteredItems" :key="item.code" class="item-card" @click="itemTab === 'C' ? addCardSale(item) : addToCart(item)">
-                      <div class="item-name">{{ item.name }}</div>
-                      <div class="item-price">¥{{ parseFloat(item.price ?? 0) }}</div>
-                    </div>
+               <div class="item-grid-panel">
+                  <div v-if="selectedCard?.comptype === 'times'" class="times-card-hint">💡 已选计次卡，双击计次卡添加关联项目</div>
+                 <div class="item-grid">
+                    <div v-for="item in filteredItems" :key="item.code" class="item-card" :class="{ 'item-disabled': selectedCard?.comptype === 'times' }" @click="selectedCard?.comptype === 'times' ? null : (itemTab === 'C' ? addCardSale(item) : addToCart(item))">
+                     <div class="item-name">{{ item.name }}</div>
+                     <div class="item-price">¥{{ parseFloat(item.price ?? 0) }}</div>
+                   </div>
                     <el-empty v-if="!filteredItems.length" :description="itemsLoading ? '加载中...' : '无匹配项目'" />
                   </div>
                 </div>
@@ -129,8 +130,11 @@
                       <template v-else>余额: ¥{{ parseFloat(card.leftmoney ?? 0).toFixed(0) }}</template>
                     </div>
                     <div class="rc-actions">
-                      <el-input-number v-model="rechargeAmounts[card.ccode]" :min="0" :step="rechargeMode === 'refund' && card.comptype === 'times' ? 1 : 100" size="small" :controls="false" style="width:80px" />
-                      <el-button v-if="rechargeMode === 'recharge'" size="small" type="primary" @click="addRecharge(card)">充值</el-button>
+                     <el-input-number v-model="rechargeAmounts[card.ccode]" :min="0" :step="rechargeMode === 'refund' && card.comptype === 'times' ? 1 : 100" size="small" :controls="false" style="width:80px" />
+                      <span v-if="rechargeMode === 'refund' && card.comptype === 'times' && (rechargeAmounts[card.ccode] || 0) > 0" style="font-size:12px;color:#e6a23c;font-weight:600">
+                        = ¥{{ (parseFloat(rechargeAmounts[card.ccode] || 0) * parseFloat(card.s_price ?? 0)).toFixed(0) }}
+                      </span>
+                     <el-button v-if="rechargeMode === 'recharge'" size="small" type="primary" @click="addRecharge(card)">充值</el-button>
                       <el-button v-else size="small" type="danger" @click="addCardRefund(card)">退款</el-button>
                     </div>
                   </div>
@@ -262,58 +266,7 @@
       </div>
     </div>
     
-    <!-- 客户360°抽屉 -->
-    <el-drawer v-model="showVipDrawer" :title="vipProfileTitle" size="500px" @close="closeVipDrawer">
-      <div style="min-height:200px"><div v-if="profileLoading" style="text-align:center;padding:30px;color:#909399">加载中...</div>
-        <template v-if="profileBasicInfo">
-          <el-descriptions :column="2" border size="small" style="margin-bottom:16px">
-            <el-descriptions-item label="姓名">{{ profileBasicInfo.vname }}</el-descriptions-item>
-            <el-descriptions-item label="会员号">{{ profileBasicInfo.vcode }}</el-descriptions-item>
-            <el-descriptions-item label="手机">{{ profileBasicInfo.mtcode }}</el-descriptions-item>
-            <el-descriptions-item label="等级">{{ profileBasicInfo.viplevel || '--' }}</el-descriptions-item>
-            <el-descriptions-item label="顾问">{{ profileBasicInfo.ecode || '--' }}</el-descriptions-item>
-            <el-descriptions-item label="美疗师">{{ profileBasicInfo.ecode2 || '--' }}</el-descriptions-item>
-          </el-descriptions>
-          <el-tabs v-model="profileTab">
-            <el-tab-pane label="名下卡项" name="cards">
-              <el-empty v-if="!vipCards.length" description="无名下卡片" :image-size="50" />
-              <div v-else class="profile-cards">
-                <div v-for="card in vipCards" :key="card.uuid" class="profile-card"
-                  :class="{ 'status-p': card.status === 'P' }">
-                  <div class="pc-left"><div class="pc-name">{{ card.cardname }}</div><div class="pc-code">{{ card.ccode }}</div></div>
-                  <div class="pc-right">
-                    <span v-if="card.comptype === 'times'" class="pc-bal">{{ card.leftqty ?? 0 }} 次</span>
-                    <span v-else class="pc-bal">¥{{ parseFloat(card.leftmoney ?? 0).toFixed(0) }}</span>
-                    <span v-if="card.valdate" class="pc-expire">{{ String(card.valdate).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3') }}</span>
-                  </div>
-                  <el-tag v-if="card.stype === 'P'" size="small" type="warning">赠送</el-tag>
-                </div>
-              </div>
-            </el-tab-pane>
-            <el-tab-pane label="消费记录" name="consumption">
-              <el-empty v-if="!profileConsumption.length" description="无消费记录" :image-size="50" />
-              <div v-else class="profile-list">
-                <div v-for="(c, i) in profileConsumption" :key="i" class="profile-list-item">
-                  <span class="pli-date">{{ c.vsdate || '--' }}</span>
-                  <span class="pli-name">{{ c.itemname || '--' }}</span>
-                  <span class="pli-amount">¥{{ (parseFloat(c.amount) || 0).toFixed(0) }}</span>
-                </div>
-              </div>
-            </el-tab-pane>
-            <el-tab-pane label="沟通回访" name="communications">
-              <el-empty v-if="!profileCommunications.length" description="无沟通记录" :image-size="50" />
-              <div v-else class="profile-list">
-                <div v-for="(c, i) in profileCommunications" :key="i" class="profile-list-item">
-                  <span class="pli-date">{{ c.created_date || '--' }}</span>
-                  <span class="pli-type"><el-tag size="small">{{ c.casetype || '沟通' }}</el-tag></span>
-                  <span class="pli-content">{{ c.detail || '' }}</span>
-                </div>
-              </div>
-            </el-tab-pane>
-          </el-tabs>
-        </template>
-      </div>
-    </el-drawer>
+    <VipProfileDrawer :profile="vipProfile" :employees="employees" />
   </div>
 </template>
 
@@ -321,8 +274,9 @@
 import { ref, computed } from 'vue'
 import { useBillingEngine } from '@/composables/useBillingEngine'
 import type { VipCard, CartableItem } from '@/types'
+import VipProfileDrawer from '@/components/VipProfileDrawer.vue'
 import { getCardtypeServiceItems } from '@/api/cashier'
-import { getVipDetail, getVipConsumption, getVipCommunication } from '@/api/vip'
+import { useVipProfile } from '@/composables/useVipProfile'
 
 const {
   company, storecode,
@@ -351,43 +305,9 @@ const {
   menuViewCard, menuUseCard, menuConsumeItems, menuRecharge,
 } = useBillingEngine()
 
-const showVipDrawer = ref(false)
-const profileTab = ref('cards')
-const profileLoading = ref(false)
-const profileBasicInfo = ref<any>(null)
-const profileConsumption = ref<any[]>([])
-const profileCommunications = ref<any[]>([])
+const vipProfile = useVipProfile()
 
-const vipProfileTitle = computed(() => {
-  const v = profileBasicInfo.value
-  return v ? v.vname + ' (' + v.vcode + ')' : '客户详情'
-})
 
-function openVipProfile(uuid: string) {
-  showVipDrawer.value = true
-  profileLoading.value = true
-  profileBasicInfo.value = null
-  profileConsumption.value = []
-  profileCommunications.value = []
-  Promise.allSettled([
-    getVipDetail(uuid),
-    getVipConsumption(uuid),
-    getVipCommunication(uuid),
-  ]).then(function(rs) {
-    rs.forEach(function(r, i) {
-      if (r.status === 'fulfilled') {
-        var d = r.value.data
-        if (i === 0) { profileBasicInfo.value = d }
-        else if (i === 1) { profileConsumption.value = Array.isArray(d) ? d : d?.results ?? [] }
-        else if (i === 2) { profileCommunications.value = Array.isArray(d) ? d : d?.results ?? [] }
-      }
-    })
-    profileLoading.value = false
-  }).catch(function() { profileLoading.value = false })
-}
-function closeVipDrawer() {
-  showVipDrawer.value = false
-}
 </script>
 <style scoped>
 
@@ -443,6 +363,9 @@ function closeVipDrawer() {
 .item-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px; }
 .item-card { padding:8px 6px; border:1px solid #ebeef5; border-radius:6px; cursor:pointer; text-align:center; transition:.12s; }
 .item-card:hover { border-color:#409eff; background:#ecf5ff; transform:translateY(-1px); }
+.item-card.item-disabled { opacity:0.38; cursor:not-allowed; border-color:#e4e7ed; }
+.item-card.item-disabled:hover { border-color:#e4e7ed; background:#fff; transform:none; }
+.times-card-hint { font-size:12px; color:#e6a23c; background:#fef7e0; padding:8px 12px; border-radius:6px; margin-bottom:8px; text-align:center; }
 .item-name { font-size:12px; margin-bottom:4px; }
 .item-price { font-size:13px; font-weight:600; color:#e6a23c; }
 .recharge-panel { padding:4px; height:100%; overflow-y:auto; }

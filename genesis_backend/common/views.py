@@ -30,7 +30,8 @@ from .serializers import WifiListSerializer   #,CompanyOrderSerializer,CompanyIt
 
 
 
-@csrf_exempt
+
+
 def company_stores(request):
     """返回指定公司的门店列表（无需登录）。"""
     from baseinfo.models import Storeinfo
@@ -44,16 +45,81 @@ def company_stores(request):
     qs = qs.order_by('storecode')
     stores = [{'storecode': s.storecode, 'storename': s.storename or ''} for s in qs]
     return JsonResponse(stores, safe=False)
-def getserno(company,storecode, tablecode):
-    try:
-        sequence = Sequence.objects.get(company=company, storecode=storecode, tablecode=tablecode)
-    except:
-        sequence = Sequence.objects.create(company=company, storecode=storecode, tablecode=tablecode, sequence=0)
-    print('sequence', sequence)
-    sequence.sequence = sequence.sequence + 1
-    sequence.save()
 
-    return company  + storecode +'_'+ tablecode+'_' + str(sequence.sequence)
+def getserno(company, storecode, tablecode):
+    """统一流水号生成：{company}{storecode}_{tablecode}_{sequence}
+    行级锁防并发，Sequence 表不存在时降级为时间戳+随机串（不 500）。
+    """
+    from django.db import transaction as db_transaction
+    from django.db.utils import OperationalError, ProgrammingError
+    code = str(tablecode or '').strip()
+    if code == '':
+        code = 'hung'
+    try:
+        with db_transaction.atomic():
+            seq, _ = Sequence.objects.select_for_update().get_or_create(
+                flag='Y',company=company, storecode=storecode, tablecode=code,
+                defaults={'sequence': 0},
+            )
+            seq.sequence = (seq.sequence or 0) + 1
+            seq.save(update_fields=['sequence'])
+            print('getserno',company,storecode,code,seq.sequence)
+            return f'{company}{storecode}_{code}_{seq.sequence}'
+    except (OperationalError, ProgrammingError):
+        import time, uuid as _uuid
+        suffix = str(int(time.time() * 1000)) + '_' + _uuid.uuid4().hex[:8]
+        print('getserno error',company,storecode,code,suffix)
+        return f'{company}{storecode}_{code}_{suffix}'
+
+
+from baseinfo.models import Goods, Cardtype
+from adviser.models import Cardinfo
+
+def _resolve_hung_itemname(company, ttype, itemcode):
+    """与库函数 F_Getnamebysrvcode 一致：按类别解析服务/商品/卡名称。"""
+    ic = (itemcode or '').strip()
+    if not ic:
+        return ''
+    t = (ttype or '').strip()
+    try:
+        if t == 'S':
+            name = (
+                Serviece.objects.filter(company=company, flag='Y', svrcdoe=ic)
+                .values_list('svrname', flat=True)
+                .first()
+            )
+            return (name or ic or '').strip() or ic
+        if t == 'G':
+            name = (
+                Goods.objects.filter(company=company, flag='Y', gcode=ic)
+                .values_list('gname', flat=True)
+                .first()
+            )
+            return (name or ic or '').strip() or ic
+        if t in ('C', 'I'):
+            ct = (
+                Cardtype.objects.filter(company=company, flag='Y', cardtype=ic)
+                .values_list('cardname', flat=True)
+                .first()
+            )
+            if ct:
+                return ct.strip()
+            ci = (
+                Cardinfo.objects.filter(company=company, flag='Y', ccode=ic)
+                .select_related('cardtypeuuid')
+                .first()
+            )
+            if ci and ci.cardtypeuuid_id and ci.cardtypeuuid:
+                cn = ci.cardtypeuuid.cardname
+                if cn:
+                    if t in ("C", "I"):
+                        return f'{cn.strip()} ({ic})'
+                    return cn.strip()
+    except Exception:
+        pass
+    return ic
+
+
 
 
 def sql_to_json(sql,params):
@@ -306,7 +372,6 @@ class WifiListViewSet(viewsets.ModelViewSet):
 #     search_fields=('openid','order_status')
 
 
-@csrf_exempt
 def query_CompanyOrder(request):
     try:
         openid=request.GET['openid']
@@ -325,7 +390,6 @@ def query_CompanyOrder(request):
 
 
 
-@csrf_exempt
 def check_WifiList(request):
     # try:
     #     company=request.GET['company']
@@ -495,7 +559,6 @@ def check_userpwd(request):
 
 
 
-@csrf_exempt
 def company_list(request):
      """返回所有启用的公司列表（基本信息，无需登录）。
      用 Appoption(company='common', seg='company', flag='Y') 记录。
@@ -521,9 +584,7 @@ def company_list(request):
      return JsonResponse({'code': 200, 'companies': companies})
 
 
-@csrf_exempt
 
-@csrf_exempt
 def company_stores(request):
     """返回指定公司的门店列表（无需登录）。"""
     from baseinfo.models import Storeinfo

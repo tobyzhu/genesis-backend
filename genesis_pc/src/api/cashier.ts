@@ -108,7 +108,7 @@ export function getCheckedOutOrders(vipuuid: string, dateFrom?: string, dateTo?:
   const params: Record<string, string> = { company: company(), storecode: sc, vipuuid }
   if (dateFrom) params.date_from = dateFrom
   if (dateTo) params.date_to = dateTo
-  return request.get('/adviser/get_checkedout_orders/', { params })
+  return request.get('/cashier/get_checkedout_orders/', { params })
 }
 
 

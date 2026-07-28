@@ -18,8 +18,12 @@ export function removeToken(): void {
 }
 
 export function getUser<T = Record<string, any>>(): T | null {
-  const raw = localStorage.getItem(USER_KEY)
-  return raw ? JSON.parse(raw) : null
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
 }
 
 export function setUser(user: Record<string, any>): void {

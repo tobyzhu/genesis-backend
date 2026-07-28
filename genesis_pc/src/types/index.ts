@@ -143,3 +143,89 @@ export interface CardGroup {
     cards: VipCard[]
   }>
 }
+
+// ====== 商品主数据 ======
+export interface Goods {
+  uuid: string
+  gcode: string
+  gname: string
+  brand: string
+  spec: string
+  barcode: string
+  unit: string
+  price: number
+  price2: number
+  price3: number
+  buyprc: number
+  qty: number
+  minivalues: number
+  maxvalues: number
+  displayclass1: string
+  displayclass2: string
+  marketclass1: string
+  marketclass2: string
+  goodsct: string
+  discountclass: string
+  saleflag: string
+  valiflag: string
+  supplierid: string
+  location: string
+  desc1: string
+  desc2: string
+  desc3: string
+  tags: string[]
+  storelist: string[]
+  costprc: number
+}
+
+// ====== 库存查询 ======
+export interface StockItem {
+  storecode: string
+  whcode: string
+  gcode: string
+  qty: number
+  vdate: string
+  gname: string
+  spec: string
+  brand: string
+  unit: string
+  minivalues: number
+  maxvalues: number
+  goodsuuid: string
+  alert: 'normal' | 'low' | 'high'
+}
+
+// ====== 库存流水 ======
+export interface TranslogItem {
+  gtranukid: number
+  sukid: string
+  saleatr: string
+  saleatr_name: string
+  vdate: string
+  doccode: string
+  storecode: string
+  whcode: string
+  gcode: string
+  gname: string
+  qty: number
+  price: number
+  amount: number
+  qty2: number
+  batch: string
+  goodsvaldate: string
+  gnote: string
+  create_time: string
+}
+
+// ====== 仓库 ======
+export interface Warehouse {
+  wharehousecode: string
+  wharehousename: string
+  storecode: string
+}
+
+// ====== 门店 ======
+export interface StoreOption {
+  storecode: string
+  storename: string
+}
