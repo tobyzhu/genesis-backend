@@ -15,9 +15,9 @@
           <el-empty v-if="!todaysBookings.length" description="今日暂无预约" />
           <div v-else>
             <div v-for="b in todaysBookings" :key="b.id" class="booking-row">
-              <span>{{ b.vip_name }} - {{ b.item_name }}</span>
-              <el-tag size="small" :type="b.status === 'confirmed' ? 'success' : 'info'">
-                {{ b.status }}
+              <span>{{ b.vname }} - {{ b.employee_name }}</span>
+              <el-tag size="small" :color="getStatusColor(b.status)" effect="dark">
+                {{ getStatusLabel(b.status) }}
               </el-tag>
             </div>
           </div>
@@ -40,6 +40,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { BOOKING_STATUS_MAP } from '@/types'
+import { getBookingList } from '@/api/booking'
 import { User, Ticket, Calendar, DataAnalysis } from '@element-plus/icons-vue'
 
 const statsCards = ref([
@@ -50,6 +52,17 @@ const statsCards = ref([
 ])
 
 const todaysBookings = ref<any[]>([])
+const getStatusColor = (s: string) => BOOKING_STATUS_MAP[s]?.color || '#999'
+const getStatusLabel = (s: string) => BOOKING_STATUS_MAP[s]?.label || s
+
+// 加载今日预约
+const loadTodayBookings = async () => {
+  try {
+    const res = await getBookingList({ date: new Date().toISOString().slice(0, 10).replace(/-/g, '') })
+    todaysBookings.value = res.data.results || []
+  } catch {}
+}
+loadTodayBookings()
 </script>
 
 <style scoped>

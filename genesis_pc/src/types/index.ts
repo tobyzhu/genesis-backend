@@ -72,14 +72,96 @@ export interface CardInfo {
 // ====== 预约 ======
 export interface Booking {
   id: number
-  vip_id: number
-  vip_name: string
-  item_name: string
-  employee_name?: string
+  vip_uuid: string
+  vcode: string
+  vname: string
+  mtcode: string
+  employee_code: string
+  employee_name: string
+  booking_date: string
   start_time: string
-  end_time?: string
-  status: string       // pending | confirmed | completed | cancelled
-  remark?: string
+  end_time: string
+  room_id: string
+  room_name: string
+  instrument_id: string
+  instrument_name: string
+  room_start_time: string
+  room_end_time: string
+  instrument_start_time: string
+  instrument_end_time: string
+  staff_start_time: string
+  staff_end_time: string
+  status: string       // 100=未到店 200=已到店 210=进房间 220=服务中 230=已完成 290=离店 390=取消
+  detail: string
+  comein_time: string
+  leave_time: string
+}
+
+/** 预约员工 */
+export interface BookingEmployee {
+  ecode: string
+  ename: string
+  position: string
+  positiondesc: string
+}
+
+/** 房间 */
+export interface BookingRoom {
+  roomid: string
+  roomname: string
+}
+
+/** 仪器 */
+export interface BookingInstrument {
+  instrumentid: string
+  instrumentname: string
+}
+
+/** 排班 */
+export interface BookingSchedule {
+  ecode: string
+  scheduleid: string
+  operno: string
+  flag: string
+}
+
+/** 时段模板 */
+export interface BookingTimeset {
+  timeid: string
+  flag: string
+}
+
+/** 冲突检测结果 */
+export interface ConflictInfo {
+  type: string
+  booking_id: number
+  vname: string
+  start: string
+  end: string
+}
+
+/** 状态变更响应 */
+export interface StatusChangeResult {
+  status: string
+  booking_status: string
+  timestamp: string
+}
+
+/** 预约状态常量 */
+export const BOOKING_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  '100': { label: '未到店', color: '#E6A23C' },
+  '200': { label: '已到店', color: '#67C23A' },
+  '210': { label: '进房间', color: '#409EFF' },
+  '220': { label: '服务中', color: '#1890FF' },
+  '224': { label: '仪器开始', color: '#722ED1' },
+  '227': { label: '仪器结束', color: '#722ED1' },
+  '230': { label: '已完成', color: '#52C41A' },
+  '240': { label: '离房', color: '#13C2C2' },
+  '250': { label: '呼叫清洁', color: '#FA8C16' },
+  '260': { label: '清洁中', color: '#FA8C16' },
+  '270': { label: '清洁完成', color: '#52C41A' },
+  '290': { label: '离店', color: '#C0C4CC' },
+  '390': { label: '取消', color: '#F56C6C' },
 }
 
 // ====== 收银开单 ======
