@@ -74,7 +74,7 @@
               <div v-else-if="viewMode === 'room' || viewMode === 'instrument'" class="emp-schedule">{{ row.subtitle }}</div>
             </div>
 
-            <div class="timeline-track">
+            <div class="timeline-track" @dblclick="onTimelineDblClick(row, $event)">
               <!-- 半时刻度线 -->
               <div
                 v-for="(pos, gi) in halfHourPositions"
@@ -106,23 +106,22 @@
                 :style="{
                   left: timeToPx(b.start_time) + 'px',
                   width: timeDiffPx(b.start_time, b.end_time) + 'px',
-                  top: b.stackIndex * 24 + 2 + 'px'
+                  top: b.stackIndex * 40 + 2 + 'px'
                 }"
                 @mouseenter="hoveredBooking = b"
                 @mouseleave="hoveredBooking = null"
                 @click="openDetailDrawer(b)"
               >
-                <div class="block-inner">
-                  <span class="block-name">{{ b.vname }}</span>
-                  <span class="block-time">{{ b.start_time }}-{{ b.end_time }}</span>
+                <div class="block-inner two-line">
+                  <div class="block-line block-line-top">
+                    <span class="block-name">{{ b.vname }}</span>
+                    <span class="block-time">{{ b.start_time }}-{{ b.end_time }}</span>
+                  </div>
+                  <div class="block-line block-line-bottom">
+                    <span class="block-detail">{{ b.detail || b.employee_name || '' }}</span>
+                    <span class="block-emp">{{ b.employee_name || '' }}</span>
+                  </div>
                 </div>
-                <el-tag
-                  v-if="b.status !== '100'"
-                  :color="getStatusInfo(b.status).color"
-                  class="status-dot"
-                  size="small"
-                  round
-                />
               </div>
             </div>
           </div>
@@ -596,7 +595,7 @@ const employeeRows = computed<EmployeeRow[]>(() => {
       scheduleEnd: null,
       scheduleLabel: schedule?.scheduleid || '在岗',
       bookings: slots.map(s => ({ ...s.booking, stackIndex: s.stackIdx })),
-      rowHeight: Math.max(56, maxStack * 24 + 8),
+      rowHeight: Math.max(56, maxStack * 40 + 8),
     })
   }
 
@@ -640,7 +639,7 @@ const roomRows = computed(() => {
       name: rm.roomname || rm.roomid,
       subtitle: '房间',
       bookings: slots.map(s => ({ ...s.booking, stackIndex: s.stackIdx })),
-      rowHeight: Math.max(56, maxStack * 24 + 8),
+      rowHeight: Math.max(56, maxStack * 40 + 8),
     })
   }
   return rows
@@ -683,7 +682,7 @@ const instrumentRows = computed(() => {
       name: inst.instrumentname || inst.instrumentid,
       subtitle: '仪器',
       bookings: slots.map(s => ({ ...s.booking, stackIndex: s.stackIdx })),
-      rowHeight: Math.max(56, maxStack * 24 + 8),
+      rowHeight: Math.max(56, maxStack * 40 + 8),
     })
   }
   return rows
@@ -857,6 +856,16 @@ function goToday() {
 
 watch(currentDate, loadData)
 
+// 开始时间变化时，结束时间自动延后2小时
+watch(() => form.value.start_time, (val) => {
+  if (!val) return
+  const parts = val.split(':')
+  let h = parseInt(parts[0]) + 2
+  const m = parts[1] || '00'
+  if (h >= 24) h = h - 24
+  form.value.end_time = String(h).padStart(2, '0') + ':' + m
+})
+
 // ====== 预约详情 ======
 async function openDetailDrawer(b: Booking) {
   try {
@@ -895,6 +904,50 @@ function openCreateDialog() {
   editingId.value = null
   resetForm()
   form.value.booking_date = currentDate.value
+  formDialogVisible.value = true
+}
+
+// 双击时间线空白区域 → 新建预约（预填员工和时间）
+function onTimelineDblClick(row: any, event: MouseEvent) {
+  // 点击在预约方块上时不触发（防止与打开详情冲突）
+  if ((event.target as HTMLElement).closest('.booking-block')) return
+  const wrapper = timelineWrapper.value
+  if (!wrapper) return
+  const rect = wrapper.getBoundingClientRect()
+  const scrollLeft = wrapper.scrollLeft
+  const EMP_CELL_WIDTH = 140
+  // 计算点击位置在时间轴上的 X 坐标
+  const clickX = event.clientX - rect.left + scrollLeft - EMP_CELL_WIDTH
+  if (clickX < 0) return
+  // 换算为分钟（从 HOUR_START 开始）
+  const minutesFromStart = clickX / (timeSlotWidth / 60)
+  const totalMinutes = HOUR_START * 60 + minutesFromStart
+  if (totalMinutes < HOUR_START * 60 || totalMinutes > HOUR_END * 60) return
+  // 四舍五入到最近 30 分钟
+  const rounded = Math.round(totalMinutes / 30) * 30
+  const h = Math.floor(rounded / 60)
+  const m = rounded % 60
+  const startTime = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0')
+  // 预填并打开
+  isEditing.value = false
+  editingId.value = null
+  resetForm()
+  form.value.booking_date = currentDate.value
+  form.value.start_time = startTime
+  // 结束时间 = 开始时间 + 2 小时
+  const sp = startTime.split(':')
+  let eh = parseInt(sp[0]) + 2
+  const em = sp[1] || '00'
+  if (eh >= 24) eh = eh - 24
+  form.value.end_time = String(eh).padStart(2, '0') + ':' + em
+  // 根据当前视图预填对应资源
+  if (viewMode.value === 'room') {
+    form.value.room_id = row.id || ''
+  } else if (viewMode.value === 'instrument') {
+    form.value.instrument_id = row.id || ''
+  } else {
+    form.value.employee_code = row.ecode || ''
+  }
   formDialogVisible.value = true
 }
 
@@ -1067,28 +1120,37 @@ onUnmounted(() => {
 }
 
 .booking-block {
-  position: absolute; height: 22px; cursor: pointer;
+  position: absolute; height: 38px; cursor: pointer;
   border-radius: 3px; z-index: 2; overflow: hidden;
-  transition: box-shadow 0.15s; min-width: 24px;
+  transition: box-shadow 0.15s; min-width: 48px;
 }
 .booking-block:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 20;
 }
-.booking-block.status-100 { background: #fdf6ec; border-left: 3px solid #E6A23C; }
-.booking-block.status-200 { background: #f0f9eb; border-left: 3px solid #67C23A; }
-.booking-block.status-210 { background: #ecf5ff; border-left: 3px solid #409EFF; }
-.booking-block.status-220 { background: #e6f7ff; border-left: 3px solid #1890FF; }
+.booking-block.status-100 { background: #fdf6ec; border-top: 3px solid #E6A23C; }
+.booking-block.status-200 { background: #f0f9eb; border-top: 3px solid #67C23A; }
+.booking-block.status-210 { background: #ecf5ff; border-top: 3px solid #409EFF; }
+.booking-block.status-220 { background: #e6f7ff; border-top: 3px solid #1890FF; }
 .booking-block.status-230,
-.booking-block.status-290 { background: #f4f4f5; border-left: 3px solid #C0C4CC; }
-.booking-block.status-390 { background: #fef0f0; border-left: 3px solid #F56C6C; opacity: 0.7; }
+.booking-block.status-290 { background: #f4f4f5; border-top: 3px solid #C0C4CC; }
+.booking-block.status-390 { background: #fef0f0; border-top: 3px solid #F56C6C; opacity: 0.7; }
+.booking-block.status-390 .block-line-top,
+.booking-block.status-390 .block-line-bottom { opacity: 0.6; }
 
-.block-inner {
-  display: flex; align-items: center; gap: 4px;
-  padding: 0 6px; height: 100%; overflow: hidden;
+.block-inner.two-line {
+  display: flex; flex-direction: column; gap: 0;
+  padding: 2px 6px 1px; height: 100%; overflow: hidden;
 }
-.block-name { font-size: 12px; font-weight: 500; color: #303133; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.block-time { font-size: 10px; color: #909399; white-space: nowrap; }
-.status-dot { position: absolute; top: 2px; right: 4px; width: 8px; height: 8px; border-radius: 50%; }
+.block-line {
+  display: flex; justify-content: space-between; align-items: center;
+  line-height: 1.3;
+}
+.block-line-top { margin-bottom: 0; }
+.block-line-bottom { }
+.block-name { font-size: 11px; font-weight: 600; color: #303133; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.block-time { font-size: 9px; color: #909399; white-space: nowrap; margin-left: 4px; flex-shrink: 0; }
+.block-detail { font-size: 10px; color: #606266; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.block-emp { font-size: 9px; color: #909399; white-space: nowrap; margin-left: 4px; flex-shrink: 0; }
 
 /* Hover 浮层 */
 .hover-popover {
