@@ -96,6 +96,12 @@ const menuGroups = [
     children: [{ path: '/dashboard', title: '工作台' }],
   },
   {
+    key: 'booking',
+    title: '预约管理',
+    icon: 'Calendar',
+    children: [{ path: '/booking', title: '预约管理' }],
+  },
+  {
     key: 'kaidan',
     title: '开单',
     icon: 'Ticket',
@@ -106,7 +112,7 @@ const menuGroups = [
   },
   {
     key: 'cashdesk',
-    title: '收银台',
+    title: '收银',
     icon: 'Coin',
     children: [
       { path: '/cashier/checkout', title: '收银结账' },
@@ -117,7 +123,7 @@ const menuGroups = [
   },
   {
     key: 'customer',
-    title: '客户管理',
+    title: '客户',
     icon: 'User',
     children: [
       { path: '/vip', title: '会员管理' },
@@ -125,31 +131,38 @@ const menuGroups = [
     ],
   },
   {
-    key: 'operation',
-    title: '业务运营',
-    icon: 'Calendar',
+    key: 'basic',
+    title: '基础资料',
+    icon: 'Setting',
     children: [
-      { path: '/booking', title: '预约管理' },
+      { path: '/sysadmin/serviece', title: '服务管理' },
+      { path: '/sysadmin/goods', title: '商品管理' },
       { path: '/campaign', title: '营销活动' },
     ],
   },
   {
-    key: "goods",
-    title: "商品/库存",
-    icon: "Goods",
+    key: 'stock',
+    title: '库存管理',
+    icon: 'Box',
     children: [
-      { path: "/goods", title: "商品管理" },
-      { path: "/goods/stock", title: "进出货管理" },
+      { path: '/goods/stock', title: '进出货管理' },
     ],
   },
   {
-    key: 'data',
-    title: '数据与分析',
+    key: 'report',
+    title: '报表',
     icon: 'DataAnalysis',
     children: [
       { path: '/report', title: '卡余额汇总' },
       { path: '/report/performance', title: '门店业绩' },
       { path: '/assistant', title: 'AI 助手' },
+    ],
+  },
+  {
+    key: 'system',
+    title: '系统',
+    icon: 'Tools',
+    children: [
       { path: '/datamanage', title: '数据管理' },
     ],
   },

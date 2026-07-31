@@ -135,6 +135,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/datamanage/DataManagePage.vue'),
         meta: { title: '数据管理', icon: 'Setting' },
       },
+      {
+        path: '/sysadmin/serviece',
+        name: 'ServieceAdmin',
+        component: () => import('@/views/sysadmin/ServieceAdminPage.vue'),
+        meta: { title: '服务管理' },
+      },
+      {
+        path: '/sysadmin/goods',
+        name: 'GoodsAdmin',
+        component: () => import('@/views/sysadmin/GoodsAdminPage.vue'),
+        meta: { title: '商品管理' },
+      },
     ],
   },
 ]

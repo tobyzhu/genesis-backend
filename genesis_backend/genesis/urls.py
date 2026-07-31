@@ -49,10 +49,8 @@ urlpatterns = [
     url(r'wechat/', include('wechat.urls', namespace='wechat')),
     url(r'mall/', include('mall.urls', namespace='mall')),
     url(r'assistant/', include('assistant.urls', namespace='assistant')),
+    url(r'sysadmin/', include('sysadmin.urls', namespace='sysadmin')),
     # url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     # url(r'^api-token-auth/', obtain_jwt_token),
 ]
-
-# urlpatterns = [url(r'^prefix/', include(urlpatterns))]
-# urlpatterns = [url(r'^genesis/', include(urlpatterns))]
 

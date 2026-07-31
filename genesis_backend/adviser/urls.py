@@ -68,5 +68,21 @@ urlpatterns=[
 #    
     url(r'get_completed_hungs/?', views.get_completed_hungs),
     url(r'get_completed_order_detail/?', views.get_completed_order_detail),
+    url(r'sysadmin-models/$', views.sysadmin_models),
+    url(r'sysadmin-models/(?P<app_label>\w+)\.(?P<model_name>\w+)/meta/$', views.sysadmin_meta),
+    url(r'sysadmin-data/(?P<app_label>\w+)\.(?P<model_name>\w+)/$', views.sysadmin_data),
+    url(r'sysadmin-data/(?P<app_label>\w+)\.(?P<model_name>\w+)/(?P<pk>[0-9a-f-]+)/$', views.sysadmin_detail),
+    url(r'sysadmin-search/$', views.sysadmin_search),
+    url(r'srvtopty-tree/$', views.srvtopty_tree),
+    url(r'srvtopty-save/$', views.srvtopty_save),
+    url(r'srvtopty-delete/$', views.srvtopty_delete),
+    url(r'appoption-list/$', views.appoption_list),
+    url(r'servieceprice-list/$', views.servieceprice_list),
+    url(r'serviece-list/$', views.serviece_list),
+    url(r'goodsct-tree/$', views.goodsct_tree),
+    url(r'goodsct-save/$', views.goodsct_save),
+    url(r'goodsct-delete/$', views.goodsct_delete),
+    url(r'goods-list/$', views.goods_list),
+    url(r'servieceprice-save/$', views.servieceprice_save),
 #    url(r'^images$',)
 ]

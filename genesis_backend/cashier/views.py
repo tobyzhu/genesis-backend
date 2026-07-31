@@ -1793,9 +1793,9 @@ def customer_checkout_confirm(request):
         company=company, storecode=storecode, flag='Y', valiflag_hung='Y',
         psstatus_hung__in=open_status, vipuuid=vip,
     ))
+    results = []
     if not hungs:
         return JsonResponse({'ok': False, 'message': '\u8be5\u4f1a\u5458\u6ca1\u6709\u5f85\u7ed3\u8d26\u7684\u6302\u5355'})
-        results = []
     total_amount = Decimal('0')
     for hung in hungs:
         try:

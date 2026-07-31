@@ -3432,3 +3432,404 @@ def cardtype_items(request):
     qs = Cardtype.objects.filter(company=company, flag='Y').values('cardtype', 'cardname', 'suptype', 'comptype', 'price')
     data = [{'code': r['cardtype'], 'name': r['cardname'], 'price': float(r['price'] or 0), 'ttype': 'C', 'comptype': r['comptype'] or '', 'suptype': r['suptype'] or ''} for r in qs]
     return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+def sysadmin_models(request):
+    """返回 sysadmin 模型列表（挂载到 /api/adviser/ 路由下以解决 Vite proxy 问题）"""
+    from sysadmin.registry import get_registry
+    groups = get_registry()
+    result = []
+    group_order = ['基础配置', '核心业务', '营销']
+    for g in group_order:
+        models = groups.get(g, [])
+        if not models:
+            continue
+        result.append({
+            'name': g,
+            'models': [{
+                'id': f"{m['app_label']}.{m['model_name']}",
+                'verbose_name': m['verbose_name'],
+                'icon': m['icon'],
+            } for m in models],
+        })
+    return JsonResponse({'groups': result})
+
+@csrf_exempt
+def sysadmin_meta(request, app_label, model_name):
+    """GET /adviser/sysadmin-models/{app}.{model}/meta/ — 字段元数据"""
+    from sysadmin.views import model_meta as original
+    return original(request, app_label, model_name)
+
+@csrf_exempt
+def sysadmin_data(request, app_label, model_name):
+    """GET/POST /adviser/sysadmin-data/{app}.{model}/ — 数据列表/新建"""
+    from sysadmin.views import model_data as original
+    return original(request, app_label, model_name)
+
+@csrf_exempt
+def sysadmin_detail(request, app_label, model_name, pk):
+    """GET/PUT/DELETE /adviser/sysadmin-data/{app}.{model}/{pk}/ — 详情/更新/删除"""
+    from sysadmin.views import model_data_detail as original
+    return original(request, app_label, model_name, pk)
+
+@csrf_exempt
+def sysadmin_search(request):
+    """GET /adviser/sysadmin-search/ — FK 搜索"""
+    from sysadmin.views import related_search as original
+    return original(request)
+
+@csrf_exempt
+def srvtopty_tree(request):
+    """GET /adviser/srvtopty-tree/ — 服务大类树形结构"""
+    company = request.GET.get('company') or request.headers.get('X-Company', '')
+    if not company:
+        return JsonResponse({'tree': []})
+    from baseinfo.models import Srvtopty
+    from sysadmin.views import build_tree
+    qs = Srvtopty.objects.filter(company=company, flag='Y')
+    items = list(qs.values('pk', 'topcode', 'ttname', 'parentcode'))
+    tree = build_tree(items)
+    return JsonResponse({'tree': tree})
+
+
+@csrf_exempt
+def srvtopty_save(request):
+    """POST /adviser/srvtopty-save/ — 新增/编辑服务大类"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+    company = data.get('company') or request.headers.get('X-Company', '')
+    topcode = data.get('topcode', '')
+    ttname = data.get('ttname', '')
+    parentcode = data.get('parentcode', '') or ''
+    pk = data.get('pk', '')
+    if not company or not topcode or not ttname:
+        return JsonResponse({'ok': False, 'message': '缺少必要参数'}, status=400)
+    from baseinfo.models import Srvtopty
+    if pk:
+        try:
+            obj = Srvtopty.objects.get(pk=pk)
+            obj.topcode = topcode
+            obj.ttname = ttname
+            obj.parentcode = parentcode
+            obj.save()
+            return JsonResponse({'ok': True, 'pk': obj.pk})
+        except Srvtopty.DoesNotExist:
+            return JsonResponse({'ok': False, 'message': '分类不存在'}, status=404)
+    # 新建
+    obj = Srvtopty.objects.create(
+        company=company, topcode=topcode, ttname=ttname,
+        parentcode=parentcode, flag='Y'
+    )
+    return JsonResponse({'ok': True, 'pk': obj.pk})
+
+
+@csrf_exempt
+def srvtopty_delete(request):
+    """POST /adviser/srvtopty-delete/ — 软删除服务大类"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+    pk = data.get('pk', '')
+    from baseinfo.models import Srvtopty
+    try:
+        obj = Srvtopty.objects.get(pk=pk)
+        obj.flag = 'N'
+        obj.save()
+        return JsonResponse({'ok': True})
+    except Srvtopty.DoesNotExist:
+        return JsonResponse({'ok': False, 'message': '分类不存在'}, status=404)
+
+
+@csrf_exempt
+def appoption_list(request):
+    """GET /adviser/appoption-list/?seg=brand — 获取 Appoption 选项（用于下拉）"""
+    seg = request.GET.get('seg', '')
+    company = request.GET.get('company') or request.headers.get('X-Company', '')
+    if not seg or not company:
+        return JsonResponse({'results': []})
+    from baseinfo.models import Appoption
+    qs = Appoption.objects.filter(company=company, flag='Y', seg=seg).order_by('itemname')
+    results = []
+    for o in qs:
+        code = o.itemname or o.itemvalues
+        name = o.itemvalues or o.itemname
+        results.append({'value': code, 'label': name, 'code': code, 'name': name})
+    return JsonResponse({'results': results})
+
+
+@csrf_exempt
+def servieceprice_list(request):
+    """GET /adviser/servieceprice-list/?srvcode=xxx — 获取服务项目价位"""
+    srvcode = request.GET.get('srvcode', '')
+    if not srvcode:
+        return JsonResponse({'results': []})
+    from baseinfo.models import Servieceprice
+    qs = Servieceprice.objects.filter(srvcode=srvcode, flag='Y').order_by('qty')
+    results = []
+    for p in qs:
+        results.append({
+            'pk': p.pk,
+            'qty': p.qty or 1,
+            'price': float(p.price or 0),
+            'amount': float(p.amount or 0),
+            'commission': float(p.commission or 0),
+            'achivement': float(p.achivement or 1),
+            'fromdate': p.fromdate.strftime('%Y-%m-%d') if p.fromdate else '',
+            'todate': p.todate.strftime('%Y-%m-%d') if p.todate else '',
+            'saleflag': p.saleflag or 'Y',
+            'stype': p.stype or 'N',
+        })
+    return JsonResponse({'results': results})
+
+
+@csrf_exempt
+def servieceprice_save(request):
+    """POST /adviser/servieceprice-save/ — 批量保存价位"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+    srvcode = data.get('srvcode', '')
+    company = data.get('company') or request.headers.get('X-Company', '')
+    prices = data.get('prices', [])
+    if not srvcode:
+        return JsonResponse({'ok': False, 'message': '缺少项目编号'}, status=400)
+    from baseinfo.models import Servieceprice
+    existing = list(Servieceprice.objects.filter(srvcode=srvcode, flag='Y'))
+    existing_map = {p.pk: p for p in existing}
+    submitted_pks = []
+    for item in prices:
+        pk = item.get('pk')
+        qty = int(item.get('qty') or 1)
+        price = Decimal(str(item.get('price') or 0))
+        amount = Decimal(str(item.get('amount') or 0))
+        if not amount:
+            amount = qty * price
+        commission = Decimal(str(item.get('commission') or 0))
+        achivement = Decimal(str(item.get('achivement') or 1))
+        fromdate_str = str(item.get('fromdate') or '')
+        todate_str = str(item.get('todate') or '')
+        saleflag = item.get('saleflag') or 'Y'
+        stype = item.get('stype') or 'N'
+        from datetime import datetime
+        fromdate = None
+        todate = None
+        if fromdate_str:
+            try: fromdate = datetime.strptime(fromdate_str, '%Y-%m-%d').date()
+            except: pass
+        if todate_str:
+            try: todate = datetime.strptime(todate_str, '%Y-%m-%d').date()
+            except: pass
+        if pk and int(pk) in existing_map:
+            obj = existing_map[int(pk)]
+            obj.qty = qty
+            obj.price = price
+            obj.amount = amount
+            obj.commission = commission
+            obj.achivement = achivement
+            obj.fromdate = fromdate
+            obj.todate = todate
+            obj.saleflag = saleflag
+            obj.stype = stype
+            obj.save()
+            submitted_pks.append(int(pk))
+        else:
+            obj = Servieceprice.objects.create(
+                company=company,
+                srvcode=srvcode,
+                qty=qty,
+                price=price,
+                amount=amount,
+                commission=commission,
+                achivement=achivement,
+                fromdate=fromdate,
+                todate=todate,
+                saleflag=saleflag,
+                stype=stype,
+                flag='Y',
+            )
+            submitted_pks.append(obj.pk)
+    for p in existing:
+        if p.pk not in submitted_pks:
+            p.flag = 'N'
+            p.save()
+    return JsonResponse({'ok': True, 'count': len(prices)})
+
+
+@csrf_exempt
+def serviece_list(request):
+    """GET /adviser/serviece-list/ — 服务项目快速列表（只取列表所需字段）"""
+    company = request.GET.get('company') or request.headers.get('X-Company', '')
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 20))
+    search = request.GET.get('search', '')
+    topcode = request.GET.get('topcode', '')
+    uncategorized = request.GET.get('uncategorized', '') == '1'
+    brand = request.GET.get('brand', '')
+    displayclass1 = request.GET.get('displayclass1', '')
+    valiflag = request.GET.get('valiflag', '')
+
+    from baseinfo.models import Serviece
+    from django.db.models import Q
+    qs = Serviece.objects.filter(company=company, flag='Y')
+
+    if uncategorized:
+        qs = qs.filter(Q(topcode__isnull=True) | Q(topcode=''))
+    elif topcode:
+        qs = qs.filter(topcode=topcode)
+
+    if search:
+        qs = qs.filter(Q(svrcdoe__icontains=search) | Q(svrname__icontains=search))
+
+    if brand:
+        qs = qs.filter(brand=brand)
+
+    if displayclass1:
+        qs = qs.filter(displayclass1=displayclass1)
+
+    if valiflag:
+        qs = qs.filter(valiflag=valiflag)
+
+    total = qs.count()
+
+    # 只取列表需要的字段，大幅减少数据传输
+    rows = list(qs.order_by('svrcdoe').values(
+        'pk', 'svrcdoe', 'svrname', 'topcode', 'brand', 'displayclass1',
+        'price', 'costamount', 'stdmins', 'qty', 'saleflag', 'valiflag'
+    )[(page - 1) * page_size: page * page_size])
+
+    # Decimal → float 转换
+    for row in rows:
+        for k, v in row.items():
+            if isinstance(v, Decimal):
+                row[k] = float(v)
+
+    return JsonResponse({'total': total, 'rows': rows, 'page': page, 'page_size': page_size})
+
+
+@csrf_exempt
+def goodsct_tree(request):
+    """GET /adviser/goodsct-tree/ — 商品大类树形结构"""
+    company = request.GET.get('company') or request.headers.get('X-Company', '')
+    if not company:
+        return JsonResponse({'tree': []})
+    from baseinfo.models import Goodsct
+    from sysadmin.views import build_tree
+    qs = Goodsct.objects.filter(company=company, flag='Y')
+    items = list(qs.values('pk', 'goodsct', 'goodsctname', 'parent'))
+    tree = build_tree(items, key='goodsct', label='goodsctname', parent_key='parent')
+    return JsonResponse({'tree': tree})
+
+
+@csrf_exempt
+def goodsct_save(request):
+    """POST /adviser/goodsct-save/ — 新增/编辑商品大类"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+    company = data.get('company') or request.headers.get('X-Company', '')
+    goodsct = data.get('goodsct', '')
+    goodsctname = data.get('goodsctname', '')
+    parent = data.get('parent', '') or ''
+    pk = data.get('pk', '')
+    if not company or not goodsct or not goodsctname:
+        return JsonResponse({'ok': False, 'message': '缺少必要参数'}, status=400)
+    from baseinfo.models import Goodsct
+    if pk:
+        try:
+            obj = Goodsct.objects.get(pk=pk)
+            obj.goodsct = goodsct
+            obj.goodsctname = goodsctname
+            obj.parent = parent
+            obj.save()
+            return JsonResponse({'ok': True, 'pk': obj.pk})
+        except Goodsct.DoesNotExist:
+            return JsonResponse({'ok': False, 'message': '分类不存在'}, status=404)
+    obj = Goodsct.objects.create(
+        company=company, goodsct=goodsct, goodsctname=goodsctname,
+        parent=parent, flag='Y'
+    )
+    return JsonResponse({'ok': True, 'pk': obj.pk})
+
+
+@csrf_exempt
+def goodsct_delete(request):
+    """POST /adviser/goodsct-delete/ — 软删除商品大类"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+    pk = data.get('pk', '')
+    from baseinfo.models import Goodsct
+    try:
+        obj = Goodsct.objects.get(pk=pk)
+        obj.flag = 'N'
+        obj.save()
+        return JsonResponse({'ok': True})
+    except Goodsct.DoesNotExist:
+        return JsonResponse({'ok': False, 'message': '分类不存在'}, status=404)
+
+
+@csrf_exempt
+def goods_list(request):
+    """GET /adviser/goods-list/ — 商品快速列表（只取列表所需字段）"""
+    company = request.GET.get('company') or request.headers.get('X-Company', '')
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 20))
+    search = request.GET.get('search', '')
+    goodsct = request.GET.get('goodsct', '')
+    uncategorized = request.GET.get('uncategorized', '') == '1'
+    brand = request.GET.get('brand', '')
+    displayclass1 = request.GET.get('displayclass1', '')
+    valiflag = request.GET.get('valiflag', '')
+
+    from baseinfo.models import Goods
+    from django.db.models import Q
+    qs = Goods.objects.filter(company=company, flag='Y')
+
+    if uncategorized:
+        qs = qs.filter(Q(goodsct__isnull=True) | Q(goodsct=''))
+    elif goodsct:
+        qs = qs.filter(goodsct=goodsct)
+
+    if search:
+        qs = qs.filter(Q(gcode__icontains=search) | Q(gname__icontains=search))
+
+    if brand:
+        qs = qs.filter(brand=brand)
+
+    if displayclass1:
+        qs = qs.filter(displayclass1=displayclass1)
+
+    if valiflag:
+        qs = qs.filter(valiflag=valiflag)
+
+    total = qs.count()
+
+    rows = list(qs.order_by('gcode').values(
+        'pk', 'gcode', 'gname', 'goodsct', 'spec', 'brand', 'displayclass1',
+        'price', 'buyprc', 'qty', 'unit', 'barcode',
+        'minivalues', 'maxvalues', 'saleflag', 'valiflag'
+    )[(page - 1) * page_size: page * page_size])
+
+    for row in rows:
+        for k, v in row.items():
+            if isinstance(v, Decimal):
+                row[k] = float(v)
+
+    return JsonResponse({'total': total, 'rows': rows, 'page': page, 'page_size': page_size})
