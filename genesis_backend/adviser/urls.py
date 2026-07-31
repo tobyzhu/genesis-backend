@@ -84,5 +84,11 @@ urlpatterns=[
     url(r'goodsct-delete/$', views.goodsct_delete),
     url(r'goods-list/$', views.goods_list),
     url(r'servieceprice-save/$', views.servieceprice_save),
+    url(r'ruler-list/$', views.ruler_list),
+    url(r'ruler-save/$', views.ruler_save),
+    url(r'ruler-delete/$', views.ruler_delete),
+    url(r'cardtype-discount-list/$', views.cardtype_discount_list),
+    url(r'cardtype-discount-save/$', views.cardtype_discount_save),
+    url(r'card-pricing/$', views.card_pricing),
 #    url(r'^images$',)
 ]

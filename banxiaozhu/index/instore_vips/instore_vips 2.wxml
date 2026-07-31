@@ -1,0 +1,39 @@
+<view class="page">
+  <view class="instore-section" wx:if="{{instoreVipList.length}}">
+    <scroll-view scroll-y class="instore-scroll" enable-flex="true">
+      <view
+        class="instore-item"
+        wx:for="{{instoreVipList}}"
+        wx:key="hunguuid"
+        data-vipuuid="{{item.vipuuid}}"
+        data-vipitem="{{item}}"
+        bindtap="onTapInstoreVip"
+      >
+        <view class="instore-row1">
+          <text class="instore-name">{{item.vname || '未命名'}}</text>
+          <text class="instore-code">{{item.vcode}}</text>
+        </view>
+        <view class="instore-row2">
+          <text class="instore-meta">{{psstatusLabels[item.psstatus] || item.psstatus}}</text>
+          <text class="instore-amount">¥{{item.totmount}}</text>
+        </view>
+        <view class="instore-row2 instore-subrow">
+          <text class="instore-meta">项目</text>
+          <text class="instore-amount instore-amount--plain">{{item.item_count || 0}} 项</text>
+        </view>
+        <view class="instore-row2 instore-subrow" wx:if="{{item.order_time}}">
+          <text class="instore-meta">开单</text>
+          <text class="instore-amount instore-amount--plain">{{item.order_time}}</text>
+        </view>
+        <view class="instore-row2 instore-subrow" wx:if="{{item.order_empl || item.ecode_hung}}">
+          <text class="instore-meta">开单员工</text>
+          <text class="instore-amount instore-amount--plain">{{item.order_empl || item.ecode_hung || '—'}}</text>
+        </view>
+        <view class="instore-row3" wx:if="{{item.exptxserno}}">单号 {{item.exptxserno}}</view>
+      </view>
+    </scroll-view>
+  </view>
+  <view class="instore-empty" wx:elif="{{instoreVipLoaded && instoreVipList.length === 0}}">
+    <view class="instore-empty-tip">当前暂无开单未结账客人</view>
+  </view>
+</view>

@@ -1,0 +1,46 @@
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">消费记录</view>
+        <view class="page__desc">目前支持查询最近6个月的消费记录</view>
+    </view>
+
+    <view class="page__bd">
+        <view class="weui-search-bar">
+          <view class="weui-search-bar__form">
+            <view class="weui-search-bar__box">
+              <icon class="weui-icon-search_in-box" type="search" size="14"></icon>
+              <input type="text" class="weui-search-bar__input"  disabled='true' placeholder="搜索更多消费" bindtap="wxSearchConsume">
+                      <view>{{ searchValue}}</view>
+              </input>
+            </view>
+          </view>
+        </view>
+
+        <block wx:for="{{consumeGroups}}" wx:key="dateKey">
+            <view class="weui-cells__title">日期：{{item.dateLabel}}</view>
+            <block wx:for="{{item.items}}" wx:key="index">
+                <view class="weui-form-preview">
+                    <view class="weui-form-preview__hd">
+                        <view class="weui-form-preview__item">
+                            <view wx:if="{{(item.cardname!=='未设定')}}" class="weui-form-preview__value_in-hd">{{item.cardname}}</view>
+                        </view>
+                    </view>
+                    <view class="weui-form-preview__bd">
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">项目</view>
+                            <view class="weui-form-preview__value">{{item.ttype}}-{{item.itemname}}({{item.stype}})</view>
+                        </view>
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">数量/金额</view>
+                            <view class="weui-form-preview__value">{{item.s_qty}}/{{item.amount}}/{{item.exptxpaydesc}}</view>
+                        </view>
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">员工</view>
+                            <view class="weui-form-preview__value">{{item.pmname}}/{{item.secname}}/{{item.thrname}}</view>
+                        </view>
+                    </view>
+                </view>
+            </block>
+        </block>
+    </view>
+</view>

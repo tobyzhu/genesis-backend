@@ -3718,6 +3718,217 @@ def serviece_list(request):
 
 
 @csrf_exempt
+def ruler_list(request):
+    """GET /adviser/ruler-list/ — 逻辑卡规则列表"""
+    from baseinfo.models import Ruler
+    qs = Ruler.objects.filter(flag='Y').order_by('pk')
+    results = [{
+        'id': r.pk,
+        'rulername': r.rulername or '',
+        'ruler': r.ruler or '',
+    } for r in qs]
+    return JsonResponse({'results': results})
+
+
+@csrf_exempt
+def ruler_save(request):
+    """POST /adviser/ruler-save/ — 新增/编辑逻辑卡规则"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'}, status=400)
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+
+    from baseinfo.card_rules import parse_ruler
+    from baseinfo.models import Ruler
+
+    rulername = (data.get('rulername') or '').strip()
+    ruler = (data.get('ruler') or '').strip()
+    if not rulername or not parse_ruler(ruler):
+        return JsonResponse({'ok': False, 'message': '规则名称或规则格式不正确'}, status=400)
+
+    pk = data.get('id') or data.get('pk') or ''
+    if pk:
+        obj = Ruler.objects.filter(pk=pk).first()
+        if not obj:
+            return JsonResponse({'ok': False, 'message': '规则不存在'}, status=404)
+        obj.rulername = rulername
+        obj.ruler = ruler
+        obj.flag = 'Y'
+        obj.save()
+    else:
+        obj = Ruler.objects.create(rulername=rulername, ruler=ruler, flag='Y')
+    return JsonResponse({'ok': True, 'id': obj.pk})
+
+
+@csrf_exempt
+def ruler_delete(request):
+    """POST /adviser/ruler-delete/ — 软删除逻辑卡规则"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'}, status=400)
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+
+    from baseinfo.models import Ruler
+    pk = data.get('id') or data.get('pk') or ''
+    obj = Ruler.objects.filter(pk=pk).first()
+    if not obj:
+        return JsonResponse({'ok': False, 'message': '规则不存在'}, status=404)
+    obj.flag = 'N'
+    obj.save()
+    return JsonResponse({'ok': True})
+
+
+@csrf_exempt
+def cardtype_discount_list(request):
+    """GET /adviser/cardtype-discount-list/?cardtype=CT001 — 折扣分类规则列表"""
+    company = request.GET.get('company') or request.headers.get('X-Company', '')
+    cardtype = request.GET.get('cardtype', '')
+    from baseinfo.models import CardtypeVsDiscountClass
+    qs = CardtypeVsDiscountClass.objects.filter(company=company, flag='Y')
+    if cardtype:
+        qs = qs.filter(cardtype=cardtype)
+    rows = [{
+        'pk': str(r.pk),
+        'cardtype': r.cardtype or '',
+        'ttype': r.ttype or 'S',
+        'discountclass': r.discountclass or '',
+        'discounttype': r.discounttype or 'DISC',
+        'disc': float(r.disc or 0),
+        'price': float(r.price or 0),
+        'consume_flag': r.consume_flag or 'Y',
+        'emplguideperc': float(r.emplguideperc or 1),
+    } for r in qs.order_by('cardtype', 'ttype', 'discountclass')]
+    return JsonResponse({'results': rows})
+
+
+@csrf_exempt
+def cardtype_discount_save(request):
+    """POST /adviser/cardtype-discount-save/ — 批量保存折扣分类规则（全量替换）"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'}, status=400)
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+
+    company = data.get('company') or request.headers.get('X-Company', '')
+    cardtype = data.get('cardtype', '')
+    rules = data.get('rules', [])
+    if not company or not cardtype:
+        return JsonResponse({'ok': False, 'message': '缺少卡类编号'}, status=400)
+
+    from baseinfo.models import Cardtype, CardtypeVsDiscountClass
+    existing = list(CardtypeVsDiscountClass.objects.filter(
+        company=company, cardtype=cardtype, flag='Y'))
+    existing_by_pk = {str(r.pk): r for r in existing}
+    existing_by_key = {(r.ttype or 'S', r.discountclass or ''): r for r in existing}
+    submitted = []
+
+    for item in rules:
+        ttype = (item.get('ttype') or 'S').upper()
+        discountclass = item.get('discountclass') or ''
+        if not discountclass:
+            continue
+        pk = str(item.get('pk') or '')
+        obj = existing_by_pk.get(pk) or existing_by_key.get((ttype, discountclass))
+        discounttype = item.get('discounttype') or 'DISC'
+        disc = Decimal(str(item.get('disc') or 0))
+        price = Decimal(str(item.get('price') or 0))
+        consume_flag = item.get('consume_flag') or 'Y'
+        emplguideperc = Decimal(str(item.get('emplguideperc') or 1))
+        if obj:
+            obj.ttype = ttype
+            obj.discountclass = discountclass
+            obj.discounttype = discounttype
+            obj.disc = disc
+            obj.price = price
+            obj.consume_flag = consume_flag
+            obj.emplguideperc = emplguideperc
+            obj.flag = 'Y'
+            obj.save()
+        else:
+            ct = Cardtype.objects.filter(company=company, cardtype=cardtype, flag='Y').first()
+            obj = CardtypeVsDiscountClass.objects.create(
+                company=company,
+                cardtype=cardtype,
+                cardtypeuuid=ct,
+                ttype=ttype,
+                discountclass=discountclass,
+                discounttype=discounttype,
+                disc=disc,
+                price=price,
+                consume_flag=consume_flag,
+                emplguideperc=emplguideperc,
+                flag='Y',
+            )
+        submitted.append(obj.pk)
+
+    for r in existing:
+        if r.pk not in submitted:
+            r.flag = 'N'
+            r.save()
+    return JsonResponse({'ok': True, 'count': len(rules)})
+
+
+@csrf_exempt
+def card_pricing(request):
+    """POST /adviser/card-pricing/ — 批量计算卡支付单价与消费权限"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'}, status=400)
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+
+    from baseinfo.card_rules import resolve_card_item_price
+    company = data.get('company') or request.headers.get('X-Company', '')
+    cardtypeuuid = data.get('cardtypeuuid') or ''
+    ccode = data.get('ccode') or ''
+    items = data.get('items') or []
+
+    ct = None
+    ci = None
+    if cardtypeuuid:
+        ct = Cardtype.objects.filter(uuid=cardtypeuuid, flag='Y').first()
+    elif ccode:
+        ci = Cardinfo.objects.filter(
+            company=company, ccode=ccode, flag='Y'
+        ).order_by('-last_modified').first()
+        if ci:
+            ct = ci.cardtypeuuid
+
+    results = []
+    for it in items:
+        ttype = it.get('ttype') or 'S'
+        code = it.get('code') or it.get('srvcode') or it.get('gcode') or ''
+        discountclass = it.get('discountclass') or ''
+        topcode = it.get('topcode') or ''
+        price = Decimal(str(it.get('price') or 0))
+        qty = int(it.get('qty') or 1)
+        res = resolve_card_item_price(
+            company, ct, ci,
+            ttype=ttype, itemcode=code, discountclass=discountclass,
+            topcode=topcode, original_price=price,
+        )
+        results.append({
+            'code': code,
+            'ttype': ttype,
+            'qty': qty,
+            'original_price': float(price),
+            'price': float(res['price']),
+            'amount': float(res['price'] * qty),
+            'allowed': res['allowed'],
+            'source': res['source'],
+            'reason': res.get('reason', ''),
+        })
+    return JsonResponse({'cardtype': ct.cardtype if ct else '', 'results': results})
+
+
+@csrf_exempt
 def goodsct_tree(request):
     """GET /adviser/goodsct-tree/ — 商品大类树形结构"""
     company = request.GET.get('company') or request.headers.get('X-Company', '')

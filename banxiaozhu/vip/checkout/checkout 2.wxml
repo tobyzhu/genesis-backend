@@ -1,0 +1,181 @@
+<view class="page">
+  <view class="summary">
+    <view>已选 {{selectedCount}} 项</view>
+    <view>合计金额 ¥{{selectedAmount}}</view>
+    <view>合计次数 {{selectedQty}}</view>
+  </view>
+
+  <view class="batch-actions">
+    <view class="batch-btn" bindtap="selectAllTap">一键全选</view>
+    <view class="batch-btn" bindtap="clearAllTap">一键取消</view>
+  </view>
+
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab==='sale' ? 'tab-item--active' : ''}}" bindtap="switchToSaleTab">售卡/充值结账</view>
+    <view class="tab-item {{activeTab==='service' ? 'tab-item--active' : ''}}" bindtap="switchToServiceTab">服务/商品结账</view>
+  </view>
+
+  <checkbox-group wx:if="{{checkboxRenderFlag}}" bindchange="onSelectChange">
+    <view wx:if="{{activeTab==='sale'}}">
+      <view class="line sub">
+        <text>付款方式汇总：{{salePaySummaryText || '暂无'}}</text>
+      </view>
+      <view wx:if="{{saleRequiredNoncard !== '0.00'}}" class="extra-pay-box">
+        <view class="extra-pay-line">计划付款不足，已卡付：¥{{cardPaidAmount}}，还需补：¥{{saleRequiredNoncard}}</view>
+        <view class="extra-pay-line">
+          <text class="extra-label">付款方式1</text>
+          <picker range="{{nonCardPaymodes}}" range-key="pname" value="{{nonCardPaymodeIndex}}" bindchange="onNonCardPaymodeChange">
+            <view class="extra-picker">{{extraPaymodeName || '请选择付款方式'}}</view>
+          </picker>
+        </view>
+        <view class="extra-pay-line">
+          <text class="extra-label">付款1金额</text>
+          <input class="extra-input" type="digit" value="{{pay1Amount}}" bindinput="onPay1AmountInput" bindblur="onPay1AmountBlur" />
+        </view>
+        <view class="extra-pay-line" wx:if="{{pay2Amount !== '0.00'}}">
+          <text class="extra-label">付款方式2</text>
+          <text>{{pay2ModeName}}</text>
+        </view>
+        <view class="extra-pay-line" wx:if="{{pay2Amount !== '0.00'}}">
+          <text class="extra-label">付款2金额</text>
+          <text>¥{{pay2Amount}}</text>
+        </view>
+      </view>
+      <block wx:for="{{saleGroups}}" wx:key="groupKey">
+        <label class="hung-item">
+          <checkbox value="{{item.groupKey}}" checked="{{item.checked}}" />
+          <view class="hung-content">
+            <view class="line">
+              <text>开单号 {{item.exptxserno || item.groupKey}}</text>
+              <text>{{item.items.length}} 项</text>
+            </view>
+          </view>
+        </label>
+        <block wx:for="{{item.items}}" wx:key="key">
+          <view class="hung-item">
+            <view class="hung-content">
+              <view class="line">
+                <text>单号 {{item.exptxserno}}</text>
+                <text>¥{{item.amount}}</text>
+              </view>
+              <view class="line sub">
+                <text>{{item.ttypename}}/{{item.stypename}} {{item.itemname}}</text>
+                <text>x{{item.qty}}</text>
+              </view>
+              <view class="line sub">
+                <text>付款卡：{{item.paycardtypename || item.paycardtype || '-'}}（{{item.payccodeTail || '未设置'}}）</text>
+                <text>次数：{{item.qty}}</text>
+              </view>
+              <view class="line sub">
+                <text>付款方式 {{item.paytypename || item.paytype || '-'}}</text>
+                <text>付款金额 ¥{{item.payamount}}</text>
+              </view>
+              <view class="line sub">
+                <text>计划付款方式</text>
+                <picker range="{{nonCardPaymodes}}" range-key="pname" bindchange="onItemPaymodeChange" data-key="{{item.key}}">
+                  <view class="extra-picker">{{item.planPaymodeName || extraPaymodeName || '请选择'}}</view>
+                </picker>
+              </view>
+              <view class="line sub">
+                <text>计划付款金额</text>
+                <text>¥{{item.planPayAmount || item.amount}}</text>
+              </view>
+            </view>
+          </view>
+        </block>
+      </block>
+    </view>
+
+    <view wx:if="{{activeTab==='service'}}">
+      <view class="line sub">
+        <text>付款方式汇总：{{servicePaySummaryText || '暂无'}}</text>
+      </view>
+      <view wx:if="{{saleRequiredNoncard !== '0.00'}}" class="extra-pay-box">
+        <view class="extra-pay-line">付款卡余额不足，已卡付：¥{{cardPaidAmount}}，还需补：¥{{saleRequiredNoncard}}</view>
+        <view class="extra-pay-line">
+          <text class="extra-label">付款方式1</text>
+          <picker range="{{nonCardPaymodes}}" range-key="pname" value="{{nonCardPaymodeIndex}}" bindchange="onNonCardPaymodeChange">
+            <view class="extra-picker">{{extraPaymodeName || '请选择付款方式'}}</view>
+          </picker>
+        </view>
+        <view class="extra-pay-line">
+          <text class="extra-label">付款1金额</text>
+          <input class="extra-input" type="digit" value="{{pay1Amount}}" bindinput="onPay1AmountInput" bindblur="onPay1AmountBlur" />
+        </view>
+        <view class="extra-pay-line" wx:if="{{pay2Amount !== '0.00'}}">
+          <text class="extra-label">付款方式2</text>
+          <text>{{pay2ModeName}}</text>
+        </view>
+        <view class="extra-pay-line" wx:if="{{pay2Amount !== '0.00'}}">
+          <text class="extra-label">付款2金额</text>
+          <text>¥{{pay2Amount}}</text>
+        </view>
+      </view>
+
+      <block wx:for="{{serviceGroups}}" wx:key="groupKey">
+        <label class="hung-item">
+          <checkbox value="{{item.groupKey}}" checked="{{item.checked}}" />
+          <view class="hung-content">
+            <view class="line">
+              <text>开单号 {{item.exptxserno || item.groupKey}}</text>
+              <text>{{item.items.length}} 项</text>
+            </view>
+          </view>
+        </label>
+        <block wx:for="{{item.items}}" wx:key="key">
+          <view class="hung-item">
+            <view class="hung-content">
+              <view class="line">
+                <text>单号 {{item.exptxserno}}</text>
+                <text>¥{{item.amount}}</text>
+              </view>
+              <view class="line sub">
+                <text>{{item.ttypename}}/{{item.stypename}} {{item.itemname}}</text>
+                <text>x{{item.qty}}</text>
+              </view>
+              <view class="line sub">
+                <text>付款卡：{{item.paycardtypename || item.paycardtype || '-'}}（{{item.payccodeTail || '未设置'}}）</text>
+                <text>次数：{{item.qty}}</text>
+              </view>
+              <view class="line sub">
+                <text>付款方式 {{item.paytypename || item.paytype || '-'}}</text>
+                <text>付款金额 ¥{{item.payamount}}</text>
+              </view>
+            </view>
+          </view>
+        </block>
+      </block>
+    </view>
+  </checkbox-group>
+
+  <view wx:if="{{loaded && hungItems.length === 0}}" class="empty">当前没有可结账项目</view>
+
+  <view class="voice-panel" wx:if="{{loaded && hungItems.length > 0}}">
+    <view class="voice-title">语音 / 文字指令</view>
+    <view class="voice-actions">
+      <view wx:if="{{voicePluginReady && !voiceMicReady}}" class="voice-hint-inline">正在检测麦克风权限…</view>
+      <button
+        wx:if="{{voicePluginReady && voiceMicReady && !voiceMicAuthorized}}"
+        class="voice-btn voice-btn--auth"
+        bindtap="tapRequestMicAuth"
+      >授权麦克风（首次必点）</button>
+      <!-- 使用 view 承接触摸；start() 须在触摸同步栈内调用，见 checkout.js -->
+      <view
+        wx:if="{{voicePluginReady && voiceMicReady && voiceMicAuthorized}}"
+        class="voice-btn {{voiceRecording ? 'voice-btn--active' : ''}}"
+        hover-class="voice-btn--hover"
+        catchtouchstart="onVoiceTouchStart"
+        catchtouchmove="onVoiceTouchMove"
+        catchtouchend="onVoiceTouchEnd"
+        bindtouchcancel="onVoiceTouchEnd"
+      >{{voiceRecording ? '松开结束' : '按住说话'}}</view>
+      <view wx:elif="{{!voicePluginReady}}" class="voice-btn voice-btn--ghost" hover-class="voice-btn--hover" bindtap="showVoicePluginHelp">语音未启用 · 点我查看</view>
+      <button class="voice-btn voice-btn--secondary" bindtap="openTextCommandTap">文字指令</button>
+    </view>
+    <view class="voice-hint" wx:if="{{voicePluginHint}}">{{voicePluginHint}}</view>
+    <view class="voice-hint" wx:elif="{{voicePluginReady}}">可说：结账、确认结账、全选、取消全选、售卡结账、服务结账 等。</view>
+    <view class="voice-last" wx:if="{{lastVoiceText}}">上次：{{lastVoiceText}}</view>
+  </view>
+
+  <button class="weui-btn" type="primary" disabled="{{selectedCount===0 || !checkoutCalcReady}}" bindtap="submitCheckout">结账</button>
+</view>

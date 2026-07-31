@@ -1,0 +1,40 @@
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">回访记录</view>
+        <!-- <view class="page__desc">表单预览</view> -->
+    </view>
+    <view class="page__bd">
+        <view class="weui-form-preview">
+            <block wx:for="{{crmcasedetaillist}}" wx:key="*this">
+                <view class="weui-form-preview__hd">
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">回访类型</view>
+                        <view class="weui-form-preview__value_in-hd">{{item.casedesc}}</view>
+                    </view>
+                </view>
+                <view class="weui-form-preview__bd">
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">回访时间</view>
+                        <view class="weui-form-preview__value">{{item.create_time}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">回访人</view>
+                        <view class="weui-form-preview__value">{{item.creater}}</view>
+                    </view>
+                    <view class="weui-form-preview__item">
+                        <view class="weui-form-preview__label">回访记录</view>
+                        <view class="weui-form-preview__value">{{item.detaildescription}}</view>
+                    </view>
+                </view>
+                <!-- <view class="weui-form-preview__ft">
+                    <navigator url="" class="weui-form-preview__btn weui-form-preview__btn_primary" hover-class="weui-form-preview__btn_active">操作</navigator>
+                </view> -->
+                <view class="weui-form-preview__ft">
+                    <!-- <button size='mini' type='default'>删除</button> -->
+                    <!-- <navigator class="weui-form-preview__btn weui-form-preview__btn_default" hover-class="weui-form-preview__btn_active">删除</navigator> -->
+                    <navigator url="../../todolist/crmcasedetail/crmcasedetail?crmcasedetailuuid={{item.crmcasedetailuuid}}&parent={{parent}}" class="weui-form-preview__btn weui-form-preview__btn_primary" hover-class="weui-form-preview__btn_active">编辑</navigator>
+                </view>                
+            </block>
+        </view>
+    </view>
+</view>

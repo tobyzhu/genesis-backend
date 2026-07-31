@@ -1,0 +1,13 @@
+/* vip/serviece/serviece.wxss */
+
+@import "../../wxSearchView/wxSearchView.wxss";
+
+.card-add {
+position: fixed;
+bottom: 0;
+width: 100%;
+}
+
+.body {
+margin-bottom: 46px;
+}

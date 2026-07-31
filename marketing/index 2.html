@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis 美业管理系统 — 让每家美容院都拥有 AI 运营助手</title>
+<meta name="description" content="Genesis 美业 SaaS ERP，一套系统管完获客、开单、会员、报表全流程。内置 DeepSeek AI 助手，小程序移动办公，14 天免费试用。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --c-bg:#faf9f6;
+  --c-text:#1a1a2e;
+  --c-text-secondary:#5a5a72;
+  --c-primary:#7c3aed;
+  --c-primary-light:#8b5cf6;
+  --c-primary-bg:#f5f0ff;
+  --c-accent:#f59e0b;
+  --c-card:#ffffff;
+  --c-border:#e8e5e0;
+  --c-success:#10b981;
+  --radius:12px;
+  --radius-lg:20px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg:0 12px 32px rgba(0,0,0,.10);
+  --max-w:1200px;
+}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;background:var(--c-bg);color:var(--c-text);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--c-primary);text-decoration:none}
+
+/* Nav */
+nav{position:sticky;top:0;z-index:100;background:rgba(250,249,246,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--c-border)}
+nav .inner{max-width:var(--max-w);margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:64px}
+nav .logo{font-size:20px;font-weight:700;color:var(--c-primary);display:flex;align-items:center;gap:8px}
+nav .logo svg{width:28px;height:28px}
+nav .nav-links{display:flex;gap:32px;align-items:center}
+nav .nav-links a{font-size:15px;color:var(--c-text-secondary);transition:color .2s}
+nav .nav-links a:hover{color:var(--c-primary)}
+nav .nav-cta{background:var(--c-primary);color:#fff!important;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600;transition:background .2s}
+nav .nav-cta:hover{background:var(--c-primary-light)}
+.mobile-menu-btn{display:none;background:none;border:none;cursor:pointer;padding:8px}
+.mobile-menu-btn span{display:block;width:24px;height:2px;background:var(--c-text);margin:5px 0;border-radius:2px;transition:.2s}
+
+/* Hero */
+.hero{position:relative;overflow:hidden;padding:100px 24px 80px;text-align:center}
+.hero-bg{position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 50% 50%,var(--c-primary-bg) 0%,transparent 60%);z-index:0;pointer-events:none}
+.hero .inner{position:relative;z-index:1;max-width:800px;margin:0 auto}
+.hero .badge{display:inline-block;background:var(--c-primary-bg);color:var(--c-primary);font-size:13px;font-weight:600;padding:6px 16px;border-radius:20px;margin-bottom:24px;letter-spacing:.3px}
+.hero h1{font-size:48px;font-weight:800;line-height:1.2;margin-bottom:20px;letter-spacing:-1px}
+.hero h1 span{background:linear-gradient(135deg,var(--c-primary),var(--c-accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:18px;color:var(--c-text-secondary);max-width:600px;margin:0 auto 40px}
+.hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-primary{background:var(--c-primary);color:#fff;border:none;padding:14px 32px;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:background .2s,transform .15s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary:hover{background:var(--c-primary-light);transform:translateY(-1px)}
+.btn-secondary{background:var(--c-card);color:var(--c-text);border:1.5px solid var(--c-border);padding:14px 32px;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;transition:border-color .2s,transform .15s;display:inline-flex;align-items:center;gap:8px}
+.btn-secondary:hover{border-color:var(--c-primary);transform:translateY(-1px)}
+.hero-stats{margin-top:60px;display:grid;grid-template-columns:repeat(4,1fr);gap:24px;max-width:900px;margin-left:auto;margin-right:auto}
+.hero-stat{text-align:center}
+.hero-stat .num{font-size:32px;font-weight:800;color:var(--c-primary)}
+.hero-stat .label{font-size:14px;color:var(--c-text-secondary);margin-top:4px}
+
+/* Sections common */
+section{padding:80px 24px}
+section .inner{max-width:var(--max-w);margin:0 auto}
+.section-label{font-size:14px;font-weight:600;color:var(--c-primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;text-align:center}
+.section-title{font-size:36px;font-weight:700;text-align:center;margin-bottom:16px;letter-spacing:-.5px}
+.section-subtitle{font-size:17px;color:var(--c-text-secondary);text-align:center;max-width:600px;margin:0 auto 56px}
+
+/* Features */
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.feature-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--radius-lg);padding:32px;transition:box-shadow .25s,transform .2s}
+.feature-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.feature-card .icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:22px}
+.feature-card h3{font-size:18px;font-weight:700;margin-bottom:10px}
+.feature-card p{font-size:14px;color:var(--c-text-secondary);line-height:1.7}
+.fc-ai .icon{background:#ede9fe;color:#7c3aed}
+.fc-mini .icon{background:#dbeafe;color:#2563eb}
+.fc-lifecycle .icon{background:#fef3c7;color:#d97706}
+.fc-checkout .icon{background:#d1fae5;color:#059669}
+.fc-booking .icon{background:#fce7f3;color:#db2777}
+.fc-report .icon{background:#e0e7ff;color:#4338ca}
+.fc-chain .icon{background:#ccfbf1;color:#0d9488}
+.fc-mall .icon{background:#f3e8ff;color:#7c3aed}
+
+/* AI showcase */
+.ai-showcase{background:linear-gradient(135deg,#1a1a2e 0%,#2d1b69 100%);color:#fff;padding:100px 24px}
+.ai-showcase .section-label,.ai-showcase .section-title,.ai-showcase .section-subtitle{color:#fff}
+.ai-showcase .section-subtitle{color:rgba(255,255,255,.7)}
+.ai-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.ai-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-lg);padding:32px;backdrop-filter:blur(4px);transition:background .25s}
+.ai-card:hover{background:rgba(255,255,255,.14)}
+.ai-card .emoji{font-size:32px;margin-bottom:16px}
+.ai-card h3{font-size:18px;font-weight:700;margin-bottom:10px}
+.ai-card p{font-size:14px;color:rgba(255,255,255,.7);line-height:1.7}
+
+/* Workflow */
+.workflow-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;position:relative;counter-reset:step}
+.workflow-step{text-align:center;position:relative}
+.workflow-step::before{counter-increment:step;content:"0" counter(step);display:block;font-size:14px;font-weight:700;color:var(--c-primary);margin-bottom:12px;letter-spacing:1px}
+.workflow-step .icon-circle{width:64px;height:64px;border-radius:50%;background:var(--c-primary-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px}
+.workflow-step h4{font-size:16px;font-weight:700;margin-bottom:6px}
+.workflow-step p{font-size:13px;color:var(--c-text-secondary)}
+
+/* Pricing */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-items:start}
+.pricing-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--radius-lg);padding:36px 28px;position:relative;transition:box-shadow .25s,transform .2s}
+.pricing-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.pricing-card.featured{border-color:var(--c-primary);box-shadow:0 0 0 1px var(--c-primary),var(--shadow-lg);transform:scale(1.03)}
+.pricing-card.featured:hover{transform:scale(1.03) translateY(-2px)}
+.pricing-card .popular{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--c-primary);color:#fff;font-size:12px;font-weight:700;padding:4px 16px;border-radius:20px;letter-spacing:.5px}
+.pricing-card .name{font-size:16px;font-weight:600;color:var(--c-text-secondary);margin-bottom:12px}
+.pricing-card .price{font-size:36px;font-weight:800;margin-bottom:4px}
+.pricing-card .price span{font-size:16px;font-weight:400;color:var(--c-text-secondary)}
+.pricing-card .period{font-size:14px;color:var(--c-text-secondary);margin-bottom:24px}
+.pricing-card ul{list-style:none;margin-bottom:28px}
+.pricing-card ul li{display:flex;align-items:flex-start;gap:8px;font-size:14px;padding:6px 0;color:var(--c-text)}
+.pricing-card ul li .check{color:var(--c-success);font-weight:700;flex-shrink:0}
+.pricing-card .btn-primary{width:100%;justify-content:center}
+
+/* CTA */
+.cta-section{background:var(--c-primary);color:#fff;text-align:center;padding:80px 24px}
+.cta-section h2{font-size:36px;font-weight:700;margin-bottom:16px}
+.cta-section p{font-size:17px;color:rgba(255,255,255,.8);max-width:500px;margin:0 auto 32px}
+.cta-section .btn-primary{background:#fff;color:var(--c-primary);font-size:17px;padding:16px 40px}
+.cta-section .btn-primary:hover{background:rgba(255,255,255,.9)}
+
+/* Footer */
+footer{background:#1a1a2e;color:rgba(255,255,255,.6);padding:48px 24px 32px}
+footer .inner{max-width:var(--max-w);margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px}
+footer h4{color:#fff;font-size:15px;font-weight:700;margin-bottom:16px}
+footer p,footer a{font-size:14px;color:rgba(255,255,255,.6);line-height:2}
+footer a:hover{color:#fff}
+footer .copy{border-top:1px solid rgba(255,255,255,.1);margin-top:40px;padding-top:24px;font-size:13px;text-align:center;grid-column:1 / -1}
+
+/* Responsive */
+@media(max-width:900px){
+  .hero h1{font-size:36px}
+  .hero-stats{grid-template-columns:repeat(2,1fr);gap:16px}
+  .features-grid{grid-template-columns:repeat(2,1fr)}
+  .ai-grid{grid-template-columns:1fr}
+  .workflow-steps{grid-template-columns:repeat(2,1fr);gap:32px}
+  .pricing-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}
+  .pricing-card.featured{transform:none}
+  .pricing-card.featured:hover{transform:translateY(-2px)}
+  footer .inner{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  nav .nav-links{display:none}
+  .mobile-menu-btn{display:block}
+  .hero{padding:64px 20px 48px}
+  .hero h1{font-size:28px}
+  .hero p{font-size:16px}
+  .section-title{font-size:28px}
+  .features-grid{grid-template-columns:1fr}
+  .workflow-steps{grid-template-columns:1fr}
+  nav .inner{padding:0 16px}
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="inner">
+    <a href="#" class="logo">
+      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="8" fill="#7c3aed"/><text x="14" y="20" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">G</text></svg>
+      Genesis
+    </a>
+    <div class="nav-links">
+      <a href="#features">功能</a>
+      <a href="#ai">AI 助手</a>
+      <a href="#pricing">定价</a>
+      <a href="#cta" class="nav-cta">免费试用</a>
+    </div>
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').style.display='flex';document.querySelector('.nav-links').style.flexDirection='column';document.querySelector('.nav-links').style.position='absolute';document.querySelector('.nav-links').style.top='64px';document.querySelector('.nav-links').style.left='0';document.querySelector('.nav-links').style.right='0';document.querySelector('.nav-links').style.background='rgba(250,249,246,.98)';document.querySelector('.nav-links').style.padding='20px 24px';document.querySelector('.nav-links').style.borderBottom='1px solid var(--c-border)'">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="inner">
+    <div class="badge">🎯 专为中小美容院打造</div>
+    <h1>让每一家美容院<br>都拥有 <span>AI 运营助手</span></h1>
+    <p>一套系统管完获客、开单、会员、报表全流程。员工用手机就能工作，AI 帮你自动分析客户、预警流失、生成运营建议。</p>
+    <div class="hero-actions">
+      <a href="#cta" class="btn-primary">免费试用 14 天 →</a>
+      <a href="#features" class="btn-secondary">查看功能</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">2021</div><div class="label">始运营年份</div></div>
+      <div class="hero-stat"><div class="num">∞</div><div class="label">功能无上限</div></div>
+      <div class="hero-stat"><div class="num">AI</div><div class="label">DeepSeek 驱动</div></div>
+      <div class="hero-stat"><div class="num">📱</div><div class="label">小程序即开即用</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="inner">
+    <div class="section-label">功能全景</div>
+    <h2 class="section-title">一家美容院需要的一切，都在这里</h2>
+    <p class="section-subtitle">从收银开单到客户运营，从预约管理到经营分析，覆盖门店日常运营全场景</p>
+    <div class="features-grid">
+      <div class="feature-card fc-ai">
+        <div class="icon">🤖</div>
+        <h3>AI 智能助手</h3>
+        <p>基于 DeepSeek 的 AI 自动生成客户画像、流失预警、活跃/休眠分级，并给出具体运营建议。替代传统人工记忆和 Excel 管理。</p>
+      </div>
+      <div class="feature-card fc-mini">
+        <div class="icon">📱</div>
+        <h3>帮小主小程序</h3>
+        <p>员工用自己手机就能完成开单、查会员、看业绩、做回访。告别传统 POS 终端，零硬件投入。</p>
+      </div>
+      <div class="feature-card fc-lifecycle">
+        <div class="icon">🔄</div>
+        <h3>客户生命周期管理</h3>
+        <p>自动对会员进行活跃/流失预警/休眠分级，CRM 回访提醒自动推送。有效降低客户流失率，提升复购。</p>
+      </div>
+      <div class="feature-card fc-checkout">
+        <div class="icon">💰</div>
+        <h3>开单结账一体化</h3>
+        <p>支持次卡、时效卡、充值卡等多种卡项类型。挂单/结账/退款全流程覆盖，收银对账清晰可追溯。</p>
+      </div>
+      <div class="feature-card fc-booking">
+        <div class="icon">📅</div>
+        <h3>智能预约管理</h3>
+        <p>线上预约 + 自动提醒，有效降低失约率。支持按项目/美疗师/时间段查询，排班一目了然。</p>
+      </div>
+      <div class="feature-card fc-report">
+        <div class="icon">📊</div>
+        <h3>经营数据分析</h3>
+        <p>多维度报表：员工业绩、客户消费、卡项销售、商品库存。实时掌握门店运营状态，辅助经营决策。</p>
+      </div>
+      <div class="feature-card fc-chain">
+        <div class="icon">🏪</div>
+        <h3>多门店连锁管理</h3>
+        <p>一套系统管理多家门店，数据实时同步。支持独立运营策略 + 总部门店统一管控。</p>
+      </div>
+      <div class="feature-card fc-mall">
+        <div class="icon">🛒</div>
+        <h3>商品管理 + 商城</h3>
+        <p>线上线下商品库存统一管理，支持商城在线销售。拓展营收渠道，提高客户触达效率。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Workflow -->
+<section style="background:var(--c-card);border-top:1px solid var(--c-border);border-bottom:1px solid var(--c-border)">
+  <div class="inner">
+    <div class="section-label">使用流程</div>
+    <h2 class="section-title">从部署到上手，只需三步</h2>
+    <p class="section-subtitle">无需硬件采购，无需复杂培训，手机就能开工</p>
+    <div class="workflow-steps">
+      <div class="workflow-step">
+        <div class="icon-circle">📋</div>
+        <h4>注册开通</h4>
+        <p>在线申请试用，我们远程配置你的专属环境。20 分钟即可完成。</p>
+      </div>
+      <div class="workflow-step">
+        <div class="icon-circle">🏪</div>
+        <h4>导入门店数据</h4>
+        <p>导入会员档案、服务项目、卡项设置。支持旧系统数据迁移。</p>
+      </div>
+      <div class="workflow-step">
+        <div class="icon-circle">📱</div>
+        <h4>员工扫码使用</h4>
+        <p>员工打开微信"帮小主"小程序，绑定门店即可开始工作。</p>
+      </div>
+      <div class="workflow-step">
+        <div class="icon-circle">🚀</div>
+        <h4>日常运营</h4>
+        <p>开单、结账、预约、回访全部手机上完成。AI 自动帮你分析客户。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI Showcase -->
+<section class="ai-showcase" id="ai">
+  <div class="inner">
+    <div class="section-label">核心差异化</div>
+    <h2 class="section-title">内置 AI，不只是工具</h2>
+    <p class="section-subtitle">大多数美业软件只是记录工具，Genesis 的 AI 会帮你思考、预警、行动</p>
+    <div class="ai-grid">
+      <div class="ai-card">
+        <div class="emoji">🧠</div>
+        <h3>客户画像自动生成</h3>
+        <p>输入客户手机号，AI 立即给出完整画像：消费偏好、到店频次、项目喜好、消费能力评估。无需翻查流水。</p>
+      </div>
+      <div class="ai-card">
+        <div class="emoji">⚠️</div>
+        <h3>流失风险预警</h3>
+        <p>AI 持续监控所有客户的消费活跃度，提前识别沉睡和流失风险客户。系统自动提示顾问及时回访。</p>
+      </div>
+      <div class="ai-card">
+        <div class="emoji">📈</div>
+        <h3>生命周期运营建议</h3>
+        <p>对每个客户自动分级：活跃 / 流失预警 / 休眠，并给出针对性运营建议。批量生成 CRM 回访任务。</p>
+      </div>
+      <div class="ai-card">
+        <div class="emoji">💬</div>
+        <h3>自然语言查询</h3>
+        <p>直接问："昨天哪个顾问业绩最好"、"沉睡客户里消费最高的是谁"，AI 自动查询并回答。不用翻菜单找报表。</p>
+      </div>
+      <div class="ai-card">
+        <div class="emoji">📤</div>
+        <h3>一键导出分析报告</h3>
+        <p>沉睡客户预警列表、门店会员维护统计、客户分级报表，均可一键导出 Excel，方便进一步分析。</p>
+      </div>
+      <div class="ai-card">
+        <div class="emoji">🔮</div>
+        <h3>持续进化</h3>
+        <p>AI 模型持续更新，更多智能功能不断上线。你不需要额外付费，购买即享持续升级。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing">
+  <div class="inner">
+    <div class="section-label">透明定价</div>
+    <h2 class="section-title">按需选择，无隐藏费用</h2>
+    <p class="section-subtitle">所有套餐均包含 14 天免费试用，无需信用卡</p>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="name">单店版</div>
+        <div class="price">¥198 <span>/月</span></div>
+        <div class="period">或 ¥1,988/年（省 ¥388）</div>
+        <ul>
+          <li><span class="check">✓</span> 1 家门店使用</li>
+          <li><span class="check">✓</span> 会员管理（不限数量）</li>
+          <li><span class="check">✓</span> 开单结账全功能</li>
+          <li><span class="check">✓</span> 预约管理</li>
+          <li><span class="check">✓</span> 商品库存管理</li>
+          <li><span class="check">✓</span> 经营报表</li>
+          <li><span class="check">✓</span> 帮小主小程序</li>
+          <li><span class="check">✓</span> CRM 回访</li>
+        </ul>
+        <a href="#cta" class="btn-primary">开始免费试用</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="popular">最受欢迎</div>
+        <div class="name">连锁版</div>
+        <div class="price">¥398 <span>/月</span></div>
+        <div class="period">3 家门店起，每增 1 店 +¥100/月</div>
+        <ul>
+          <li><span class="check">✓</span> 包含单店版全部功能</li>
+          <li><span class="check">✓</span> 多门店数据互联</li>
+          <li><span class="check">✓</span> 总部统一管控</li>
+          <li><span class="check">✓</span> 跨店会员共享</li>
+          <li><span class="check">✓</span> 连锁经营报表</li>
+          <li><span class="check">✓</span> 商城模块</li>
+        </ul>
+        <a href="#cta" class="btn-primary">开始免费试用</a>
+      </div>
+      <div class="pricing-card">
+        <div class="name">AI 增值包</div>
+        <div class="price">+¥98 <span>/月</span></div>
+        <div class="period">在门店版/连锁版基础上叠加</div>
+        <ul>
+          <li><span class="check">✓</span> DeepSeek AI 智能助手</li>
+          <li><span class="check">✓</span> 客户画像自动生成</li>
+          <li><span class="check">✓</span> 流失风险预警</li>
+          <li><span class="check">✓</span> 生命周期自动分级</li>
+          <li><span class="check">✓</span> 自然语言数据查询</li>
+          <li><span class="check">✓</span> 批量回访任务生成</li>
+        </ul>
+        <a href="#cta" class="btn-primary">开始免费试用</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="cta">
+  <div class="inner">
+    <h2>准备好让 AI 帮你管店了吗？</h2>
+    <p>14 天免费试用，不限功能，无需信用卡。填写信息后我们将在 24 小时内为你开通专属环境。</p>
+    <form id="trialForm" style="max-width:460px;margin:0 auto;text-align:left;background:rgba(255,255,255,.12);border-radius:16px;padding:32px">
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:rgba(255,255,255,.8)">门店名称 *</label>
+        <input name="store_name" required style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none" placeholder="如：美丽人生美容院">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:rgba(255,255,255,.8)">联系人 *</label>
+        <input name="contact_name" required style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none" placeholder="你的姓名">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:rgba(255,255,255,.8)">手机号 *</label>
+        <input name="phone" required type="tel" pattern="1\d{10}" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none" placeholder="13800138000">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:rgba(255,255,255,.8)">门店数量</label>
+        <select name="store_count" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;appearance:none">
+          <option value="1" style="color:#000">1 家</option>
+          <option value="2" style="color:#000">2 家</option>
+          <option value="3" style="color:#000">3 家</option>
+          <option value="5" style="color:#000">4-5 家</option>
+          <option value="10" style="color:#000">6-10 家</option>
+          <option value="20" style="color:#000">10 家以上</option>
+        </select>
+      </div>
+      <div style="margin-bottom:24px">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:rgba(255,255,255,.8)">当前使用的系统（如有）</label>
+        <input name="current_system" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none" placeholder="无 / 某某系统">
+      </div>
+      <button type="submit" style="width:100%;padding:12px 24px;border-radius:10px;border:none;background:#fff;color:var(--c-primary);font-size:16px;font-weight:700;cursor:pointer;transition:opacity .2s">立即申请免费试用</button>
+      <p id="formStatus" style="display:none;margin-top:12px;font-size:14px;text-align:center"></p>
+    </form>
+    <p style="margin-top:16px;font-size:13px;color:rgba(255,255,255,.6)">或直接联系我们：genesis@example.com</p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="inner">
+    <div>
+      <h4>Genesis 美业管理系统</h4>
+      <p>让每一家美容院都拥有 AI 运营助手。<br>始于 2021 年，持续为美业门店提供数字化解决方案。</p>
+    </div>
+    <div>
+      <h4>功能</h4>
+      <a href="#features">会员管理</a><br>
+      <a href="#features">开单结账</a><br>
+      <a href="#ai">AI 智能助手</a><br>
+      <a href="#features">预约管理</a>
+    </div>
+    <div>
+      <h4>产品</h4>
+      <a href="#pricing">定价</a><br>
+      <a href="#cta">免费试用</a><br>
+      <a href="#">更新日志</a><br>
+      <a href="#">帮助中心</a>
+    </div>
+    <div>
+      <h4>联系我们</h4>
+      <p>邮箱：genesis@example.com</p>
+      <p>电话：400-xxx-xxxx</p>
+      <p>工作时间：周一至周五 9:00-18:00</p>
+    </div>
+    <div class="copy">© 2026 Genesis 美业管理系统. All rights reserved.</div>
+  </div>
+</footer>
+
+<script>
+const FORM = document.getElementById('trialForm');
+const STATUS = document.getElementById('formStatus');
+FORM.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = FORM.querySelector('button[type=submit]');
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+  STATUS.style.display = 'none';
+  const data = Object.fromEntries(new FormData(FORM));
+  data.store_count = parseInt(data.store_count, 10);
+  try {
+    const url = '/api/trial-signup';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (res.ok) {
+      STATUS.style.display = 'block';
+      STATUS.style.color = '#6ee7b7';
+      STATUS.textContent = '✅ ' + result.message;
+      FORM.reset();
+    } else {
+      STATUS.style.display = 'block';
+      STATUS.style.color = '#fca5a5';
+      STATUS.textContent = '❌ ' + (result.error || '提交失败，请稍后重试');
+    }
+  } catch(err) {
+    STATUS.style.display = 'block';
+    STATUS.style.color = '#fca5a5';
+    STATUS.textContent = '❌ 网络错误，请稍后重试或直接联系我们';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '立即申请免费试用';
+  }
+});
+</script>
+
+</body>
+</html>

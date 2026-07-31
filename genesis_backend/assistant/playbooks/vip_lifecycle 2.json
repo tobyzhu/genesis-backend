@@ -1,0 +1,121 @@
+{
+  "active": {
+    "goals": ["保持到店频次", "提升客单价"],
+    "actions": [
+      {
+        "type": "maintain",
+        "title": "常规维护",
+        "detail": "定期项目提醒、生日关怀",
+        "template": "{vname}，感谢您一直以来的信任。建议按护理周期预约下次服务，保持最佳效果。"
+      },
+      {
+        "type": "upsell",
+        "title": "升单建议",
+        "detail": "结合偏好项目推荐疗程或卡项",
+        "when": {"lifetime_amount_gte": 3000},
+        "template": "{vname}，您累计消费已达 {lifetime_amount} 元，可优先推荐疗程卡或年度护理计划。"
+      }
+    ]
+  },
+  "at_risk": {
+    "goals": ["7-14 天内唤醒到店"],
+    "actions": [
+      {
+        "type": "crm_call",
+        "title": "顾问回访",
+        "detail": "了解近期未到店原因，预约下次护理时间",
+        "template": "亲爱的{vname}，我是{adviser_name}。注意到您最近较少到店，想了解一下近况，帮您预约一次护理。"
+      },
+      {
+        "type": "offer",
+        "title": "专属关怀",
+        "detail": "发送体验项目或护理提醒（勿过度承诺折扣）",
+        "template": "{vname}，为您预留一次到店护理体验，欢迎回复方便的时间。"
+      },
+      {
+        "type": "offer",
+        "title": "高价值专属关怀",
+        "detail": "累计消费较高，优先顾问一对一沟通",
+        "when": {"lifetime_amount_gte": 5000},
+        "template": "{vname}，作为我们的重要客户，想为您安排一次专属护理方案沟通，请问本周哪天方便？"
+      },
+      {
+        "type": "follow_up",
+        "title": "3 日跟进",
+        "detail": "回访后 3 日内确认是否预约"
+      }
+    ]
+  },
+  "sleeping": {
+    "goals": ["30 天内尝试唤醒"],
+    "actions": [
+      {
+        "type": "reactivation",
+        "title": "沉睡唤醒",
+        "detail": "短信/微信邀请回店体验，强调上次做过的项目",
+        "template": "{vname}，好久不见！您已 {days_since} 天未到店，我们为您准备了回店护理体验，欢迎预约。"
+      },
+      {
+        "type": "adviser_task",
+        "title": "顾问任务",
+        "detail": "分配顾问逐一电话回访，记录 CRM 沟通",
+        "template": "请顾问联系 {vname}（{telph_mask}），了解未到店原因并记录 CRM。"
+      },
+      {
+        "type": "project_recommend",
+        "title": "项目推荐",
+        "detail": "基于历史偏好项目制定唤醒方案"
+      },
+      {
+        "type": "urgent_reactivation",
+        "title": "深度休眠唤醒",
+        "detail": "超过深度休眠阈值，需管理层关注",
+        "when": {"days_since_gte": 180},
+        "template": "{vname} 已休眠 {days_since} 天（阈值 {inactive_days} 天），建议店长/顾问联合制定唤醒方案。"
+      }
+    ]
+  },
+  "never_visited": {
+    "goals": ["促成首次有效消费"],
+    "actions": [
+      {
+        "type": "first_visit",
+        "title": "首消转化",
+        "detail": "新客体验邀约，明确首次到店权益",
+        "template": "{vname}，欢迎成为我们的会员！诚邀您首次到店体验，顾问{adviser_name}将为您做需求诊断。"
+      },
+      {
+        "type": "consultation",
+        "title": "需求诊断",
+        "detail": "顾问了解需求后再推荐项目，避免硬推销"
+      }
+    ]
+  },
+  "high_value": {
+    "goals": ["维护高价值客户关系", "提升复购与转介绍"],
+    "actions": [
+      {
+        "type": "vip_care",
+        "title": "高价值专属维护",
+        "detail": "定期一对一沟通，了解护理效果与下一步计划",
+        "template": "{vname}，感谢您长期信任。近{high_value_days}天消费 {recent_year_amount} 元，建议安排专属护理方案复盘。"
+      },
+      {
+        "type": "referral",
+        "title": "转介绍邀请",
+        "detail": "在关系稳定时邀请亲友体验",
+        "template": "{vname}，若您有朋友也想体验我们的护理，欢迎介绍给{adviser_name}。"
+      }
+    ]
+  },
+  "default": {
+    "goals": ["人工复核后制定方案"],
+    "actions": [
+      {
+        "type": "review",
+        "title": "人工复核",
+        "detail": "查看会员档案与最近消费记录后再制定方案"
+      }
+    ]
+  }
+}

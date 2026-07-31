@@ -1,0 +1,26 @@
+.day-wrap{
+  background-color: #fff;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.month{
+  padding: 0 15px;
+}
+
+.day-list-scroll{
+  white-space:nowrap;
+}
+.day-item{
+  padding: 2px 8px;
+  margin-right:15px;
+  text-align: center;
+  display: inline-block;
+  vertical-align: middle
+}
+.day-item.weekday{
+  background-color: #f2f2f2;
+}
+.day-item.today{
+  background-color: #ffdee8;
+  color: #ff5e2f
+}

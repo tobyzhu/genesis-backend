@@ -1,0 +1,66 @@
+<view class="page">
+    <!-- <view class="page__hd">
+        <view class="page__title">开单信息</view>
+    </view> -->
+    <view class="page__bd page__bd_spacing">
+        <!-- <view class="weui-cells weui-cells_after-title">
+            <view class="weui-cell weui-cell_select">
+                <view class="weui-cell__hd weui-cell__hd_in-select-after">
+                    <view class="weui-label">选择日期</view>
+                </view>
+                <view class="weui-cell__bd">
+                    <picker bindchange="bindHungDateChange" class="weui-btn" mode="date" value="{{hungdate}}" start="2019-04-01" end="2027-09-01" >
+                        <view class="weui-select">{{hungdate}}</view>
+                    </picker>
+                </view>
+            </view>
+        </view>  -->
+
+        <view class="sub-title">开单明细</view>
+        <!-- <view class="weui-cells weui-cells_after-title"> -->
+            <block wx:for="{{hungslist}}"  wx:key="itemuuid">
+
+              <navigator url="../hungitemedit/hungitemedit?uuid={{item.itemuuid}}" hover-class="weui-cell_active">
+                <view class="weui-cells weui-cells_after-title weui-form-preview">
+                    <view class="weui-form-preview__hd">
+                        <view class="weui-form-preview__item">
+                            <!-- <view class="weui-form-preview__label">项目</view> -->
+                            <!-- <view class="weui-form-preview__label">{{item.itemcode}}</view>                             -->
+                            <view class="weui-form-preview__value_in-hd">{{item.itemname}}</view>
+                        </view>
+                    </view>
+
+                    <view class="weui-form-preview__bd">
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">类型备注</view>
+                            <view class="weui-form-preview__value">{{item.ttypename}}/{{item.stypename}}/{{item.remark}}</view>
+                        </view>                     
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">项目编号</view>
+                            <view class="weui-form-preview__value">{{item.itemcode}}</view>
+                        </view>                    
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">价格</view>
+                            <view class="weui-form-preview__value">{{item.qty}}*{{item.price}}={{item.amount}}</view>
+                        </view>                     
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">员工</view>
+                            <view class="weui-form-preview__value">{{item.pmcode}}/{{item.seccode}}/{{item.thrcode}}</view>
+                        </view>                                                
+                        <view class="weui-form-preview__item">
+                            <view class="weui-form-preview__label">开单日期</view>
+                            <view class="weui-form-preview__value">{{item.vsdate}}</view>
+                        </view>                        
+                    </view>
+                  </view>
+
+                <!-- <view bindtap='openActions' value="{{item.hunguuid}}" id="{{index}}">
+                    <button type="primary" bindtap="openActions">操作</button>
+                </view> -->
+              </navigator>
+
+            </block>
+        <!-- </view> -->
+
+    </view>
+</view>

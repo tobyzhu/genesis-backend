@@ -1,0 +1,47 @@
+<!-- <view class="page" xmlns:wx="http://www.w3.org/1999/xhtml"> -->
+<view class="page" >
+        <view class="weui-search-bar">
+          <view class="weui-search-bar__form">
+            <view class="weui-search-bar__box">
+              <icon class="weui-icon-search_in-box" type="search" size="14"></icon>
+              <input type="text" class="weui-search-bar__input"  disabled='true' placeholder="搜索入口" bindtap="wxSearchTab">
+                       <view>{{ searchValue}}</view>
+              </input>
+            </view>
+          </view>
+        </view>
+
+
+    <view class="page__hd">
+        <view class="page__title">{{searchValue}}相关疗程卡类</view>
+        <!-- <view class="page__desc">疗程卡类</view> -->
+    </view>
+    <view class="page__bd">
+
+        <!-- <view class="weui-toptips weui-toptips_warn" wx:if="{{showTopTips}}">错误提示</view> -->
+        <!-- <block wx:for="{{timescardtypelist}}" wx:key="*this" wx:rang="cardname"> -->
+              <!-- <view class="weui-cells__title">{{searchValue}}相关疗程卡</view> -->
+              <view class="weui-cells weui-cells_after-title">
+                  <radio-group bindchange="timescardtypeChange">
+                      <label class="weui-cell weui-check__label" wx:for="{{timescardtypelist}}" wx:key="cardtype" wx:rang="cardname">
+                          <radio class="weui-check" value="{{item.cardtype}}" checked="{{item.checked}}"/>
+
+                          <view class="weui-cell__bd">{{item.cardname}}----{{item.price}}</view>
+                          <!-- <view class="weui-cell__bd">{{item.price}}</view> -->
+                          <view class="weui-cell__ft weui-cell__ft_in-radio" wx:if="{{item.checked}}">
+                              <icon class="weui-icon-radio" type="success_no_circle" size="16"></icon>
+                          </view>
+                      </label>
+                  </radio-group>
+              </view>
+        <!-- </block> -->
+<!-- 
+        <view class="weui-btn-area button-foot">
+            <button class="weui-btn" type="primary" bindtap="showTopTips">确定</button>
+        </view> -->
+    </view>
+
+    <view class="weui-btn-area button-foot">
+            <button class="weui-btn" type="primary" bindtap="confirm">确定</button>
+    </view>
+</view>

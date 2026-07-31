@@ -1,0 +1,47 @@
+<view class="page">
+    <view class="page__bd">
+        <view class="weui-tab">
+            <view class="weui-navbar">
+                <block wx:for="{{vipTypeList}}" wx:key="id">
+                    <view id="{{index}}" class="weui-navbar__item {{activeIndex == index ? 'weui-bar__item_on' : ''}}" bindtap="vipTypeClick">
+                        <view class="weui-navbar__title">{{item.name}}</view>
+                    </view>
+                </block>
+                <view class="weui-navbar__slider" style="left: {{sliderLeft}}px; transform: translateX({{sliderOffset}}px); -webkit-transform: translateX({{sliderOffset}}px);"></view>
+            </view>
+            <view class="weui-tab__panel">
+                <view class="weui-tab__content" hidden="{{activeIndex != 0}}">
+                    <block wx:for="{{vip10list}}" wx:key="uuid">
+                        <view class="weui-cells weui-cells_after-title">
+                            <navigator url="../vip?uuid={{item.uuid}}" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                                <view class="weui-cell__bd">{{item.vname}}</view>
+                                <view class="weui-cell__ft weui-cell__ft_in-access">{{item.mtcode}}</view>
+
+                            </navigator>
+                        </view>
+                    </block>
+                </view>
+                <view class="weui-tab__content" hidden="{{activeIndex != 1}}">
+                    <block wx:for="{{vip20list}}" wx:key="uuid">
+                        <view class="weui-cells weui-cells_after-title">
+                            <navigator url="../vip?uuid={{item.uuid}}"  class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                                <view class="weui-cell__bd">{{item.vname}}</view>
+                                <view class="weui-cell__ft weui-cell__ft_in-access">{{item.mtcode}}</view>
+                            </navigator>
+                        </view>
+                    </block>
+                </view>
+                <view class="weui-tab__content" hidden="{{activeIndex != 2}}">
+                    <block wx:for="{{vip30list}}" wx:key="uuid">
+                        <view class="weui-cells weui-cells_after-title">
+                            <navigator url="../vip?uuid={{item.uuid}}"  class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                                <view class="weui-cell__bd">{{item.vname}}</view>
+                                <view class="weui-cell__ft weui-cell__ft_in-access">{{item.mtcode}}</view>
+                            </navigator>
+                        </view>
+                    </block>
+                </view>
+            </view>
+        </view>
+    </view>
+</view>

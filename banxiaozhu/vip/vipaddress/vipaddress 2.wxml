@@ -1,0 +1,40 @@
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">{{vip.vname}}</view>
+        <view class="page__desc">收货地址</view>
+    </view>
+    <view class="page__bd">
+        <view class="weui-cells__title">收货地址</view>
+        <block wx:for="{{vipaddresslist}}" wx:for-index="idx" wx:for-item="item">
+            <view class="weui-cells weui-cells_after-title">
+                <!-- <navigator url="" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                    <view class="weui-cell__bd">{{idx}}:{{item.address}}</view>
+                    <view class="weui-cell__ft weui-cell__ft_in-access">说明文字</view>
+                </navigator> -->
+                <view class="weui-cell">
+                    <view class="weui-cell__bd">
+                      <view>{{item.receiver}}{{item.mtcode}}</view>
+                      <view class="weui-cell__bd weui-cell__bd_in-radio" wx:if="{{item.defaultflag}}">
+                          <icon class="weui-icon-radio" type="success_no_circle" size="16"></icon>
+                      </view>
+                      <view style="font-size: 13px;color: #888888;">{{item.address}}</view>                    
+                      <!-- <view>{{item.defaultflag}}</view> -->
+                    </view>
+                </view>
+            </view>        
+        </block>
+
+        <view class="button-sp-area">
+            <button class="weui-btn" type="primary" plain="true">管理</button>
+            <button class="weui-btn" type="default" bindtap="bindNewAddress" plain="true">新增</button>
+
+            <!-- <button class="weui-btn" type="default" plain="true">按钮</button>
+            <button class="weui-btn" type="default" disabled="true" plain="true">按钮</button>
+
+            <button class="weui-btn mini-btn" type="primary" size="mini">按钮</button>
+            <button class="weui-btn mini-btn" type="default" size="mini">按钮</button>
+            <button class="weui-btn mini-btn" type="warn" size="mini">按钮</button> -->
+        </view>
+
+    </view>
+</view>

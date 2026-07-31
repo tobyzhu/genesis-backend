@@ -1,0 +1,26 @@
+<view class="page">
+    <view class="page__hd">
+        <view class="page__title">最近客户列表</view>
+        <!-- <view class="page__desc">列表</view> -->
+    </view>
+    <view class="page__bd">
+        <scroll-view>
+           <block wx:for="{{nearlyviplist}}" wx:key="uuid" wx:key-rang="{{vname}}">
+
+              <view class="weui-cells weui-cells_after-title">
+                  <navigator url="../vip?uuid={{item.uuid}}" class="weui-cell weui-cell_access" hover-class="weui-cell_active">
+                      <view class="weui-cell__bd">{{item.vname}}</view>
+                      <view wx:if="{{item.viptype==10}}" class="weui-cell__ft weui-cell__ft_in-access">{{item.vcode}}</view>
+                      <view wx:if="{{item.viptype==20}}" class="weui-cell__ft weui-cell__ft_in-access">散客</view>
+                      <view wx:if="{{item.viptype==30}}" class="weui-cell__ft weui-cell__ft_in-access">潜在客户</view>
+                  </navigator>
+
+              </view>
+          </block>
+       
+        </scroll-view>
+
+
+
+    </view>
+</view>

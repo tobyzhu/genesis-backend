@@ -1,0 +1,84 @@
+<view class="page">
+  <view class="page__hd">
+    <view class="page__title">客户洞察</view>
+    <view class="page__desc">消费数据智能分析</view>
+  </view>
+
+  <view class="weui-cells weui-cells_after-title">
+    <view class="weui-cell weui-cell_select">
+      <view class="weui-cell__hd">
+        <view class="weui-label">统计期间</view>
+      </view>
+      <view class="weui-cell__bd">
+        <picker bindchange="bindDateRangeChange" value="{{dateRangeIndex}}" range="{{dateRangeOptions}}" range-key="label">
+          <view class="weui-select">{{dateRangeOptions[dateRangeIndex].label}}</view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <block wx:if="{{loading}}">
+    <view class="loading-mask">加载中...</view>
+  </block>
+
+  <block wx:if="{{!loading && hasData}}">
+    <view class="weui-cells__title">消费概览</view>
+    <view class="summary-grid">
+      <view class="summary-item">
+        <view class="summary-value">{{insight.total_visits}}</view>
+        <view class="summary-label">累计到店</view>
+      </view>
+      <view class="summary-item">
+        <view class="summary-value">¥{{insight.total_spent}}</view>
+        <view class="summary-label">累计消费</view>
+      </view>
+      <view class="summary-item">
+        <view class="summary-value">¥{{insight.avg_spend}}</view>
+        <view class="summary-label">客单价</view>
+      </view>
+      <view class="summary-item">
+        <view class="summary-value">{{insight.days_since}}</view>
+        <view class="summary-label">距上次到店</view>
+      </view>
+    </view>
+
+    <view class="weui-cells__title">到店信息</view>
+    <view class="weui-cells">
+      <view class="weui-cell">
+        <view class="weui-cell__hd"><view class="weui-label">最近到店</view></view>
+        <view class="weui-cell__bd">{{insight.last_visit}}</view>
+      </view>
+      <view class="weui-cell">
+        <view class="weui-cell__hd"><view class="weui-label">平均周期</view></view>
+        <view class="weui-cell__bd">{{insight.avg_cycle}}</view>
+      </view>
+      <view class="weui-cell">
+        <view class="weui-cell__hd"><view class="weui-label">活跃卡数</view></view>
+        <view class="weui-cell__bd">{{insight.card_count}}</view>
+      </view>
+    </view>
+
+    <view class="weui-cells__title">偏好项目 TOP5</view>
+    <block wx:for="{{insight.preferred_items}}" wx:key="srvcode">
+      <view class="weui-cells" style="margin:0;">
+        <view class="weui-cell" style="justify-content:space-between;">
+          <view style="flex:1;color:#333;font-size:14px;">{{item.srvname}}</view>
+          <view style="color:#999;font-size:13px;">{{item.count}}次 / ¥{{item.total}}</view>
+        </view>
+      </view>
+    </block>
+    <view wx:if="{{insight.preferred_items.length === 0}}" class="weui-cells__tips">暂无偏好项目数据</view>
+
+    <view wx:if="{{insight.preferred_employee}}" class="weui-cells__title">偏好员工</view>
+    <view wx:if="{{insight.preferred_employee}}" class="weui-cells">
+      <view class="weui-cell">
+        <view class="weui-cell__hd"><view class="weui-label">{{insight.preferred_employee.ename || insight.preferred_employee.ecode}}</view></view>
+        <view class="weui-cell__bd">{{insight.preferred_employee.count}}次服务</view>
+      </view>
+    </view>
+  </block>
+
+  <block wx:if="{{!loading && !hasData}}">
+    <view class="loading-mask">暂无数据，请先查询</view>
+  </block>
+</view>

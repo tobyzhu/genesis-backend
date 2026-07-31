@@ -1,0 +1,78 @@
+<view class="page" xmlns:wx="http://www.w3.org/1999/xhtml">
+    <!-- <view class="page__hd">
+        <view class="page__title">Input</view>
+        <view class="page__desc">表单输入</view>
+    </view> -->
+    <view class="page__bd">
+        <view class="weui-search-bar">
+          <view class="weui-search-bar__form">
+            <view class="weui-search-bar__box">
+              <icon class="weui-icon-search_in-box" type="search" size="14"></icon>
+              <input type="text" class="weui-search-bar__input"  disabled='true' placeholder="搜索入口" bindtap="wxSearchTabGoods"/>
+            </view>
+          </view>
+        </view>
+        <view>{{ searchValue}}</view>
+
+        <view class="section">
+            <view class="weui-btn-area button-sp-area">
+                <picker
+                  mode="multiSelector"
+                  bindchange="bindMultiPickerChange"
+                  bindcolumnchange="bindMultiPickerColumnChange"
+                  value="{{multiIndex}}"
+                  range="{{multiArray}}"
+                  range-key='name' >
+                    <button class='weui-btn' type="default" size="mini">选择商品</button>
+                </picker>
+                <text style='display:inline'>{{multiArray[0][multiIndex[0]].name}}，{{multiArray[1][multiIndex[1]].name}}，{{multiArray[2][multiIndex[2]].name}}</text>
+
+            </view>
+        </view>
+
+        <scroll-view scroll-y style="height: 400px;" bindscrolltoupper="upper" bindscrolltolower="lower" bindscroll="scroll" scroll-into-view="{{toView}}" scroll-top="{{scrollTop}}">
+            <view wx:if="{{goodslist.length > 0}}"class="weui-panel weui-panel_access">
+                <!-- <view class="weui-panel__hd">文字组合列表</view> -->
+                <view class="weui-panel__bd">
+                    <wux-cell-group title="商品列表">
+                        <block wx:for="{{ goodslist }}" wx:key="*this">
+                            <view class="section">
+                              <view class="section">{{item.itemname}}
+                                  <text class='price' style='font-size=7'>原价:{{item.price}}</text>
+                              </view>
+                              <view class="section">
+                                  <switch checked='{{stype}}' bindchange="stypeChange">是否赠送</switch>
+                                  <!-- <input type="digit" value="{{item.secdisc}}" bindconfirm="secdiscChange"></input> -->
+                                  <!-- <input type='digit' value="{{item.mondisc}}" bindconfirm="mondiscChange"></input> -->
+                                  <text >{{item.amount}}</text>
+                              </view>
+
+                              <button bindtap='subQty' id="{{index}}" class='.sub' style='display:inline'  >-</button> 
+                              <text class='.qty' style='display:inline' >{{item.qty}}</text>                        
+                              <button bindtap='addQty' id="{{index}}" class='.add'  style='display:inline'  >+</button> 
+                            </view>
+
+                        </block>
+                    </wux-cell-group>
+                </view>
+            </view>
+
+        </scroll-view>
+
+
+
+        <view class="button-foot card-add ">
+            <!-- <view class="button-foot card-add " > -->
+                <button class="weui-btn" type="primary" bindtap="goodsHung">确定</button>
+            <!-- </view> -->
+            <!-- <view class="weui-flex">
+                <view class="weui-flex__item">
+                    <button class="weui-btn" type="primary" bindtap="pushHung">加入购物车</button>
+                </view>
+                <view class="weui-flex__item">
+                    <button class='weui-btn'>提交订单</button>
+                </view>
+            </view> -->
+        </view>
+    </view>
+</view>

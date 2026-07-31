@@ -1,0 +1,4 @@
+/* vip/vipinfo/vipinfo.wxss */
+.tag-option { display: inline-block; padding: 4px 12px; border-radius: 14px; font-size: 13px; margin: 2px; background: #f0f0f0; color: #666; border: 1px solid #e0e0e0; }
+.tag-option.tag-active { background: #07c160; color: #fff; border-color: #07c160; }
+.tag-container { display: flex; flex-wrap: wrap; padding: 4px 0; }

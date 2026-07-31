@@ -1,0 +1,65 @@
+@import "../../wxSearchView/wxSearchView.wxss";
+
+
+
+/* @import "../lib/weui.wxss"; */
+@import "../../wxSearchView/wxSearchView.wxss";
+.picker{
+    padding: 13px;
+    background-color: #FFFFFF;
+}
+
+/* pages/input-number/index.wxss */
+.input {
+	width: 120rpx !important;
+	border-color: transparent !important;
+}
+
+.sub{
+  /* width:32px !important; */
+  border: 2rpx solid #ececec !important;
+    border-radius: 10rpx !important;
+  position: relative;
+  margin-right: 10px;
+}
+.add {
+	width: 32rpx !important;
+	border: 2rpx solid #ececec !important;
+    border-radius: 10rpx !important;
+  position: relative;
+  margin-right:10px;
+
+}
+.qty{
+  width:8px;
+  color: black;
+  position:relative;
+  right:15px;
+  margin-right: 10px;
+}
+.price{
+  width:150rpx;
+  font-size: 10px;
+  color: red;
+  margin-right: 10px;
+  position:absolute;
+  right:0px;
+}
+
+.card-add {
+position: fixed;
+bottom: 0;
+width: 100%;
+/* right:0px; */
+}
+
+.body {
+margin-bottom: 46px;
+}
+
+.button-sp-area{
+    margin: 0 auto;
+    padding-top: 15px;
+    width: 60%;
+}
+

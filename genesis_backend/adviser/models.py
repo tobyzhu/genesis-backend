@@ -54,6 +54,8 @@ class Cardinfo(GenesisModel):
     vipuuid = models.ForeignKey('baseinfo.Vip',db_column='vipuuid',on_delete=models.SET_NULL,blank=True,null=True,verbose_name='客户唯一号')
     stype = models.CharField(max_length=8,choices=STYPE,default='N',blank=True,null=True,verbose_name='是否赠送')
     cardtypeuuid = models.ForeignKey('baseinfo.Cardtype',db_column='cardtypeuuid', on_delete=models.DO_NOTHING,blank=True,null=True,related_name='cardtypeuuid', verbose_name='卡类')  # Field name made lowercase.
+    logic_cycle_month = models.CharField(max_length=7, blank=True, null=True, verbose_name='逻辑卡计数自然月')
+    logic_usecount = models.IntegerField(default=0, blank=True, null=True, verbose_name='逻辑卡当月到店次数')
 
 
     class Meta:

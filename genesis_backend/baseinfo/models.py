@@ -699,7 +699,7 @@ class Cardvsdi(GenesisModel):
     cddsec = models.CharField(db_column='CDDSEC',  max_length=100,  default='', blank=True,  null=True)  # Field name made lowercase.
 #    ccode = models.CharField(db_column='CCODE',  max_length=40,  blank=True,  null=True)  # Field name made lowercase.
     ttype = models.CharField(max_length=8, default='S', choices=TTYPE, verbose_name='项目类别')
-    flag = models.CharField(max_length=1,  default='Y', choices=FLAG, blank=True,  null=True, verbose_name='可否消费')
+    consume_flag = models.CharField(max_length=1, default='Y', choices=FLAG, blank=True, null=True, verbose_name='可否消费')
     guideperc = models.DecimalField(max_digits=10,  default=1, decimal_places=4,  blank=True,  null=True, verbose_name='员工业绩折算率')
     cardvsprice = models.DecimalField(max_digits=16,  default=0, decimal_places=4,  blank=True,  null=True, verbose_name='单次价格')
     pricetype = models.CharField(max_length=16,  default='DISCOUNT',  choices=PRICETYPE, blank=True, null=True, verbose_name='计费方法')
@@ -721,17 +721,17 @@ class CardtypeVsDiscountClass(GenesisModel):
     discounttype = models.CharField(max_length=8, blank=True, null=True, verbose_name='折扣方式')
     price = models.DecimalField(max_digits=16, decimal_places=2, default=0, blank=True, null=True, verbose_name='折扣价')
     disc = models.DecimalField(max_digits=8, decimal_places=5, default=1, blank=True, null=True, verbose_name='折扣率')
-    valiflag = models.CharField(max_length=8, blank=True, null=True, verbose_name='可否消费')
+    consume_flag = models.CharField(max_length=8, db_column='valiflag', blank=True, null=True, verbose_name='可否消费')
     emplguideperc = models.DecimalField(max_digits=10,  default=1, decimal_places=4,  blank=True,  null=True, verbose_name='员工业绩折算率')
 
-    # class Meta:
-    #     managed = True
-    #     db_table = 'cardtypevsdiscountclass'
-    #     verbose_name='计费卡类折扣'
-    #     verbose_name_plural=verbose_name
-    #
-    # def __str__(self):
-    #     return ''
+    class Meta:
+        managed = True
+        db_table = 'baseinfo_cardtypevsdiscountclass'
+        verbose_name = '计费卡折扣分类规则'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.cardtype or ''}-{self.ttype or ''}-{self.discountclass or ''}"
 
 class Ruler(models.Model):
     rulername = models.CharField(max_length=32, db_column='rulername', blank=True, null=True, verbose_name='规则名称' )
