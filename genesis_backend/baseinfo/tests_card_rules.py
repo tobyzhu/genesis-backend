@@ -31,7 +31,7 @@ def _make_cardtype(company, code='CT001', comptype='amount', ruler=None,
     )
 
 
-def _make_cardinfo(company, cardtype, ccode='C001', valdate='2099-12-31',
+def _make_cardinfo(company, cardtype, ccode='C001', valdate='20991231',
                    leftmoney='1000'):
     return Cardinfo.objects.create(
         company=company, ccode=ccode, cardtype=cardtype.cardtype,
@@ -236,7 +236,7 @@ class TestAmountCardPricing:
 class TestPeriodAndTimesCard:
     def test_period_card_valid_and_bound(self, db, test_company):
         ct = _make_cardtype(test_company, code='105001', comptype='period', ttype='S')
-        ci = _make_cardinfo(test_company, ct, valdate='2099-12-31')
+        ci = _make_cardinfo(test_company, ct, valdate='20991231')
         res = resolve_card_item_price(
             test_company, ct, ci, ttype='S', itemcode='105001',
             discountclass='', topcode='', original_price=Decimal('1000'),
@@ -247,7 +247,7 @@ class TestPeriodAndTimesCard:
 
     def test_period_card_item_mismatch_blocked(self, db, test_company):
         ct = _make_cardtype(test_company, code='105001', comptype='period', ttype='S')
-        ci = _make_cardinfo(test_company, ct, valdate='2099-12-31')
+        ci = _make_cardinfo(test_company, ct, valdate='20991231')
         res = resolve_card_item_price(
             test_company, ct, ci, ttype='S', itemcode='999999',
             discountclass='', topcode='', original_price=Decimal('1000'),
@@ -256,7 +256,7 @@ class TestPeriodAndTimesCard:
 
     def test_period_card_expired_blocked(self, db, test_company):
         ct = _make_cardtype(test_company, code='105001', comptype='period', ttype='S')
-        ci = _make_cardinfo(test_company, ct, valdate='2020-01-01')
+        ci = _make_cardinfo(test_company, ct, valdate='20200101')
         res = resolve_card_item_price(
             test_company, ct, ci, ttype='S', itemcode='105001',
             discountclass='', topcode='', original_price=Decimal('1000'),
@@ -299,7 +299,7 @@ class TestSyncRules:
         Cardvsdi.objects.create(
             company=test_company, cardtypeuuid=ct, cardtype='CT001',
             ttype='G', topcode='01', pricetype='PRICE',
-            cardvsprice=Decimal('500'), flag='N')
+            cardvsprice=Decimal('500'), flag='N', consume_flag=None)
 
         result = sync_card_discount_rules(company=test_company)
 
@@ -364,6 +364,7 @@ class TestCardPricingApi:
             '/adviser/card-pricing/',
             data=json.dumps({
                 'cardtypeuuid': str(ct.uuid),
+                'company': test_company,
                 'items': [{
                     'ttype': 'S', 'code': 'SV001',
                     'discountclass': '10', 'topcode': '',
@@ -403,6 +404,7 @@ class TestCardPricingApi:
         resp = client.post(
             '/adviser/cardtype-discount-save/',
             data=json.dumps({
+                'company': test_company,
                 'cardtype': 'CT001',
                 'rules': [{
                     'ttype': 'S', 'discountclass': '10',

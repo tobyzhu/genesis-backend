@@ -96,12 +96,12 @@ def ensure_card_rule_schema():
                 "ALTER TABLE cardinfo ADD COLUMN logic_usecount int NULL DEFAULT 0"
             )
             changes.append('cardinfo.logic_usecount')
-        # 老数据：flag 曾表示“可否消费”，迁移到 consume_flag 后 flag 只作软删除
+        # 老数据一次性迁移：flag 曾表示“可否消费”，迁到 consume_flag 后 flag 只作软删除。
+        # 只处理 consume_flag 为空的历史行，避免把后来软删除的行重新置为 Y。
         cur.execute(
-            "UPDATE cardvsdi SET consume_flag = COALESCE(NULLIF(flag, ''), 'Y') "
+            "UPDATE cardvsdi SET consume_flag = COALESCE(NULLIF(flag, ''), 'Y'), flag = 'Y' "
             "WHERE consume_flag IS NULL OR consume_flag = ''"
         )
-        cur.execute("UPDATE cardvsdi SET flag = 'Y'")
     return changes
 
 
@@ -200,7 +200,7 @@ def resolve_card_item_price(
         if bound and bound != (itemcode or ''):
             return _blocked('此卡绑定项目不匹配')
         if cardinfo and cardinfo.valdate:
-            if cardinfo.valdate < date.today().strftime('%Y-%m-%d'):
+            if cardinfo.valdate < date.today().strftime('%Y%m%d'):
                 return _blocked('卡已过期')
         return {'allowed': True, 'price': original_price, 'source': 'period', 'reason': ''}
 
