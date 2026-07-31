@@ -156,6 +156,7 @@
                   <el-select v-model="form.ttype" style="width:100%">
                     <el-option label="服务" value="S" />
                     <el-option label="商品" value="G" />
+                    <el-option label="卡" value="C" />
                   </el-select>
                 </el-form-item>
               </el-col>
@@ -222,6 +223,7 @@
                 <el-select v-model="row.ttype" size="small">
                   <el-option label="服务" value="S" />
                   <el-option label="商品" value="G" />
+                  <el-option label="卡" value="C" />
                 </el-select>
               </template>
             </el-table-column>
@@ -383,16 +385,29 @@ async function fetchCardtypes() {
 
 async function loadOptions() {
   try {
-    const [suptypeRes, discRes, rulerRes] = await Promise.all([
+    const [suptypeRes, discRes, srvDiscRes, goodsDiscRes, rulerRes] = await Promise.all([
       getModelData('baseinfo', 'cardsupertype', { page: 1, page_size: 200 }),
       getAppOptionList('discountclass'),
+      getAppOptionList('srvdiscountclass'),
+      getAppOptionList('goodsdiscountclass'),
       getRulerList(),
     ])
     suptypes.value = suptypeRes.data.rows || []
-    discountClassOptions.value = (discRes.data.results || []).map((o: any) => ({
+    const toOption = (rows: any[]) => (rows || []).map((o: any) => ({
       value: o.code || o.value || '',
       label: o.name || o.label || '',
     }))
+    const merged = [
+      ...toOption(discRes.data.results),
+      ...toOption(srvDiscRes.data.results),
+      ...toOption(goodsDiscRes.data.results),
+    ]
+    const seen = new Set<string>()
+    discountClassOptions.value = merged.filter((o: any) => {
+      if (!o.value || seen.has(o.value)) return false
+      seen.add(o.value)
+      return true
+    })
     rulers.value = rulerRes.data.results || []
   } catch {}
 }

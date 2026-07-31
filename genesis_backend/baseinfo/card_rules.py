@@ -260,14 +260,18 @@ def resolve_card_item_price(
 def sync_card_discount_rules(company=None):
     """把服务/商品大类同步到折扣分类，并把 Cardvsdi 迁移为折扣分类规则。"""
     from baseinfo.models import (
-        Appoption, Cardtype, CardtypeVsDiscountClass, Cardvsdi,
+        Appoption, Cardsupertype, CardtypeVsDiscountClass, Cardvsdi,
         Goods, Goodsct, Serviece, Srvtopty,
     )
+    from django.db.models import F, Q
+    import time
 
     ensure_card_rule_schema()
+    print(f"[sync] 开始同步 company={company or 'ALL'} schema 已就绪", flush=True)
     stats = {
         'srv_categories': 0,
         'goods_categories': 0,
+        'skipped_null_categories': 0,
         'items_backfilled': 0,
         'rules_created': 0,
         'rules_updated': 0,
@@ -285,66 +289,172 @@ def sync_card_discount_rules(company=None):
     for co in companies:
         if not co:
             continue
+        t0 = time.time()
+        print(f"[sync] 处理公司 {co}: 同步服务/商品大类", flush=True)
 
         for st in Srvtopty.objects.filter(company=co, flag='Y'):
+            code = (st.topcode or '').strip()
+            name = (st.ttname or '').strip()
+            if not code or not name:
+                stats['skipped_null_categories'] += 1
+                continue
             Appoption.objects.update_or_create(
-                company=co, seg='srvdiscountclass', itemname=st.topcode,
-                defaults={'itemvalues': st.ttname or st.topcode, 'flag': 'Y'},
+                company=co, seg='srvdiscountclass', itemname=code,
+                defaults={'itemvalues': name, 'flag': 'Y'},
             )
             stats['srv_categories'] += 1
 
         for gc in Goodsct.objects.filter(company=co, flag='Y'):
+            code = (gc.goodsct or '').strip()
+            name = (gc.goodsctname or '').strip()
+            if not code or not name:
+                stats['skipped_null_categories'] += 1
+                continue
             Appoption.objects.update_or_create(
-                company=co, seg='goodsdiscountclass', itemname=gc.goodsct,
-                defaults={'itemvalues': gc.goodsctname or gc.goodsct, 'flag': 'Y'},
+                company=co, seg='goodsdiscountclass', itemname=code,
+                defaults={'itemvalues': name, 'flag': 'Y'},
             )
             stats['goods_categories'] += 1
 
+        # 卡大类同步到通用折扣分类，供 ttype=C 的规则使用
+        for cs in Cardsupertype.objects.filter(company=co, flag='Y'):
+            code = (cs.code or '').strip()
+            name = (cs.name or '').strip()
+            if not code or not name:
+                stats['skipped_null_categories'] += 1
+                continue
+            Appoption.objects.update_or_create(
+                company=co, seg='discountclass', itemname=code,
+                defaults={'itemvalues': name, 'flag': 'Y'},
+            )
+
         # 通用折扣分类合并到专用 seg，避免存量项目已有编码失效
         for opt in Appoption.objects.filter(company=co, seg='discountclass', flag='Y'):
-            for seg in ('srvdiscountclass', 'goodsdiscountclass'):
-                Appoption.objects.update_or_create(
-                    company=co, seg=seg, itemname=opt.itemname,
-                    defaults={'itemvalues': opt.itemvalues, 'flag': 'Y'},
-                )
-
-        for sv in Serviece.objects.filter(company=co, flag='Y').exclude(topcode__isnull=True).exclude(topcode=''):
-            if not (sv.discountclass or ''):
-                sv.discountclass = sv.topcode
-                sv.save(update_fields=['discountclass'])
-                stats['items_backfilled'] += 1
-
-        for gd in Goods.objects.filter(company=co, flag='Y').exclude(goodsct__isnull=True).exclude(goodsct=''):
-            if not (gd.discountclass or ''):
-                gd.discountclass = gd.goodsct
-                gd.save(update_fields=['discountclass'])
-                stats['items_backfilled'] += 1
-
-        for cv in Cardvsdi.objects.filter(company=co, flag='Y'):
-            ct = cv.cardtypeuuid or Cardtype.objects.filter(
-                company=co, cardtype=cv.cardtype, flag='Y').first()
-            if not (cv.cardtype or ''):
+            if not (opt.itemname or '').strip():
                 continue
+            for seg in ('srvdiscountclass', 'goodsdiscountclass'):
+                exists = Appoption.objects.filter(
+                    company=co, seg=seg, itemname=opt.itemname).exists()
+                if not exists:
+                    Appoption.objects.create(
+                        company=co, seg=seg, itemname=opt.itemname,
+                        itemvalues=opt.itemvalues, flag='Y',
+                    )
+
+        # 项目折扣分类空值回填（批量，避免逐行 save）
+        print(f"[sync] 公司 {co}: 项目 discountclass 空值回填", flush=True)
+        sv_qs = Serviece.objects.filter(company=co, flag='Y') \
+            .exclude(topcode__isnull=True).exclude(topcode='') \
+            .filter(Q(discountclass__isnull=True) | Q(discountclass=''))
+        stats['items_backfilled'] += sv_qs.update(discountclass=F('topcode'))
+
+        gd_qs = Goods.objects.filter(company=co, flag='Y') \
+            .exclude(goodsct__isnull=True).exclude(goodsct='') \
+            .filter(Q(discountclass__isnull=True) | Q(discountclass=''))
+        stats['items_backfilled'] += gd_qs.update(discountclass=F('goodsct'))
+
+        # Cardvsdi → 新规则（批量创建/更新）
+        print(f"[sync] 公司 {co}: 开始镜像 Cardvsdi 规则", flush=True)
+        existing = list(CardtypeVsDiscountClass.objects.filter(company=co, flag='Y'))
+        existing_map = {
+            (r.cardtype or '', r.ttype or 'S', r.discountclass or ''): r
+            for r in existing
+        }
+        create_objs = []
+        update_objs = []
+
+        cv_rows = list(Cardvsdi.objects.filter(company=co, flag='Y').values(
+            'cardtype', 'topcode', 'ttype', 'pricetype',
+            'cardvsdisc', 'cardvsprice', 'consume_flag', 'guideperc',
+            'cardtypeuuid',
+        ))
+        for idx, cv in enumerate(cv_rows, start=1):
+            cardtype_code = (cv.get('cardtype') or '').strip()
+            topcode = (cv.get('topcode') or '').strip()
+            if not cardtype_code or not topcode:
+                continue
+            ttype = (cv.get('ttype') or 'S').upper()
+            ct_id = cv.get('cardtypeuuid')
             defaults = {
-                'discounttype': 'PRICE' if (cv.pricetype or '').upper() == 'PRICE' else 'DISC',
-                'disc': cv.cardvsdisc if (cv.pricetype or '').upper() != 'PRICE' else Decimal('1'),
-                'price': cv.cardvsprice or Decimal('0'),
-                'consume_flag': cv.consume_flag or 'Y',
-                'emplguideperc': cv.guideperc or Decimal('1'),
+                'discounttype': 'PRICE' if (cv.get('pricetype') or '').upper() == 'PRICE' else 'DISC',
+                'disc': cv.get('cardvsdisc') if (cv.get('pricetype') or '').upper() != 'PRICE' else Decimal('1'),
+                'price': cv.get('cardvsprice') or Decimal('0'),
+                'consume_flag': cv.get('consume_flag') or 'Y',
+                'emplguideperc': cv.get('guideperc') or Decimal('1'),
                 'flag': 'Y',
             }
-            if ct:
-                defaults['cardtypeuuid'] = ct
-            _, created = CardtypeVsDiscountClass.objects.update_or_create(
-                company=co,
-                cardtype=cv.cardtype,
-                ttype=cv.ttype or 'S',
-                discountclass=cv.topcode or '',
-                defaults=defaults,
-            )
-            if created:
-                stats['rules_created'] += 1
-            else:
+            key = (cardtype_code, ttype, topcode)
+            obj = existing_map.get(key)
+            if obj:
+                obj.discounttype = defaults['discounttype']
+                obj.disc = defaults['disc']
+                obj.price = defaults['price']
+                obj.consume_flag = defaults['consume_flag']
+                obj.emplguideperc = defaults['emplguideperc']
+                if ct_id:
+                    obj.cardtypeuuid_id = ct_id
+                update_objs.append(obj)
                 stats['rules_updated'] += 1
+            else:
+                create_objs.append(CardtypeVsDiscountClass(
+                    company=co, cardtype=cardtype_code, ttype=ttype,
+                    discountclass=topcode, cardtypeuuid_id=ct_id, **defaults,
+                ))
+                stats['rules_created'] += 1
+            if idx % 500 == 0:
+                print(f"[sync] 公司 {co}: 已处理 {idx}/{len(cv_rows)} 行 Cardvsdi", flush=True)
+            if time.time() - t0 > 30 and idx % 500 == 0:
+                print(f"[sync] 警告: 公司 {co} 规则同步已超过 30 秒，请检查是否有锁", flush=True)
 
+        # 补全规则里出现但大类表缺失的编码，保证折扣分类下拉有对应名称
+        from django.db.models import Count as _Count
+        used = (
+            Cardvsdi.objects.filter(company=co, flag='Y')
+            .exclude(topcode__isnull=True).exclude(topcode='')
+            .values('ttype', 'topcode').annotate(n=_Count('uuid'))
+        )
+        srv_name_map = {
+            st.topcode: st.ttname
+            for st in Srvtopty.objects.filter(company=co, flag='Y')
+            if st.topcode
+        }
+        goods_name_map = {
+            gc.goodsct: gc.goodsctname
+            for gc in Goodsct.objects.filter(company=co, flag='Y')
+            if gc.goodsct
+        }
+        card_name_map = {
+            cs.code: cs.name
+            for cs in Cardsupertype.objects.filter(company=co, flag='Y')
+            if cs.code
+        }
+        for row in used:
+            ttype = (row['ttype'] or 'S').upper()
+            code = row['topcode']
+            if ttype == 'G':
+                seg = 'goodsdiscountclass'
+                name = goods_name_map.get(code) or code
+            elif ttype == 'C':
+                seg = 'discountclass'
+                name = card_name_map.get(code) or code
+            else:
+                seg = 'srvdiscountclass'
+                name = srv_name_map.get(code) or code
+            if not Appoption.objects.filter(company=co, seg=seg, itemname=code).exists():
+                Appoption.objects.create(
+                    company=co, seg=seg, itemname=code,
+                    itemvalues=name, flag='Y',
+                )
+
+        if create_objs:
+            CardtypeVsDiscountClass.objects.bulk_create(create_objs, batch_size=500)
+        if update_objs:
+            CardtypeVsDiscountClass.objects.bulk_update(
+                update_objs,
+                ['discounttype', 'disc', 'price', 'consume_flag', 'emplguideperc', 'cardtypeuuid'],
+                batch_size=500,
+            )
+        print(f"[sync] 公司 {co} 完成，耗时 {time.time() - t0:.1f}s，统计: {stats}", flush=True)
+
+    print(f"[sync] 全部完成: {stats}", flush=True)
     return stats
