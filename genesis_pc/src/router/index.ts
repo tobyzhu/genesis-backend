@@ -147,6 +147,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/sysadmin/GoodsAdminPage.vue'),
         meta: { title: '商品管理' },
       },
+      {
+        path: '/sysadmin/cardtype',
+        name: 'CardtypeAdmin',
+        component: () => import('@/views/sysadmin/CardtypeAdminPage.vue'),
+        meta: { title: '卡类管理' },
+      },
     ],
   },
 ]

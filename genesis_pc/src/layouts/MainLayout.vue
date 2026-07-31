@@ -137,6 +137,7 @@ const menuGroups = [
     children: [
       { path: '/sysadmin/serviece', title: '服务管理' },
       { path: '/sysadmin/goods', title: '商品管理' },
+      { path: '/sysadmin/cardtype', title: '卡类管理' },
       { path: '/campaign', title: '营销活动' },
     ],
   },
