@@ -317,7 +317,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Edit, Delete } from '@element-plus/icons-vue'
 import {
-  getRulerList, saveRuler,
+  getCardtypeFastList, getRulerList, saveRuler,
   getCardtypeDiscountRules, saveCardtypeDiscountRules,
 } from '@/api/card-admin'
 import { getAppOptionList } from '@/api/serviece-admin'
@@ -376,7 +376,7 @@ async function fetchCardtypes() {
     const params: Record<string, any> = { page: currentPage.value, page_size: pageSize.value, ordering: 'cardtype' }
     if (comptypeFilter.value) params.comptype = comptypeFilter.value
     if (searchQuery.value) params.search = searchQuery.value
-    const res = await getModelData('baseinfo', 'cardtype', params)
+    const res = await getCardtypeFastList(params)
     cardtypes.value = res.data.rows || []
     total.value = res.data.total || 0
   } catch { ElMessage.error('加载卡类失败') }

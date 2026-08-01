@@ -6,12 +6,19 @@ vi.mock('../request', () => ({
 }))
 
 import {
-  getRulerList, saveRuler, deleteRuler,
+  getCardtypeFastList, getRulerList, saveRuler, deleteRuler,
   getCardtypeDiscountRules, saveCardtypeDiscountRules, getCardPricing
 } from '../card-admin'
 
 describe('card-admin API', () => {
   beforeEach(() => { vi.clearAllMocks() })
+
+  it('getCardtypeFastList calls correct endpoint', async () => {
+    await getCardtypeFastList({ comptype: 'amount', page: 1 })
+    expect(request.get).toHaveBeenCalledWith('/adviser/cardtype-list/', {
+      params: { comptype: 'amount', page: 1 },
+    })
+  })
 
   it('getRulerList calls correct endpoint', async () => {
     await getRulerList()

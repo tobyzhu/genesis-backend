@@ -2682,20 +2682,9 @@ def group_items_by_card(company, items):
                 times_groups[card].append(it)
             else:
                 amount_groups[card].append(it)
-        deficits = {}
-        for ccode, citems in amount_groups.items():
-            total = sum(int(it.get('s_qty',1)) * float(it.get('s_price',0)) for it in citems)
-            bal = card_info.get(ccode, {}).get('balance', 0)
-            deficits[ccode] = total - bal
+        # 现金行始终独立成组，不得并入储值卡组（否则结账时会被该卡扣款）
         if cash_items:
-            needy = {c: d for c, d in deficits.items() if d > 0}
-            if needy:
-                target = max(needy, key=lambda c: needy[c])
-                amount_groups[target].extend(cash_items)
-            elif amount_groups:
-                amount_groups['__cash__'] = cash_items
-            else:
-                amount_groups['__cash__'] = cash_items
+            amount_groups['__cash__'] = cash_items
         result.update(dict(amount_groups))
         result.update(times_groups)
 
@@ -2708,6 +2697,106 @@ def group_items_by_card(company, items):
         result[f'__I_{idx}__'] = [it]
 
     return result
+
+
+def _validate_hung_items(company, vipuuid, items):
+    """保存挂单前的服务端校验：会员归属、付款卡归属、消费权限、计次余次。"""
+    from baseinfo.card_rules import resolve_card_item_price
+
+    try:
+        vip_uuid = _parse_uuid_loose(vipuuid)
+    except (ValueError, TypeError, AttributeError):
+        return '会员参数无效'
+    vip = Vip.objects.filter(company=company, uuid=vip_uuid).first()
+    if vip is None:
+        return '会员不存在或不属于该公司'
+
+    times_need = {}
+    card_objs = {}
+    for it in items:
+        ttype = str(it.get('ttype', 'S') or 'S')
+        try:
+            qty = int(it.get('s_qty', 1) or 0)
+        except (TypeError, ValueError):
+            return f'数量格式错误: {it.get("srvcode", "?")}'
+        try:
+            secdisc = float(it.get('secdisc', 1) or 1)
+        except (TypeError, ValueError):
+            return f'折扣率格式错误: {it.get("srvcode", "?")}'
+        try:
+            srvmondisc = float(it.get('srvmondisc', 0) or 0)
+        except (TypeError, ValueError):
+            return f'金额折扣格式错误: {it.get("srvcode", "?")}'
+        if not (0 <= secdisc <= 1):
+            return f'折扣率超出范围: {it.get("srvcode", "?")}'
+        if srvmondisc < 0:
+            return f'金额折扣不能为负数: {it.get("srvcode", "?")}'
+        if ttype not in ('S', 'G'):
+            continue
+
+        ccode = str(it.get('card_ccode', '') or '').strip()
+        if not ccode:
+            continue
+        code = str(it.get('srvcode', '') or '')
+        try:
+            s_price = Decimal(str(it.get('s_price') or 0))
+        except Exception:
+            s_price = Decimal('0')
+
+        card = card_objs.get(ccode)
+        if card is None:
+            card = (
+                Cardinfo.objects.filter(
+                    company=company,
+                    flag='Y',
+                    ccode=ccode,
+                    status__in=('O', 'P'),
+                    vipuuid=vip,
+                )
+                .select_related('cardtypeuuid')
+                .first()
+            )
+            card_objs[ccode] = card
+        if card is None:
+            return f'付款卡不存在或不属于该会员: {ccode}'
+
+        ct = card.cardtypeuuid
+        if ct is None:
+            ct = Cardtype.objects.filter(
+                company=company, cardtype=card.cardtype, flag='Y'
+            ).first()
+
+        discountclass = str(it.get('discountclass', '') or '')
+        topcode = str(it.get('topcode', '') or '')
+        if not discountclass or not topcode:
+            resolved_dc, resolved_tp = _resolve_item_classification(company, ttype, code)
+            if not discountclass:
+                discountclass = resolved_dc
+            if not topcode:
+                topcode = resolved_tp
+
+        res = resolve_card_item_price(
+            company, ct, card,
+            ttype=ttype,
+            itemcode=code,
+            discountclass=discountclass,
+            topcode=topcode,
+            original_price=s_price,
+        )
+        if not res.get('allowed'):
+            reason = res.get('reason') or '不可消费'
+            return f'项目不可使用付款卡 {ccode}: {reason}'
+        if ct and (ct.comptype or '').strip().lower() == 'times' and qty > 0:
+            times_need[ccode] = times_need.get(ccode, 0) + qty
+
+    for ccode, need in times_need.items():
+        card = card_objs.get(ccode)
+        left = int(card.leftqty or 0) if card else 0
+        if left < need:
+            return f'付款卡 {ccode} 余次不足: 需要 {need} 次，剩余 {left} 次'
+    return ''
+
+
 @csrf_exempt
 def save_hung_order(request):
     """保存挂账单(按付款卡号拆分)"""
@@ -2730,15 +2819,19 @@ def save_hung_order(request):
     if len(promo_ids) > 1:
         return JsonResponse({'ok': False, 'message': '不同活动的项目不能挂在同一张单上'})
 
+    validate_err = _validate_hung_items(company, vipuuid, items)
+    if validate_err:
+        return JsonResponse({'ok': False, 'message': validate_err})
+
     try:
         with transaction.atomic():
             today = datetime.now().strftime('%Y%m%d')
             base_exptxserno = getserno(company, storecode, 'hung')
 
             try:
-                vip_obj = Vip.objects.get(uuid=vipuuid)
-                vip_code = vip_obj.vcode
-            except Vip.DoesNotExist:
+                vip_obj = Vip.objects.filter(company=company, uuid=_parse_uuid_loose(vipuuid)).first()
+                vip_code = vip_obj.vcode if vip_obj else ''
+            except (ValueError, TypeError, AttributeError):
                 vip_code = ''
 
             order_promotionsid = next((it.get('promotionsid', '') for it in items if it.get('promotionsid', '')), '')
@@ -2895,6 +2988,257 @@ def cardtype_prices(request):
         data = []
     return JsonResponse(data, safe=False)
 
+
+def _build_hung_item_name_maps(company, item_lines):
+    """批量构建挂单明细名称映射，替代逐行 _resolve_hung_itemname。"""
+    svc_codes = set()
+    goods_codes = set()
+    card_codes = set()
+    for ln in item_lines:
+        ttype = ln.get('ttype_hung') or ''
+        code = ln.get('srvcode_hung') or ''
+        if not code:
+            continue
+        if ttype == 'S':
+            svc_codes.add(code)
+        elif ttype == 'G':
+            goods_codes.add(code)
+        elif ttype in ('C', 'I'):
+            card_codes.add(code)
+
+    svc_names = {}
+    if svc_codes:
+        for r in Serviece.objects.filter(
+            company=company, flag='Y', svrcdoe__in=list(svc_codes)
+        ).values('svrcdoe', 'svrname'):
+            svc_names[r['svrcdoe']] = (r['svrname'] or '').strip() or r['svrcdoe']
+
+    goods_names = {}
+    if goods_codes:
+        for r in Goods.objects.filter(
+            company=company, flag='Y', gcode__in=list(goods_codes)
+        ).values('gcode', 'gname'):
+            goods_names[r['gcode']] = (r['gname'] or '').strip() or r['gcode']
+
+    cardtype_names = {}
+    cardinfo_names = {}
+    if card_codes:
+        for r in Cardtype.objects.filter(
+            company=company, flag='Y', cardtype__in=list(card_codes)
+        ).values('cardtype', 'cardname'):
+            cardtype_names[r['cardtype']] = (r['cardname'] or '').strip() or r['cardtype']
+        missing = [c for c in card_codes if c not in cardtype_names]
+        if missing:
+            for r in Cardinfo.objects.filter(
+                company=company, flag='Y', ccode__in=missing
+            ).values('ccode', 'cardtypeuuid__cardname'):
+                cn = (r['cardtypeuuid__cardname'] or '').strip()
+                if cn:
+                    cardinfo_names[r['ccode']] = '{} ({})'.format(cn, r['ccode'])
+    return svc_names, goods_names, cardtype_names, cardinfo_names
+
+
+def _resolve_hung_itemname_batch(company, ttype, itemcode, maps):
+    """与 _resolve_hung_itemname 等价的批量版，仅做内存查表。"""
+    ic = (itemcode or '').strip()
+    if not ic:
+        return ''
+    svc_names, goods_names, cardtype_names, cardinfo_names = maps
+    t = (ttype or '').strip()
+    if t == 'S':
+        return svc_names.get(ic, ic)
+    if t == 'G':
+        return goods_names.get(ic, ic)
+    if t in ('C', 'I'):
+        name = cardtype_names.get(ic)
+        if name:
+            return name
+        return cardinfo_names.get(ic, ic)
+    return ic
+
+
+def _resolve_paycard_plan_info_batch(company, paycodes, cardtype_hung_map, stype_map):
+    """批量解析付款卡计划信息：Cardinfo/Cardtype/Cardsupertype/Paymode 全部批量预取。"""
+    codes = [c for c in paycodes if c]
+    result = {}
+    for c in codes:
+        result[c] = {
+            'paycardtype': c,
+            'paycardtypename': c,
+            'paytype': '',
+            'paytypename': '',
+        }
+    if not codes:
+        return result
+
+    cardinfo_map = {}
+    missing = set(codes)
+    for qs in (
+        Cardinfo.objects.filter(company=company, ccode__in=codes, flag='Y'),
+        Cardinfo.objects.filter(company=company, ccode__in=codes),
+        Cardinfo.objects.filter(ccode__in=codes),
+    ):
+        if not missing:
+            break
+        rows = qs.filter(ccode__in=list(missing)).select_related('cardtypeuuid').order_by('-last_modified').values(
+            'ccode', 'company', 'cardtype',
+            'cardtypeuuid__cardtype', 'cardtypeuuid__cardname',
+            'cardtypeuuid__suptype', 'cardtypeuuid__company',
+        )
+        for r in rows:
+            cc = r['ccode']
+            if cc in missing:
+                cardinfo_map.setdefault(cc, r)
+                missing.discard(cc)
+
+    ctype_codes = set()
+    for c in codes:
+        ci = cardinfo_map.get(c)
+        if ci and (ci.get('cardtype') or '').strip():
+            ctype_codes.add(ci.get('cardtype').strip())
+        hung_ct = (cardtype_hung_map.get(c) or '').strip()
+        if hung_ct:
+            ctype_codes.add(hung_ct)
+    ct_map = {}
+    if ctype_codes:
+        for r in Cardtype.objects.filter(cardtype__in=list(ctype_codes)).order_by('-last_modified').values(
+            'company', 'cardtype', 'cardname', 'suptype',
+        ):
+            ct_map.setdefault((r['company'] or '', r['cardtype']), r)
+
+    suptype_keys = set()
+    suptype_card_company = {}
+    for c in codes:
+        ci = cardinfo_map.get(c)
+        ct = None
+        if ci:
+            ctype_code = (ci.get('cardtype') or '').strip()
+            ct = ct_map.get((company, ctype_code)) or ct_map.get((ci.get('company') or '', ctype_code))
+            if ct is None and ci.get('cardtypeuuid__cardtype'):
+                ct = {
+                    'company': ci.get('cardtypeuuid__company') or '',
+                    'cardtype': ci.get('cardtypeuuid__cardtype') or '',
+                    'cardname': ci.get('cardtypeuuid__cardname') or '',
+                    'suptype': ci.get('cardtypeuuid__suptype') or '',
+                }
+        hung_ct = (cardtype_hung_map.get(c) or '').strip()
+        if ct is None and hung_ct:
+            ct = ct_map.get((company, hung_ct))
+        if ct:
+            sk = (ct.get('suptype') or '').strip()
+            if sk:
+                suptype_keys.add(sk)
+                card_co = ''
+                if ci:
+                    card_co = ci.get('company') or ''
+                if not card_co:
+                    card_co = ct.get('company') or ''
+                suptype_card_company.setdefault(sk, card_co)
+    cs_rows = []
+    if suptype_keys:
+        cs_rows = list(Cardsupertype.objects.filter(code__in=list(suptype_keys)).values(
+            'company', 'code', 'flag', 'pcode', 'normal_pcode', 'present_pcode',
+        ))
+
+    pcode_set = set()
+    for cs in cs_rows:
+        for attr in ('pcode', 'normal_pcode', 'present_pcode'):
+            v = (cs.get(attr) or '').strip()
+            if v:
+                pcode_set.add(v)
+    pm_rows = []
+    if pcode_set:
+        pm_rows = list(Paymode.objects.filter(pcode__in=list(pcode_set)).values(
+            'company', 'pcode', 'pname', 'flag',
+        ))
+
+    def _paymode_name(pcode):
+        pcode = (pcode or '').strip()
+        if not pcode:
+            return ''
+        for co, flag in ((company, 'Y'), (company, None), (None, None)):
+            for pm in pm_rows:
+                if pm['pcode'] != pcode:
+                    continue
+                if co is not None and (pm.get('company') or '') != co:
+                    continue
+                if flag and (pm.get('flag') or '') != flag:
+                    continue
+                return (pm.get('pname') or '').strip()
+        return ''
+
+    def _cardsupertype_find(sk, card_company):
+        sk = (sk or '').strip()
+        if not sk:
+            return None
+        co_list = []
+        for co in (company, card_company, common.constants.COMPANYID):
+            if co and co not in co_list:
+                co_list.append(co)
+        try:
+            demo = getattr(common.constants, 'DEMO_COMPANY', None)
+            if demo and demo not in co_list:
+                co_list.append(demo)
+        except Exception:
+            pass
+        for co in co_list:
+            for flag in ('Y', None):
+                for cs in cs_rows:
+                    if cs['code'] == sk and (cs.get('company') or '') == co:
+                        if flag is None or (cs.get('flag') or '') == flag:
+                            return cs
+        for flag in ('Y', None):
+            for cs in cs_rows:
+                if cs['code'] == sk:
+                    if flag is None or (cs.get('flag') or '') == flag:
+                        return cs
+        return None
+
+    for c in codes:
+        info = result[c]
+        ci = cardinfo_map.get(c)
+        ct = None
+        cardtype_code = ''
+        if ci:
+            ctype_code = (ci.get('cardtype') or '').strip()
+            cardtype_code = ctype_code
+            ct = ct_map.get((company, ctype_code)) or ct_map.get((ci.get('company') or '', ctype_code))
+            if ct is None and ci.get('cardtypeuuid__cardtype'):
+                ct = {
+                    'company': ci.get('cardtypeuuid__company') or '',
+                    'cardtype': ci.get('cardtypeuuid__cardtype') or '',
+                    'cardname': ci.get('cardtypeuuid__cardname') or '',
+                    'suptype': ci.get('cardtypeuuid__suptype') or '',
+                }
+                if not cardtype_code:
+                    cardtype_code = ct['cardtype']
+        hung_ct = (cardtype_hung_map.get(c) or '').strip()
+        if not cardtype_code and hung_ct:
+            cardtype_code = hung_ct
+        if hung_ct and ct is None:
+            ct = ct_map.get((company, hung_ct))
+        cardtype_name = ''
+        if ct:
+            cardtype_name = (ct.get('cardname') or '').strip()
+        info['paycardtype'] = cardtype_code or hung_ct or c
+        info['paycardtypename'] = cardtype_name or cardtype_code or hung_ct or c
+        if ct:
+            sk = (ct.get('suptype') or '').strip()
+            cs = _cardsupertype_find(sk, suptype_card_company.get(sk, ''))
+            if cs:
+                st = (stype_map.get(c, 'N') or '').strip()
+                fallback = (cs.get('pcode') or '').strip()
+                cand = ''
+                if st == 'P':
+                    cand = (cs.get('present_pcode') or '').strip()
+                elif st == 'N':
+                    cand = (cs.get('normal_pcode') or '').strip()
+                paytype = cand if len(cand) > 0 else fallback
+                info['paytype'] = paytype
+                info['paytypename'] = _paymode_name(paytype)
+    return result
+
+
 @csrf_exempt
 def get_hung_list(request):
     '''获取挂单列表（未结账，或按会员筛选）'''
@@ -3010,16 +3354,20 @@ def get_hung_list(request):
         })
 
     # 批量查询明细项目名称和 stype
+    paycode_stype_map = {}
+    paycode_cardtype_map = {}
     if data:
         uuid_list = [d['uuid'] for d in data]
         uuid_objs = [_parse_uuid_loose(u) for u in uuid_list if u]
         if uuid_objs:
-            item_lines = ExpenseHung.objects.filter(
+            item_lines = list(ExpenseHung.objects.filter(
                 hunguuid__in=uuid_objs, flag='Y'
             ).values('hunguuid_id', 'ttype_hung', 'srvcode_hung', 'stype_hung',
                      's_qty_hung', 's_price_hung', 's_mount_hung',
+                     'secdisc_hung', 'srvmondisc_hung',
                      'pmcode_hung', 'asscode1_hung', 'asscode2_hung',
-                     'otherserno_hung').order_by('ditem_hung')
+                     'otherserno_hung').order_by('ditem_hung'))
+            name_maps = _build_hung_item_name_maps(company, item_lines)
             stype_map = {}
             item_map = {}
             item_details_map = {}
@@ -3032,7 +3380,9 @@ def get_hung_list(request):
                 stype_map[key].append(ln['stype_hung'] or 'N')
                 if key not in item_map:
                     item_map[key] = []
-                name = _resolve_hung_itemname(company, ln['ttype_hung'] or '', ln['srvcode_hung'] or '')
+                name = _resolve_hung_itemname_batch(
+                    company, ln['ttype_hung'] or '', ln['srvcode_hung'] or '', name_maps
+                )
                 if name:
                     item_map[key].append(name)
                 if key not in item_details_map:
@@ -3043,6 +3393,8 @@ def get_hung_list(request):
                     'qty': float(ln['s_qty_hung'] or 0),
                     'price': float(ln['s_price_hung'] or 0),
                     'subtotal': float(ln['s_mount_hung'] or 0),
+                    'secdisc': float(ln['secdisc_hung'] or 1),
+                    'mondisc': float(ln['srvmondisc_hung'] or 0),
                     'ttypename': _hung_line_ttypename(ttype_val),
                     'stypename': _hung_line_stypename(ln['stype_hung']),
                     'pmcode': ln['pmcode_hung'] or '',
@@ -3060,39 +3412,43 @@ def get_hung_list(request):
                     d['stype_summary'] = 'mixed'
                 else:
                     d['stype_summary'] = 'all_normal'
-                if d.get('paycode'):
-                    _payinfo = _resolve_paycard_plan_info(
-                        company, d.get('paycode', ''), d.get('cardtype', ''),
-                        stypes[0] if stypes else 'N'
-                    )
-                    d['paytype'] = _payinfo.get('paytype', '')
-                    d['paytypename'] = _payinfo.get('paytypename', '')
-                    d['cardtypename'] = _payinfo.get('cardtypename', '')
-                else:
-                    d['paytype'] = ''
-                    d['paytypename'] = ''
-                    d['cardtypename'] = ''
+                pc = (d.get('paycode') or '').strip()
+                if pc:
+                    paycode_stype_map.setdefault(pc, stypes[0] if stypes else 'N')
+                    paycode_cardtype_map.setdefault(pc, d.get('cardtype') or '')
         else:
             for d in data:
                 d['items'] = []
                 d['item_details'] = []
                 d['stype_summary'] = 'all_normal'
-                if d.get('paycode'):
-                    _payinfo = _resolve_paycard_plan_info(
-                        company, d.get('paycode', ''), d.get('cardtype', ''), 'N'
-                    )
-                    d['paytype'] = _payinfo.get('paytype', '')
-                    d['paytypename'] = _payinfo.get('paytypename', '')
-                    d['cardtypename'] = _payinfo.get('cardtypename', '')
-                else:
-                    d['paytype'] = ''
-                    d['paytypename'] = ''
-                    d['cardtypename'] = ''
+                pc = (d.get('paycode') or '').strip()
+                if pc:
+                    paycode_stype_map.setdefault(pc, 'N')
+                    paycode_cardtype_map.setdefault(pc, d.get('cardtype') or '')
     else:
         for d in data:
             d['items'] = []
             d['item_details'] = []
             d['stype_summary'] = 'all_normal'
+
+    # 付款卡计划信息批量解析（顺带修复 cardtypename 取错键的问题）
+    if data:
+        payinfo_map = _resolve_paycard_plan_info_batch(
+            company, list(paycode_stype_map.keys()),
+            paycode_cardtype_map, paycode_stype_map,
+        )
+        for d in data:
+            info = payinfo_map.get((d.get('paycode') or '').strip()) or {}
+            d['paytype'] = info.get('paytype', '')
+            d['paytypename'] = info.get('paytypename', '')
+            d['cardtypename'] = info.get('paycardtypename', '')
+            d['paycardtypename'] = info.get('paycardtypename', '')
+    else:
+        for d in data:
+            d['paytype'] = ''
+            d['paytypename'] = ''
+            d['cardtypename'] = ''
+            d['paycardtypename'] = ''
 
     if psstatus == '70':
         hungs_list = [d['exptxserno'] for d in data if d.get('exptxserno')]
@@ -3907,6 +4263,12 @@ def card_pricing(request):
         code = it.get('code') or it.get('srvcode') or it.get('gcode') or ''
         discountclass = it.get('discountclass') or ''
         topcode = it.get('topcode') or ''
+        if not discountclass or not topcode:
+            resolved_dc, resolved_tp = _resolve_item_classification(company, ttype, code)
+            if not discountclass:
+                discountclass = resolved_dc
+            if not topcode:
+                topcode = resolved_tp
         price = Decimal(str(it.get('price') or 0))
         qty = int(it.get('qty') or 1)
         res = resolve_card_item_price(
@@ -3924,8 +4286,63 @@ def card_pricing(request):
             'allowed': res['allowed'],
             'source': res['source'],
             'reason': res.get('reason', ''),
+            'discounttype': res.get('discounttype', ''),
+            'disc': float(res['disc']) if res.get('disc') is not None else None,
         })
     return JsonResponse({'cardtype': ct.cardtype if ct else '', 'results': results})
+
+
+def _resolve_item_classification(company, ttype, code):
+    """补全项目自身的折扣分类与服务/商品大类，供定价查询使用"""
+    from baseinfo.models import Goods, Serviece
+    if not code:
+        return '', ''
+    if (ttype or '').upper() == 'G':
+        g = Goods.objects.filter(company=company, gcode=code, flag='Y') \
+            .values('goodsct', 'discountclass').first()
+        if g:
+            return g['discountclass'] or '', g['goodsct'] or ''
+    else:
+        s = Serviece.objects.filter(company=company, svrcdoe=code, flag='Y') \
+            .values('topcode', 'discountclass').first()
+        if s:
+            return s['discountclass'] or '', s['topcode'] or ''
+    return '', ''
+
+
+@csrf_exempt
+def cardtype_list(request):
+    """GET /adviser/cardtype-list/ — 卡类快速列表（values 直查，避免 Cardtype 模型初始化开销）"""
+    from baseinfo.models import Cardtype
+    from django.db.models import Q
+
+    company = request.GET.get('company') or request.headers.get('X-Company', '')
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 20))
+    search = request.GET.get('search', '')
+    comptype = request.GET.get('comptype', '')
+
+    qs = Cardtype.objects.filter(company=company, flag='Y')
+    if comptype:
+        qs = qs.filter(comptype=comptype)
+    if search:
+        qs = qs.filter(Q(cardtype__icontains=search) | Q(cardname__icontains=search))
+
+    total = qs.count()
+    rows = list(qs.order_by('cardtype').values(
+        'uuid', 'cardtype', 'cardname', 'comptype', 'suptype', 'price',
+        'leftmoney', 'valdatetype', 'validays', 'saleflag', 'valiflag',
+        'ttype', 'sguuid', 'ruler',
+    )[(page - 1) * page_size: page * page_size])
+
+    for row in rows:
+        for k, v in row.items():
+            if isinstance(v, Decimal):
+                row[k] = float(v)
+            elif isinstance(v, uuid.UUID):
+                row[k] = str(v)
+
+    return JsonResponse({'total': total, 'rows': rows, 'page': page, 'page_size': page_size})
 
 
 @csrf_exempt

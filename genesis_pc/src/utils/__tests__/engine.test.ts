@@ -21,6 +21,12 @@ vi.mock('@/api/vip', () => ({
 
 vi.mock('@/api/request', () => ({ default: { get: vi.fn(), post: vi.fn() } }))
 
+vi.mock('@/api/card-admin', () => ({
+  getCardPricing: vi.fn(() => Promise.resolve({
+    data: { results: [{ code: 'a', ttype: 'S', allowed: true, price: 80, source: 'discountclass', reason: '' }] },
+  })),
+}))
+
 beforeEach(() => {
   localStorage.setItem('genesis_pc_company', 'test')
   localStorage.setItem('genesis_pc_storecode', '01')
@@ -60,6 +66,23 @@ describe('useBillingEngine cart', () => {
     e.cart.value[0].secdisc = 0.8
     e.cart.value[0].srvmondisc = 10
     expect(e.cartTotal.value).toBe(150)
+  })
+
+  it('should apply card pricing when selecting a card', async () => {
+    const e = useBillingEngine()
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    await e.applyCardPricing({ ccode: 'C001', comptype: 'amount' } as any)
+    expect(e.cart.value[0].price).toBe(80)
+    expect(e.cart.value[0].secdisc).toBe(1)
+  })
+
+  it('should restore original price when clearing card', async () => {
+    const e = useBillingEngine()
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    await e.applyCardPricing({ ccode: 'C001', comptype: 'amount' } as any)
+    expect(e.cart.value[0].price).toBe(80)
+    await e.applyCardPricing(null)
+    expect(e.cart.value[0].price).toBe(100)
   })
 
   it('should group by ttype', () => {
@@ -148,7 +171,7 @@ describe('useBillingEngine — selectVip', () => {
     const e = useBillingEngine()
     e.addToCart({ code: 'old', name: 'Old', price: 10, ttype: 'S' })
 
-    const vip = { uuid: 'v-3', vname: '李四', vcode: 'V003', ecode: 'E001', ecode2: 'E002' }
+    const vip = { uuid: 'v-3', vname: '李四', vcode: 'V003', ecode: 'E001', ecode2: 'E002' } as any
     await e.selectVip(vip)
 
     expect(e.selectedVip.value?.vname).toBe('李四')
@@ -298,6 +321,14 @@ describe('useBillingEngine — void flow', () => {
     expect(e.voidSelections.value['order-1']['item-1']).toBe(false)
   })
 
+  it('should toggle checked-out refund selection', () => {
+    const e = useBillingEngine()
+    e.toggleCheckedOutItem('order-1', 'd1')
+    expect(e.checkedOutSelections.value['order-1']['d1']).toBe(true)
+    e.toggleCheckedOutItem('order-1', 'd1')
+    expect(e.checkedOutSelections.value['order-1']['d1']).toBe(false)
+  })
+
   it('should add void items to cart when confirmed', () => {
     const e = useBillingEngine()
     e.voidOrderItems.value['order-1'] = [
@@ -436,13 +467,14 @@ describe('useBillingEngine — recharge flow', () => {
     expect(e.cart.value).toHaveLength(0)
   })
 
-  it('should add card refund with negative price', () => {
+  it('should add card refund with negative qty', () => {
     const e = useBillingEngine()
     e.selectedVip.value = { uuid: 'v-1', vname: '张三', ecode: 'E001' } as any
     const card = { uuid: 'c-1', ccode: 'C001', cardname: '储值卡' } as any
     e.rechargeAmounts.value['C001'] = 300
     e.addCardRefund(card)
-    expect(e.cart.value[0].price).toBe(-300)
+    expect(e.cart.value[0].price).toBe(300)
+    expect(e.cart.value[0].qty).toBe(-1)
     expect(e.cart.value[0].ttype).toBe('I')
   })
 
@@ -564,5 +596,154 @@ describe('useBillingEngine — saveHung payload structure', () => {
     expect(sentPayload.items[0].ttype).toBe('I')
     // 充值时前端传的是真实卡号
     expect(sentPayload.items[0].srvcode).toBe('YIREN01-000002')
+  })
+})
+
+describe('useBillingEngine — P1 card pricing guard', () => {
+  it('should re-run pricing when items are added after selecting a card', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    const mockPricing = getCardPricing as any
+    mockPricing.mockClear()
+    mockPricing.mockResolvedValue({
+      data: { results: [
+        { code: 'a', ttype: 'S', allowed: true, price: 80, source: 'discountclass', reason: '' },
+        { code: 'b', ttype: 'S', allowed: true, price: 160, source: 'discountclass', reason: '' },
+      ] },
+    })
+
+    const e = useBillingEngine()
+    const card = { uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any
+    e.selectCard(card)
+    await Promise.resolve()
+
+    e.addToCart({ code: 'b', name: 'B', price: 200, ttype: 'S' })
+    await Promise.resolve()
+
+    const lastCall = mockPricing.mock.calls[mockPricing.mock.calls.length - 1][0]
+    expect(lastCall.items.map((i: any) => i.code)).toContain('b')
+    const added = e.cart.value.find((i: any) => i.code === 'b')
+    expect(added?.price).toBe(160)
+  })
+
+  it('should block save when a card item is not allowed', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    ;(getCardPricing as any).mockResolvedValue({
+      data: { results: [
+        { code: 'a', ttype: 'S', allowed: false, price: 0, source: 'blocked', reason: '此卡不可消费该项目' },
+      ] },
+    })
+    const request = (await import('@/api/request')).default as any
+    request.post.mockClear()
+
+    const e = useBillingEngine()
+    e.selectedVip.value = { uuid: 'v-1' } as any
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
+
+    const result = await e.saveHung()
+    expect(result).toBe(false)
+    expect(request.post).not.toHaveBeenCalled()
+  })
+
+  it('should set discount rate instead of unit price for discount pricing', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    ;(getCardPricing as any).mockResolvedValue({
+      data: { results: [
+        { code: 'a', ttype: 'S', allowed: true, price: 80, source: 'discountclass', discounttype: 'DISC', disc: 0.8, reason: '' },
+      ] },
+    })
+
+    const e = useBillingEngine()
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
+
+    expect(e.cart.value[0].price).toBe(100)
+    expect(e.cart.value[0].secdisc).toBe(0.8)
+    expect(e.cartTotal.value).toBe(80)
+  })
+
+  it('should apply fixed unit price for price-type pricing', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    ;(getCardPricing as any).mockResolvedValue({
+      data: { results: [
+        { code: 'a', ttype: 'S', allowed: true, price: 90, source: 'discountclass', discounttype: 'PRICE', disc: null, reason: '' },
+      ] },
+    })
+
+    const e = useBillingEngine()
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
+
+    expect(e.cart.value[0].price).toBe(90)
+    expect(e.cart.value[0].secdisc).toBe(1)
+  })
+
+  it('should restore original discount rate when clearing card', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    ;(getCardPricing as any).mockResolvedValue({
+      data: { results: [
+        { code: 'a', ttype: 'S', allowed: true, price: 80, source: 'discountclass', discounttype: 'DISC', disc: 0.8, reason: '' },
+      ] },
+    })
+
+    const e = useBillingEngine()
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
+    expect(e.cart.value[0].secdisc).toBe(0.8)
+
+    await e.applyCardPricing(null)
+    expect(e.cart.value[0].price).toBe(100)
+    expect(e.cart.value[0].secdisc).toBe(1)
+  })
+})
+
+describe('useBillingEngine — P1 void items visible in cart', () => {
+  it('should include void items in cartGroups and cartTotal', () => {
+    const e = useBillingEngine()
+    e.addToCart({ code: 's', name: 'S', price: 10, ttype: 'S' })
+    e.voidOrderItems.value['order-1'] = [
+      { ditem: 'd1', srvcode: 'v1', itemname: 'V1', qty: 2, price: 50, ttype: 'S' },
+    ]
+    e.voidSelections.value['order-1'] = { d1: true }
+    e.confirmVoid()
+
+    expect(e.voidItems.value).toHaveLength(1)
+    expect(e.cartGroups.value).toHaveLength(1)
+    expect(e.cartGroups.value[0].items).toHaveLength(2)
+    expect(e.cartTotal.value).toBe(10 - 100)
+  })
+})
+
+describe('useBillingEngine — promotions display', () => {
+  it('should group promotions by mainttype with display names', () => {
+    const e = useBillingEngine()
+    e.promotions.value = [
+      { uuid: 'p1', promotionsname: '特价A', mainttype: '10', mainttype_name: '特价活动', combo_total: 0 },
+      { uuid: 'p2', promotionsname: '折扣B', mainttype: '20', mainttype_name: '特殊折扣活动', combo_total: 0 },
+      { uuid: 'p3', promotionsname: '套餐C', mainttype: '30', mainttype_name: '组合销售活动', combo_total: 1000 },
+      { uuid: 'p4', promotionsname: '特价D', mainttype: '10', mainttype_name: '特价活动', combo_total: 0 },
+    ]
+    const groups = e.promoGroups.value
+    expect(groups.map((g: any) => g.name)).toEqual(['特价活动', '特殊折扣活动', '组合销售活动'])
+    expect(groups[0].items).toHaveLength(2)
+  })
+
+  it('should return combo total from group_items or combo_total', () => {
+    const e = useBillingEngine()
+    expect(e.comboTotal({ combo_total: 1000 })).toBe(1000)
+    expect(e.comboTotal({
+      group_items: [
+        { qty: 2, price: 100, amount: 0 },
+        { qty: 1, price: 300, amount: 300 },
+      ],
+    })).toBe(500)
+  })
+
+  it('should map promo type to tag type', () => {
+    const e = useBillingEngine()
+    expect(e.promoTypeTag('10')).toBe('success')
+    expect(e.promoTypeTag('20')).toBe('warning')
+    expect(e.promoTypeTag('30')).toBe('danger')
+    expect(e.promoTypeTag('99')).toBe('info')
   })
 })

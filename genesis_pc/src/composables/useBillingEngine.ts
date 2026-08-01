@@ -8,6 +8,7 @@ import type { Vip, VipCard, CartableItem, CardGroup } from '@/types'
 import request from '@/api/request'
 import { searchVip as apiSearchVip, getVipCards } from '@/api/vip'
 import { getServiceItems, getGoodsItems, getCardtypeItems, getCategorizedItems, getHungByVipUuid, getHungDetail, getCardtypeServiceItems, getCheckedOutOrders, getActivePromotions, getCardtypePrices } from '@/api/cashier'
+import { getCardPricing } from '@/api/card-admin'
 
 // ====== 类型定义 ======
 export interface CartItem {
@@ -24,6 +25,17 @@ export interface CartItem {
   asscode1: string       // 美疗师1
   asscode2: string       // 美疗师2
   availableCards: VipCard[]
+  /** 原价（切换付款卡后恢复用） */
+  originalPrice?: number
+  /** 原折扣率（切回现金/换卡后恢复用） */
+  originalSecdisc?: number
+  /** 当前付款卡是否允许消费该项目 */
+  cardAllowed?: boolean
+  /** 不可消费原因 */
+  cardReason?: string
+  /** 项目折扣分类 / 服务大类，定价接口自动补全时使用 */
+  discountclass?: string
+  topcode?: string
   /** 来源活动编号（如为活动项目） */
   promotionsid?: string
 }
@@ -64,6 +76,23 @@ export function useBillingEngine() {
   const selectedPromotion = ref<any>(null)
   const promotionsLoading = ref(false)
   const promotionDetails = ref<Record<string, any>>({})
+
+  const promoGroups = computed(() => {
+    const byType: Record<string, any[]> = {}
+    for (const p of promotions.value) {
+      const key = String(p.mainttype || 'other')
+      if (!byType[key]) byType[key] = []
+      byType[key].push(p)
+    }
+    const order = ['10', '20', '30']
+    const names: Record<string, string> = { '10': '特价活动', '20': '特殊折扣活动', '30': '组合销售活动' }
+    const groups: Array<{ name: string; items: any[] }> = []
+    for (const key of order) {
+      if (byType[key]?.length) groups.push({ name: names[key] || key, items: byType[key] })
+    }
+    if (byType['other']?.length) groups.push({ name: '其他', items: byType['other'] })
+    return groups
+  })
 
   // ── 员工 ──
   const employees = ref<Employee[]>([])
@@ -129,7 +158,10 @@ export function useBillingEngine() {
   })
 
   const cartTotal = computed(() =>
-    cart.value.reduce((s, i) => s + i.price * i.qty * i.secdisc - i.srvmondisc, 0)
+    [...cart.value, ...voidItems.value].reduce(
+      (s, i) => s + i.price * i.qty * i.secdisc - i.srvmondisc,
+      0
+    )
   )
 
   /** 购物车按 ttype 分组，用于 tree 展示 */
@@ -137,8 +169,9 @@ export function useBillingEngine() {
     const groups: Array<{ ttype: 'S' | 'G' | 'C' | 'I'; label: string; items: CartItem[] }> = []
     const order = ['S', 'G', 'C', 'I'] as const
     const labels: Record<string, string> = { S: '服务', G: '商品', C: '售卡', I: '充值' }
+    const all = [...cart.value, ...voidItems.value]
     for (const t of order) {
-      const items = cart.value.filter((i) => i.ttype === t)
+      const items = all.filter((i) => i.ttype === t)
       if (items.length) {
         groups.push({ ttype: t, label: labels[t] || t, items })
       }
@@ -227,6 +260,10 @@ export function useBillingEngine() {
     ])
     const count = new Set(vipCards.value.map(c => c.promotionsid || '0')).size
     activeCardGroups.value = Array.from({ length: count }, (_, i) => i)
+    if (billingMode.value === 'refund') {
+      fetchCheckedOutOrders(vip.uuid)
+      fetchVoidOrders(vip.uuid)
+    }
   }
 
   async function fetchVipCards(uuid: string) {
@@ -392,7 +429,7 @@ export function useBillingEngine() {
      return
    }
     const isTimes = card.comptype === 'times'
-    const unitPrice = isTimes ? parseFloat(card.s_price ?? 0) : qtyOrAmt
+    const unitPrice = isTimes ? Number(card.s_price ?? 0) : qtyOrAmt
     const refundQty = isTimes ? -qtyOrAmt : -1
     const defaultEmp = getDefaultEmployees()
     cart.value.push({
@@ -442,6 +479,28 @@ export function useBillingEngine() {
     }
   }
 
+  function promoTypeTag(mainttype: string): 'success' | 'warning' | 'danger' | 'info' {
+    const map: Record<string, 'success' | 'warning' | 'danger' | 'info'> = { '10': 'success', '20': 'warning', '30': 'danger' }
+    return map[String(mainttype || '')] || 'info'
+  }
+
+  function comboTotal(promo: any): number {
+    if (!promo) return 0
+    if (Array.isArray(promo.group_items) && promo.group_items.length) {
+      return promo.group_items.reduce((s: number, gi: any) => {
+        const amt = Number(gi.amount) || 0
+        return s + (amt || (Number(gi.qty || 1) * Number(gi.price || 0)))
+      }, 0)
+    }
+    if (Array.isArray(promo.items) && promo.items.length) {
+      return promo.items.reduce((s: number, it: any) => {
+        const amt = Number(it.promotionsamount) || 0
+        return s + (amt || (Number(it.promotionsqty || it.s_qty || 1) * Number(it.promotionsprice || it.s_price || 0)))
+      }, 0)
+    }
+    return Number(promo.combo_total || 0)
+  }
+
   async function fetchItems() {
     itemsLoading.value = true
     try {
@@ -475,6 +534,7 @@ export function useBillingEngine() {
     console.log('[BillingV2] switchBillingMode:', mode, 'selectedVip:', selectedVip.value?.vcode)
     if (mode === 'refund' && selectedVip.value) {
       fetchCheckedOutOrders(selectedVip.value.uuid)
+      fetchVoidOrders(selectedVip.value.uuid)
     }
   }
 
@@ -561,17 +621,86 @@ export function useBillingEngine() {
   }
 
   // ── 卡片交互 ──
- function selectCard(card: VipCard) {
-   selectedCard.value = card
-   cart.value.forEach((item) => {
-     if (!item.availableCards.find((c) => c.ccode === card.ccode)) {
-       item.availableCards.unshift(card)
-     }
-   })
-    if (card.comptype === 'times') {
+  let pricingSeq = 0
+
+  function restoreCardPrices() {
+    cart.value.forEach((item) => {
+      if (item.originalPrice != null) {
+        item.price = item.originalPrice
+      }
+      if (item.originalSecdisc != null) {
+        item.secdisc = item.originalSecdisc
+      }
+      item.cardAllowed = undefined
+      item.cardReason = undefined
+    })
+  }
+
+  async function applyCardPricing(card: VipCard | null) {
+    restoreCardPrices()
+    if (!card) {
+      selectedCard.value = null
+      return
+    }
+    const seq = ++pricingSeq
+    const items = cart.value
+      .filter((i) => i.ttype !== 'I')
+      .map((i) => ({
+        code: i.code,
+        ttype: i.ttype,
+        price: i.originalPrice ?? i.price,
+        qty: i.qty,
+        discountclass: i.discountclass || '',
+        topcode: i.topcode || '',
+      }))
+    if (!items.length) return
+    try {
+      const res = await getCardPricing({
+        cardtypeuuid: card.cardtypeuuid || '',
+        ccode: card.ccode,
+        items,
+      })
+      if (seq !== pricingSeq) return
+      const rows: any[] = (res.data as any)?.results || []
+      const map = new Map(rows.map((r: any) => [`${r.ttype}:${r.code}`, r]))
+      cart.value.forEach((item) => {
+        if (item.ttype === 'I') return
+        const row = map.get(`${item.ttype}:${item.code}`)
+        if (!row) return
+        if (item.originalPrice == null) item.originalPrice = item.price
+        if (item.originalSecdisc == null) item.originalSecdisc = item.secdisc
+        if (row.allowed) {
+          item.cardAllowed = true
+          item.cardReason = ''
+          if (row.discounttype === 'DISC' && row.disc != null) {
+            // 折扣模式：只填折扣率，不动单价和小计口径
+            item.secdisc = row.disc
+          } else {
+            // 固定单价/阶梯价/无规则：直接使用卡价
+            item.price = row.price
+            item.secdisc = 1
+            item.srvmondisc = 0
+          }
+        } else {
+          item.cardAllowed = false
+          item.cardReason = row.reason || '此卡不可消费该项目'
+        }
+      })
+    } catch { /* 定价失败保持原价 */ }
+  }
+
+  function selectCard(card: VipCard | null) {
+    selectedCard.value = card
+    cart.value.forEach((item) => {
+      if (card && !item.availableCards.find((c) => c.ccode === card.ccode)) {
+        item.availableCards.unshift(card)
+      }
+    })
+    if (card?.comptype === 'times') {
       setTimeout(() => autoAddCardItems(card), 100)
     }
- }
+    void applyCardPricing(card)
+  }
 
   // ── 购物车操作 ──
   const clickGuard = new Map<string, number>()
@@ -585,6 +714,7 @@ export function useBillingEngine() {
     const existing = cart.value.find((c) => c.code === item.code && c.ttype === (item.ttype || itemTab.value))
     if (existing) {
       existing.qty++
+      if (selectedCard.value) void applyCardPricing(selectedCard.value)
       return
     }
 
@@ -604,6 +734,7 @@ export function useBillingEngine() {
       asscode2: def.asscode2,
       availableCards: selectedCard.value ? [selectedCard.value] : [],
     })
+    if (selectedCard.value) void applyCardPricing(selectedCard.value)
   }
 
   function getDefaultEmployees() {
@@ -668,6 +799,11 @@ export function useBillingEngine() {
   function toggleVoidItem(hunguuid: string, ditem: string) {
     if (!voidSelections.value[hunguuid]) voidSelections.value[hunguuid] = {}
     voidSelections.value[hunguuid][ditem] = !voidSelections.value[hunguuid][ditem]
+  }
+
+  function toggleCheckedOutItem(hunguuid: string, ditem: string) {
+    if (!checkedOutSelections.value[hunguuid]) checkedOutSelections.value[hunguuid] = {}
+    checkedOutSelections.value[hunguuid][ditem] = !checkedOutSelections.value[hunguuid][ditem]
   }
 
   function confirmVoid() {
@@ -743,6 +879,11 @@ export function useBillingEngine() {
   // ── 保存挂账 ──
   async function saveHung(): Promise<boolean> {
     if (!selectedVip.value) return false
+    const blocked = cart.value.filter((i) => i.cardAllowed === false)
+    if (blocked.length) {
+      ElMessage.error('以下项目不可使用所选付款卡: ' + blocked.map((i) => i.name).join('、'))
+      return false
+    }
     saving.value = true
     try {
       const allItems = [...cart.value, ...voidItems.value]
@@ -857,6 +998,7 @@ export function useBillingEngine() {
     searchVip, selectVip, fetchVipCards, fetchItems, fetchPromotions, fetchEmployees,
     selectCard, addToCart, removeFromCart, toggleRefund, autoAddCardItems,
     updateCartItem, clearCart, saveHung, getDefaultEmployees,
+    applyCardPricing, restoreCardPrices,
     ttypeLabel, formatDate, empName,
     // 模式
     billingMode, switchBillingMode,
@@ -865,9 +1007,11 @@ export function useBillingEngine() {
     // 作废
     voidPanelOpen, voidOrders, voidOrderItems, voidLoading, voidSelections, voidItems,
     openVoidPanel, fetchVoidOrders, fetchVoidDetail, toggleVoidItem, confirmVoid,
+    toggleCheckedOutItem,
     // 活动
     promotions, selectedPromotion, promotionsLoading, promotionDetails,
     selectAndLoadPromotion, addPromotionItem, addComboToCart,
+    promoGroups, promoTypeTag, comboTotal,
     // 拖拽
     draggedCard, onCardDragStart, onCardDrop,
     // 右键菜单

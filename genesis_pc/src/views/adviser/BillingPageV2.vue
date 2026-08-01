@@ -3,7 +3,7 @@
     <div class="header-bar">
       <h2 class="page-title">手工开单</h2>
       <div style="display:flex;align-items:center;gap:8px">
-        <el-radio-group v-model="billingMode" size="small" @change="switchBillingMode">
+        <el-radio-group v-model="billingMode" size="small" @change="(v: any) => switchBillingMode(v)">
           <el-radio-button value="normal">正常开单</el-radio-button>
           <el-radio-button value="refund">退款开单</el-radio-button>
         </el-radio-group>
@@ -200,6 +200,78 @@
           </template>
         </el-card>
         
+        <!-- 退款 / 作废 -->
+        <el-card v-if="billingMode === 'refund' && selectedVip" shadow="never" class="section-card refund-card">
+          <template #header>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <el-radio-group v-model="refundTab" size="small">
+                <el-radio-button value="checked">已结账退款</el-radio-button>
+                <el-radio-button value="void">挂单作废</el-radio-button>
+              </el-radio-group>
+              <el-date-picker
+                v-if="refundTab === 'checked'"
+                v-model="refundDateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                size="small"
+                style="width:240px"
+                @change="fetchCheckedOutOrders(selectedVip.uuid)"
+              />
+              <div style="flex:1" />
+              <el-button v-if="refundTab === 'checked'" type="primary" size="small" @click="addRefundToCart">加入退款明细</el-button>
+              <el-button v-else type="warning" size="small" @click="confirmVoid">加入作废明细</el-button>
+            </div>
+          </template>
+          <div v-if="refundTab === 'checked'" class="refund-body" v-loading="checkedOutLoading">
+            <div v-for="o in checkedOutOrders" :key="o.uuid" class="refund-order">
+              <div class="refund-order-head">
+                <span class="ro-serno">{{ o.exptxserno }}</span>
+                <span class="ro-date">{{ formatDate(o.vsdate) }}</span>
+                <span class="ro-amount">¥{{ (o.totmount || 0).toFixed(2) }}</span>
+                <el-button text type="primary" size="small" @click="fetchVoidDetail(o.uuid)">明细</el-button>
+              </div>
+              <div v-if="voidOrderItems[o.uuid]?.length" class="refund-items">
+                <div v-for="d in voidOrderItems[o.uuid]" :key="d.ditem" class="refund-item-row">
+                  <el-checkbox
+                    :model-value="checkedOutSelections[o.uuid]?.[d.ditem] || false"
+                    size="small"
+                    @change="toggleCheckedOutItem(o.uuid, d.ditem)"
+                  />
+                  <span class="ri-name">{{ d.itemname }}</span>
+                  <span class="ri-qty">×{{ d.qty }}</span>
+                  <span class="ri-amount">¥{{ (d.mount || d.price * d.qty || 0).toFixed(2) }}</span>
+                </div>
+              </div>
+            </div>
+            <el-empty v-if="!checkedOutOrders.length && !checkedOutLoading" description="暂无已结账订单" :image-size="50" />
+          </div>
+          <div v-else class="refund-body" v-loading="voidLoading">
+            <div v-for="o in voidOrders" :key="o.uuid" class="refund-order">
+              <div class="refund-order-head">
+                <span class="ro-serno">{{ o.exptxserno }}</span>
+                <span class="ro-date">{{ formatDate(o.vsdate) }}</span>
+                <span class="ro-amount">¥{{ (o.totmount || 0).toFixed(2) }}</span>
+                <el-button text type="primary" size="small" @click="fetchVoidDetail(o.uuid)">明细</el-button>
+              </div>
+              <div v-if="voidOrderItems[o.uuid]?.length" class="refund-items">
+                <div v-for="d in voidOrderItems[o.uuid]" :key="d.ditem" class="refund-item-row">
+                  <el-checkbox
+                    :model-value="voidSelections[o.uuid]?.[d.ditem] || false"
+                    size="small"
+                    @change="toggleVoidItem(o.uuid, d.ditem)"
+                  />
+                  <span class="ri-name">{{ d.itemname }}</span>
+                  <span class="ri-qty">×{{ d.qty }}</span>
+                  <span class="ri-amount">¥{{ (d.mount || d.price * d.qty || 0).toFixed(2) }}</span>
+                </div>
+              </div>
+            </div>
+            <el-empty v-if="!voidOrders.length && !voidLoading" description="暂无挂单" :image-size="50" />
+          </div>
+        </el-card>
+
         <!-- 购物车 -->
         <el-card shadow="never" class="section-card">
           <template #header>
@@ -227,11 +299,14 @@
                 <span class="ci-disc">折扣率</span>
                 <span class="ci-mondisc">金额折扣</span>
                 <span class="ci-subtotal">小计</span>
+                <span class="ci-refund">正/退</span>
                 <span class="ci-pay">扣款方式</span>
                 <span class="ci-cardno">付款卡号</span>
                 <span class="ci-pmcode">开单</span>
                 <span class="ci-ass1">美疗师1</span>
                 <span class="ci-ass2">美疗师2</span>
+                <span class="ci-reason">卡限制</span>
+                <span class="ci-action">操作</span>
               </div>
               <div v-for="(row, idx) in group.items" :key="row.code + '-' + idx" class="cart-item-row" :class="{ 'refund-row': row.qty < 0 }">
                 <div class="ci-name">{{ row.name }}</div>
@@ -240,11 +315,20 @@
                 <div class="ci-price">¥{{ row.price.toFixed(2) }}</div>
                 <div class="ci-disc">
                   <el-input-number v-model="row.secdisc" :min="0" :max="1" :step="0.05" size="small" :controls="false" style="width:55px"
-                    :formatter="(val) => Math.round(val * 100) + '%'"
-                    :parser="(val) => parseInt(val.replace('%', '')) / 100" />
+                    :formatter="(val: any) => Math.round(Number(val || 0) * 100) + '%'"
+                    :parser="(val) => (parseInt(val.replace('%', '')) / 100) as any" />
                 </div>
                 <div class="ci-mondisc"><el-input-number v-model="row.srvmondisc" :min="0" :step="1" size="small" :controls="false" style="width:65px" /></div>
                 <div class="ci-subtotal">¥{{ (row.price * row.qty * row.secdisc - row.srvmondisc).toFixed(2) }}</div>
+                <div class="ci-refund">
+                  <el-button
+                    :type="row.qty < 0 ? 'danger' : 'primary'"
+                    size="small"
+                    circle
+                    :icon="row.qty < 0 ? Close : Check"
+                    @click="toggleRefund(idx)"
+                  />
+                </div>
                 <div class="ci-pay">
                   <el-select v-model="row.payMethod" size="small">
                     <el-option label="现金" value="cash" />
@@ -258,6 +342,8 @@
                 <div class="ci-pmcode"><el-select v-model="row.pmcode" size="small" filterable><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
                 <div class="ci-ass1"><el-select v-model="row.asscode1" size="small" filterable><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
                 <div class="ci-ass2"><el-select v-model="row.asscode2" size="small" filterable><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
+                <div class="ci-reason"><el-tag v-if="row.cardReason" size="small" type="danger">{{ row.cardReason }}</el-tag></div>
+                <div class="ci-action"><el-button type="danger" size="small" circle :icon="Delete" @click="removeFromCart(idx)" /></div>
               </div>
             </div>
           </div>
@@ -272,11 +358,14 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { Check, Close, Delete } from '@element-plus/icons-vue'
 import { useBillingEngine } from '@/composables/useBillingEngine'
 import type { VipCard, CartableItem } from '@/types'
 import VipProfileDrawer from '@/components/VipProfileDrawer.vue'
 import { getCardtypeServiceItems } from '@/api/cashier'
 import { useVipProfile } from '@/composables/useVipProfile'
+
+const refundTab = ref<'checked' | 'void'>('checked')
 
 const {
   company, storecode,
@@ -293,9 +382,10 @@ const {
   refundDateRange, checkedOutOrders, checkedOutSelections, checkedOutLoading,
   fetchCheckedOutOrders, addRefundToCart,
   voidPanelOpen, voidOrders, voidOrderItems, voidLoading, voidSelections, voidItems,
-  openVoidPanel, fetchVoidOrders, fetchVoidDetail, toggleVoidItem, confirmVoid,
+  openVoidPanel, fetchVoidOrders, fetchVoidDetail, toggleVoidItem, toggleCheckedOutItem, confirmVoid,
   promotions, selectedPromotion, promotionsLoading, promotionDetails,
   selectAndLoadPromotion, addPromotionItem, addComboToCart,
+  promoGroups, promoTypeTag, comboTotal,
   cardSaleMode, cardSaleItems, showPriceSelector,
   editQty, editAmount, editDiscountPct, editDiscountAmt, editUnitPrice, editSubtotal,
   addCardSale, confirmCardSale,
@@ -375,6 +465,19 @@ const vipProfile = useVipProfile()
 .rc-code { font-size:11px; color:#909399; margin:2px 0; }
 .rc-balance { font-size:13px; color:#e6a23c; font-weight:600; margin-bottom:6px; }
 .rc-actions { display:flex; gap:4px; align-items:center; }
+.refund-card { flex:3; min-height:0; }
+.refund-body { height:100%; overflow-y:auto; padding:2px; }
+.refund-order { border:1px solid #ebeef5; border-radius:6px; margin-bottom:6px; overflow:hidden; }
+.refund-order-head { display:flex; align-items:center; gap:8px; padding:4px 10px; background:#f5f7fa; font-size:12px; border-bottom:1px solid #ebeef5; }
+.ro-serno { font-family:monospace; font-weight:600; }
+.ro-date { color:#909399; }
+.ro-amount { margin-left:auto; font-weight:600; color:#e6a23c; }
+.refund-items { padding:2px 0; }
+.refund-item-row { display:flex; align-items:center; gap:8px; padding:3px 10px; font-size:12px; border-bottom:1px solid #f5f5f5; }
+.refund-item-row:last-child { border-bottom:none; }
+.ri-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ri-qty { color:#909399; }
+.ri-amount { font-weight:600; color:#e6a23c; }
 .promo-selector-body { display:flex; gap:8px; height:100%; min-height:0; }
 .promo-list-panel { width:200px; flex-shrink:0; overflow-y:auto; border-right:1px solid #ebeef5; padding-right:8px; }
 .promo-card { padding:8px 10px; border:1px solid #ebeef5; border-radius:6px; cursor:pointer; margin-bottom:6px; transition:.1s; }
@@ -445,6 +548,7 @@ const vipProfile = useVipProfile()
 .ci-pmcode { width:95px; }
 .ci-ass1 { width:95px; }
 .ci-ass2 { width:95px; }
+.ci-reason { width:110px; color:#f56c6c; font-size:11px; }
 .ci-action { width:35px; text-align:center; }
 .ci-stype :deep(.el-select), .ci-disc :deep(.el-input-number), .ci-mondisc :deep(.el-input-number),
 .ci-pay :deep(.el-select), .ci-pmcode :deep(.el-select), .ci-ass1 :deep(.el-select), .ci-ass2 :deep(.el-select) { width:100%; }

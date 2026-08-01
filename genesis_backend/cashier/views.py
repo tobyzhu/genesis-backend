@@ -405,7 +405,7 @@ class hung_to_trans(object):
                 self.paycardflag = 'Y'
                 print('self.paycarflag')
 
-                if self.paycardinfo.cardtypeuuid.comptype =='amount':
+                if self.paycardinfo.cardtypeuuid.comptype == 'amount' and not self.paycardinfo.cardtypeuuid.ruler_id:
                     if self.paycardinfo.leftmoney >= self.tx_amount:
                         print('all cardpay')
                         toll = Toll.objects.get_or_create(flag='Y',company=self.company,storecode=self.storecode, transuuid = self.expvstoll,pcode=self.cardpcode)[0]
@@ -491,6 +491,115 @@ class hung_to_trans(object):
                         # self.paycardinfo.leftqty < self.tx_qty:
                         print('error')
 
+                # 逻辑卡：校验 Ruler 绑定项目，按阶梯价结算并累计自然月到店次数
+                if self.paycardinfo.cardtypeuuid.comptype == 'amount' and self.paycardinfo.cardtypeuuid.ruler_id:
+                    from baseinfo.card_rules import advance_card_use, resolve_card_item_price
+                    cardtype = self.paycardinfo.cardtypeuuid
+                    for expense_item in self.expenses:
+                        res = resolve_card_item_price(
+                            self.company, cardtype, self.paycardinfo,
+                            ttype=expense_item.ttype or 'S',
+                            itemcode=expense_item.srvcode or '',
+                            original_price=expense_item.s_price or 0,
+                        )
+                        if not res['allowed']:
+                            print('逻辑卡绑定项目不匹配，无法结帐')
+                            self.paycardflag = 'N'
+                            toll = Toll.objects.get_or_create(
+                                flag='Y', company=self.company, storecode=self.storecode,
+                                transuuid=self.expvstoll,
+                                pcode=common.constants.DEFAULT_NORMAL_PCODE)[0]
+                            toll.expvssvern = '1'
+                            toll.qty = 1
+                            toll.totmount = self.tx_amount
+                            toll.transuuid = self.expvstoll
+                            toll.currency = 'RMB'
+                            toll.custperc = 1
+                            self.tolls.append(toll)
+                            return
+                    if self.paycardinfo.leftmoney >= self.tx_amount:
+                        toll = Toll.objects.get_or_create(
+                            flag='Y', company=self.company, storecode=self.storecode,
+                            transuuid=self.expvstoll, pcode=self.cardpcode)[0]
+                        toll.expvssvern = '1'
+                        toll.qty = self.tx_qty
+                        toll.totmount = self.tx_amount
+                        toll.transuuid = self.expvstoll
+                        toll.currency = 'RMB'
+                        toll.custperc = 1
+                        self.tolls.append(toll)
+                        self.paycardinfo.leftmoney = self.paycardinfo.leftmoney - self.tx_amount
+                        advance_card_use(self.paycardinfo)
+                        self.expvstoll.cardleftmoney = self.paycardinfo.leftmoney
+                    else:
+                        print('逻辑卡余额不足，无法结帐')
+                        self.paycardflag = 'N'
+                        toll = Toll.objects.get_or_create(
+                            flag='Y', company=self.company, storecode=self.storecode,
+                            transuuid=self.expvstoll,
+                            pcode=common.constants.DEFAULT_NORMAL_PCODE)[0]
+                        toll.expvssvern = '1'
+                        toll.qty = 1
+                        toll.totmount = self.tx_amount
+                        toll.transuuid = self.expvstoll
+                        toll.currency = 'RMB'
+                        toll.custperc = 1
+                        self.tolls.append(toll)
+                        return
+
+                # 时效卡：有效期内不扣次数/金额，只校验有效期与绑定项目
+                if self.paycardinfo.cardtypeuuid.comptype == 'period':
+                    from baseinfo.card_rules import resolve_card_item_price
+                    today = datetime.now().strftime('%Y%m%d')
+                    if self.paycardinfo.valdate and str(self.paycardinfo.valdate) < today:
+                        print('时效卡已过期，无法结帐')
+                        self.paycardflag = 'N'
+                        toll = Toll.objects.get_or_create(
+                            flag='Y', company=self.company, storecode=self.storecode,
+                            transuuid=self.expvstoll,
+                            pcode=common.constants.DEFAULT_NORMAL_PCODE)[0]
+                        toll.expvssvern = '1'
+                        toll.qty = 1
+                        toll.totmount = self.tx_amount
+                        toll.transuuid = self.expvstoll
+                        toll.currency = 'RMB'
+                        toll.custperc = 1
+                        self.tolls.append(toll)
+                        return
+                    cardtype = self.paycardinfo.cardtypeuuid
+                    for expense_item in self.expenses:
+                        res = resolve_card_item_price(
+                            self.company, cardtype, self.paycardinfo,
+                            ttype=expense_item.ttype or 'S',
+                            itemcode=expense_item.srvcode or '',
+                            original_price=expense_item.s_price or 0,
+                        )
+                        if not res['allowed']:
+                            print('时效卡绑定项目不匹配，无法结帐')
+                            self.paycardflag = 'N'
+                            toll = Toll.objects.get_or_create(
+                                flag='Y', company=self.company, storecode=self.storecode,
+                                transuuid=self.expvstoll,
+                                pcode=common.constants.DEFAULT_NORMAL_PCODE)[0]
+                            toll.expvssvern = '1'
+                            toll.qty = 1
+                            toll.totmount = self.tx_amount
+                            toll.transuuid = self.expvstoll
+                            toll.currency = 'RMB'
+                            toll.custperc = 1
+                            self.tolls.append(toll)
+                            return
+                    toll = Toll.objects.get_or_create(
+                        flag='Y', company=self.company, storecode=self.storecode,
+                        transuuid=self.expvstoll, pcode=self.cardpcode)[0]
+                    toll.expvssvern = '1'
+                    toll.qty = self.tx_qty
+                    toll.totmount = self.tx_amount
+                    toll.transuuid = self.expvstoll
+                    toll.currency = 'RMB'
+                    toll.custperc = 1
+                    self.tolls.append(toll)
+                    self.expvstoll.cardleftmoney = self.paycardinfo.leftmoney
 
 
             except:

@@ -84,6 +84,7 @@ urlpatterns=[
     url(r'goodsct-delete/$', views.goodsct_delete),
     url(r'goods-list/$', views.goods_list),
     url(r'servieceprice-save/$', views.servieceprice_save),
+    url(r'cardtype-list/$', views.cardtype_list),
     url(r'ruler-list/$', views.ruler_list),
     url(r'ruler-save/$', views.ruler_save),
     url(r'ruler-delete/$', views.ruler_delete),

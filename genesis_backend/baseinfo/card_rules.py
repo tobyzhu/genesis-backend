@@ -153,6 +153,8 @@ def _blocked(reason):
         'price': Decimal('0'),
         'source': 'blocked',
         'reason': reason,
+        'discounttype': '',
+        'disc': None,
     }
 
 
@@ -177,7 +179,14 @@ def resolve_card_item_price(
     ttype = (ttype or '').upper()
     original_price = Decimal(str(original_price or 0))
     if cardtype is None:
-        return {'allowed': True, 'price': original_price, 'source': 'original', 'reason': ''}
+        return {
+            'allowed': True,
+            'price': original_price,
+            'source': 'original',
+            'reason': '',
+            'discounttype': '',
+            'disc': None,
+        }
 
     comptype = (cardtype.comptype or '').strip().lower()
 
@@ -192,7 +201,14 @@ def resolve_card_item_price(
         price = ruler_lookup(parsed, usecount)
         if price is None:
             return _blocked('逻辑卡未找到对应阶梯价')
-        return {'allowed': True, 'price': price, 'source': 'ruler', 'reason': ''}
+        return {
+            'allowed': True,
+            'price': price,
+            'source': 'ruler',
+            'reason': '',
+            'discounttype': 'PRICE',
+            'disc': None,
+        }
 
     # 时效卡：校验绑定项目 + 有效期，不扣次数/金额
     if comptype == 'period':
@@ -202,14 +218,28 @@ def resolve_card_item_price(
         if cardinfo and cardinfo.valdate:
             if cardinfo.valdate < date.today().strftime('%Y%m%d'):
                 return _blocked('卡已过期')
-        return {'allowed': True, 'price': original_price, 'source': 'period', 'reason': ''}
+        return {
+            'allowed': True,
+            'price': original_price,
+            'source': 'period',
+            'reason': '',
+            'discounttype': '',
+            'disc': None,
+        }
 
     # 计次卡：只校验绑定项目，按次数扣减
     if comptype == 'times':
         bound = cardtype_bound_itemcode(cardtype)
         if bound and bound != (itemcode or ''):
             return _blocked('此卡绑定项目不匹配')
-        return {'allowed': True, 'price': original_price, 'source': 'times', 'reason': ''}
+        return {
+            'allowed': True,
+            'price': original_price,
+            'source': 'times',
+            'reason': '',
+            'discounttype': '',
+            'disc': None,
+        }
 
     # 计费卡：折扣分类规则优先，服务大类兼容回退
     if comptype == 'amount':
@@ -224,12 +254,21 @@ def resolve_card_item_price(
             if (rule.consume_flag or 'Y') != 'Y':
                 return _blocked('该项目禁止使用此储值卡')
             if rule.discounttype == 'PRICE' and rule.price is not None:
-                return {'allowed': True, 'price': rule.price, 'source': 'discountclass', 'reason': ''}
+                return {
+                    'allowed': True,
+                    'price': rule.price,
+                    'source': 'discountclass',
+                    'reason': '',
+                    'discounttype': 'PRICE',
+                    'disc': None,
+                }
             return {
                 'allowed': True,
                 'price': original_price * (rule.disc or Decimal('1')),
                 'source': 'discountclass',
                 'reason': '',
+                'discounttype': 'DISC',
+                'disc': rule.disc if rule.disc is not None else Decimal('1'),
             }
 
         legacy = Cardvsdi.objects.filter(
@@ -243,18 +282,41 @@ def resolve_card_item_price(
             if (legacy.consume_flag or 'Y') != 'Y':
                 return _blocked('该项目禁止使用此储值卡')
             if legacy.pricetype == 'PRICE' and legacy.cardvsprice is not None:
-                return {'allowed': True, 'price': legacy.cardvsprice, 'source': 'cardvsdi', 'reason': ''}
+                return {
+                    'allowed': True,
+                    'price': legacy.cardvsprice,
+                    'source': 'cardvsdi',
+                    'reason': '',
+                    'discounttype': 'PRICE',
+                    'disc': None,
+                }
             return {
                 'allowed': True,
                 'price': original_price * (legacy.cardvsdisc or Decimal('1')),
                 'source': 'cardvsdi',
                 'reason': '',
+                'discounttype': 'DISC',
+                'disc': legacy.cardvsdisc if legacy.cardvsdisc is not None else Decimal('1'),
             }
 
-        return {'allowed': True, 'price': original_price, 'source': 'original', 'reason': ''}
+        return {
+            'allowed': True,
+            'price': original_price,
+            'source': 'original',
+            'reason': '',
+            'discounttype': '',
+            'disc': None,
+        }
 
     # 未知消费模式：允许原价
-    return {'allowed': True, 'price': original_price, 'source': 'original', 'reason': ''}
+    return {
+        'allowed': True,
+        'price': original_price,
+        'source': 'original',
+        'reason': '',
+        'discounttype': '',
+        'disc': None,
+    }
 
 
 def sync_card_discount_rules(company=None):

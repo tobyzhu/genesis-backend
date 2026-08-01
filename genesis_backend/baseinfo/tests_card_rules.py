@@ -11,7 +11,7 @@ from baseinfo.models import (
     Goods, Goodsct, Ruler, Serviece, Srvtopty,
 )
 from baseinfo.card_rules import (
-    card_use_for_month, parse_ruler, resolve_card_item_price,
+    advance_card_use, card_use_for_month, parse_ruler, resolve_card_item_price,
     ruler_lookup, sync_card_discount_rules,
 )
 
@@ -78,6 +78,18 @@ class TestParseRuler:
 
 
 class TestLogicCardPricing:
+    def test_advance_card_use_resets_by_natural_month(self, db, test_company):
+        ct = _make_cardtype(test_company, comptype='amount')
+        ci = _make_cardinfo(test_company, ct)
+        advance_card_use(ci, '2026-07')
+        assert ci.logic_usecount == 1
+        assert ci.logic_cycle_month == '2026-07'
+        advance_card_use(ci, '2026-07')
+        assert ci.logic_usecount == 2
+        advance_card_use(ci, '2026-08')
+        assert ci.logic_usecount == 1
+        assert ci.logic_cycle_month == '2026-08'
+
     def test_logic_card_uses_natural_month_tiers(self, db, test_company):
         ruler = Ruler.objects.create(
             rulername='拓客卡',
@@ -354,6 +366,15 @@ class TestSyncRules:
 
 
 class TestCardPricingApi:
+    def test_cardtype_list_api(self, client, db, test_company):
+        _make_cardtype(test_company, code='CT001', comptype='amount')
+        resp = client.get('/adviser/cardtype-list/', {'company': test_company})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data['total'] == 1
+        assert data['rows'][0]['cardtype'] == 'CT001'
+        assert data['rows'][0]['cardname'] == '测试卡'
+
     def test_card_pricing_api(self, client, db, test_company):
         ct = _make_cardtype(test_company, comptype='amount')
         CardtypeVsDiscountClass.objects.create(
@@ -377,6 +398,34 @@ class TestCardPricingApi:
         data = resp.json()
         assert data['results'][0]['allowed'] is True
         assert data['results'][0]['price'] == 800
+        assert data['results'][0]['discounttype'] == 'DISC'
+        assert data['results'][0]['disc'] == 0.8
+
+    def test_card_pricing_api_price_mode(self, client, db, test_company):
+        ct = _make_cardtype(test_company, comptype='amount')
+        CardtypeVsDiscountClass.objects.create(
+            company=test_company, cardtypeuuid=ct, cardtype='CT001',
+            ttype='S', discountclass='10', discounttype='PRICE',
+            price=Decimal('500'), consume_flag='Y')
+        resp = client.post(
+            '/adviser/card-pricing/',
+            data=json.dumps({
+                'cardtypeuuid': str(ct.uuid),
+                'company': test_company,
+                'items': [{
+                    'ttype': 'S', 'code': 'SV001',
+                    'discountclass': '10', 'topcode': '',
+                    'price': 1000, 'qty': 1,
+                }],
+            }),
+            content_type='application/json',
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data['results'][0]['allowed'] is True
+        assert data['results'][0]['price'] == 500
+        assert data['results'][0]['discounttype'] == 'PRICE'
+        assert data['results'][0]['disc'] is None
 
     def test_ruler_save_api_validates_rule(self, client, db, test_company):
         resp = client.post(
@@ -419,3 +468,26 @@ class TestCardPricingApi:
             company=test_company, cardtype='CT001',
             ttype='S', discountclass='10')
         assert rule.disc == Decimal('0.8')
+
+    def test_card_pricing_api_resolves_item_classification(self, client, db, test_company):
+        Serviece.objects.create(
+            company=test_company, svrcdoe='SV001', svrname='清洁',
+            topcode='100', discountclass='10', saleflag='Y', valiflag='Y')
+        ct = _make_cardtype(test_company, comptype='amount')
+        CardtypeVsDiscountClass.objects.create(
+            company=test_company, cardtypeuuid=ct, cardtype='CT001',
+            ttype='S', discountclass='10', discounttype='DISC',
+            disc=Decimal('0.8'), consume_flag='Y')
+        resp = client.post(
+            '/adviser/card-pricing/',
+            data=json.dumps({
+                'company': test_company,
+                'cardtypeuuid': str(ct.uuid),
+                'items': [{'ttype': 'S', 'code': 'SV001', 'price': 1000, 'qty': 1}],
+            }),
+            content_type='application/json',
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data['results'][0]['allowed'] is True
+        assert data['results'][0]['price'] == 800

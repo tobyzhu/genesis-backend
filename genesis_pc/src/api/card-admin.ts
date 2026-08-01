@@ -1,5 +1,10 @@
 import request from './request'
 
+/** 获取卡类快速列表（避免通用接口逐行实例化开销） */
+export function getCardtypeFastList(params?: Record<string, any>) {
+  return request.get('/adviser/cardtype-list/', { params })
+}
+
 /** 获取逻辑卡规则列表 */
 export function getRulerList(params?: Record<string, any>) {
   return request.get('/adviser/ruler-list/', { params })

@@ -112,9 +112,9 @@
               <span style="width:64px;text-align:right">¥{{ Number(d.price).toFixed(2) }}</span>
               <span style="width:56px;text-align:center">
                 <el-input-number v-model="d.secdisc" :min="0" :max="1" :step="0.05" size="small" :controls="false" style="width:50px"
-                  :formatter="(v:any) => Math.round((v||1)*100)+'%'" :parser="(v:any) => parseInt(String(v).replace('%',''))/100" />
+                  :formatter="(v:any) => Math.round((v||1)*100)+'%'" :parser="(v:any) => (parseInt(String(v).replace('%',''))/100) as any" />
               </span>
-              <span style="width:62px;text-align:right;font-weight:500">¥{{ Number(d.subtotal || d.price * d.qty * (d.secdisc||1)).toFixed(2) }}</span>
+              <span style="width:62px;text-align:right;font-weight:500">¥{{ auditItemSubtotal(d).toFixed(2) }}</span>
               <span style="width:40px;text-align:center">
                 <el-checkbox v-model="d.stype" true-value="P" false-value="N" @change="(v:any) => d.stype = v ? 'P' : 'N'" />
               </span>
@@ -462,6 +462,13 @@ function auditSplitRemaining(o: any) {
   const sps = auditSplits.value[o.uuid]
   if (!sps) return (o.totmount||0)
   return (o.totmount||0) - sps.reduce((s:number,sp:any) => s+(sp.amount||0),0)
+}
+
+function auditItemSubtotal(d: any): number {
+  if (d.secdisc != null || d.mondisc != null) {
+    return d.price * d.qty * (d.secdisc ?? 1) - (d.mondisc ?? 0)
+  }
+  return Number(d.subtotal || 0)
 }
 
 function addAuditSplit(o: any) {
