@@ -114,8 +114,8 @@ App({
   },
 
   "globalData": {
-    // isDev:true,  // 本地调试：设为 true 可跳过 WiFi 校验
-    isDev:false,
+    isDev:true,  // 本地调试：设为 true 可跳过 WiFi 校验
+    // isDev:false,
     /** 设为 true 时等同开发环境，跳过 WiFi 检测直接进入登录页 */
     skipNetworkCheck:false,
     appcode:'100',

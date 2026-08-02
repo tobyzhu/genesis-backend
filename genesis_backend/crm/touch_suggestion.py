@@ -128,6 +128,8 @@ def build_touch_context(
     *,
     channel: str = "",
     outcome: str = "",
+    current_ecode: str = "",
+    current_ename: str = "",
 ) -> Dict[str, Any]:
     """组装话术所需的客户/任务/历史上下文。"""
     vip = task.vipuuid
@@ -164,6 +166,10 @@ def build_touch_context(
         },
         "channel": channel_name,
         "outcome": outcome or "",
+        "current_employee": {
+            "ecode": current_ecode or "",
+            "ename": current_ename or "",
+        },
         "recent_visits": visits,
         "preferred_items": _preferred_items(company, vip) if vip else [],
         "recent_communications": _communication_logs(company, vip) if vip else [],
@@ -205,6 +211,8 @@ def _static_fallback(context: Dict[str, Any], channel: str = "") -> Dict[str, An
     visits = context.get("recent_visits") or []
     last_date = visits[0]["vsdate"] if visits else ""
     risk_note = context.get("risk_note") or ""
+    current_emp = context.get("current_employee") or {}
+    current_name = (current_emp.get("ename") or "").strip()
     care_points = []
     if last_date:
         care_points.append("上次到店是 %s，先问问这段时间身体和皮肤状态如何。" % last_date)
@@ -218,7 +226,8 @@ def _static_fallback(context: Dict[str, Any], channel: str = "") -> Dict[str, An
         opening = "%s您好，我是%s门店顾问，今天是%s，想和您简单确认下近况。" % (vname, context.get("company", ""), task_desc[:30])
         invitation = "方便时回复我，我可以帮您安排到店护理。"
     else:
-        opening = "%s您好，我是负责您的顾问。今天联系您主要是%s，想了解一下您最近的情况。" % (vname, task_desc[:40])
+        opener = "我是%s，负责您的顾问" % current_name if current_name else "我是负责您的顾问"
+        opening = "%s您好，%s。今天联系您主要是%s，想了解一下您最近的情况。" % (vname, opener, task_desc[:40])
         invitation = "这周如果有时间，我帮您安排一次到店护理，您看哪天方便？"
     return {
         "source": "fallback",
@@ -266,9 +275,19 @@ def generate_touch_suggestion(
     outcome: str = "",
     agent_id: str = "deepseek",
     variants: int = 3,
+    current_ecode: str = "",
+    current_ename: str = "",
 ) -> Dict[str, Any]:
     """生成多套结构化话术；LLM 不可用时返回静态兜底。"""
-    context = build_touch_context(company, storecode, task, channel=channel, outcome=outcome)
+    context = build_touch_context(
+        company,
+        storecode,
+        task,
+        channel=channel,
+        outcome=outcome,
+        current_ecode=current_ecode,
+        current_ename=current_ename,
+    )
     variants = max(1, min(int(variants or 3), 5))
     fallback_items = _static_variants(context, channel, variants)
     try:

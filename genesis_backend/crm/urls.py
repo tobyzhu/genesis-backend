@@ -6,6 +6,7 @@ from django.conf import settings
 
 from . import views
 from . import pc_views
+from . import mp_views
 
 # from django.conf.urls import include
 from rest_framework import routers
@@ -59,12 +60,25 @@ urlpatterns=[
     url(r'^pc/tasks/summary/?$', pc_views.crm_task_summary),
     url(r'^pc/tasks/create/?$', pc_views.crm_task_create),
     url(r'^pc/tasks/(?P<uuid>[^/]+)/attempt/?$', pc_views.crm_task_attempt),
+    url(r'^pc/tasks/(?P<uuid>[^/]+)/attempt/(?P<attempt_uuid>[^/]+)/?$', pc_views.crm_task_attempt_delete),
     url(r'^pc/tasks/(?P<uuid>[^/]+)/suggest/?$', pc_views.crm_task_suggest),
     url(r'^pc/tasks/(?P<uuid>[^/]+)/complete/?$', pc_views.crm_task_complete),
     url(r'^pc/tasks/(?P<uuid>[^/]+)/status/?$', pc_views.crm_task_status),
     url(r'^pc/tasks/(?P<uuid>[^/]+)/?$', pc_views.crm_task_detail),
     url(r'^pc/timeline/?$', pc_views.crm_timeline),
     url(r'^pc/timeline/(?P<uuid>[^/]+)/?$', pc_views.crm_timeline_detail),
+
+    # 小程序端客户关怀 API（员工个人视角）
+    url(r'^mp/vip-search/?$', mp_views.mp_vip_search),
+    url(r'^mp/tasks/summary/?$', mp_views.mp_task_summary),
+    url(r'^mp/tasks/?$', mp_views.mp_task_list),
+    url(r'^mp/tasks/(?P<uuid>[^/]+)/attempt/?$', mp_views.mp_task_attempt),
+    url(r'^mp/tasks/(?P<uuid>[^/]+)/attempt/(?P<attempt_uuid>[^/]+)/?$', mp_views.mp_task_attempt_delete),
+    url(r'^mp/tasks/(?P<uuid>[^/]+)/complete/?$', mp_views.mp_task_complete),
+    url(r'^mp/tasks/(?P<uuid>[^/]+)/status/?$', mp_views.mp_task_status),
+    url(r'^mp/tasks/(?P<uuid>[^/]+)/suggest/?$', mp_views.mp_task_suggest),
+    url(r'^mp/tasks/(?P<uuid>[^/]+)/?$', mp_views.mp_task_detail),
+    url(r'^mp/timeline/?$', mp_views.mp_timeline),
 
 
     # url(r'queryroom/',views.queryroom),

@@ -691,6 +691,7 @@ def crm_task_attempt(request, uuid):
         company=company,
         storecode=task.storecode or "",
         vipuuid=task.vipuuid,
+        caseid=task.uuid,
         casetype=task.casetype or "10",
         detail=detail_text[:1024],
         detaildescription=detail_text,
@@ -701,6 +702,60 @@ def crm_task_attempt(request, uuid):
         creater=exec_ecode or "pc",
     )
     return _ok(_serialize_attempt(detail), 201)
+
+
+def _delete_attempt_and_log(task, attempt):
+    """软删除触达记录，并同步删除关联的客户流水（优先按 caseid，兼容旧数据）。"""
+    detail_text = (attempt.detail or attempt.detaildescription or "").strip()
+    logs = VipCaseDetail.objects.filter(
+        company=task.company,
+        flag="Y",
+        vipuuid=task.vipuuid,
+    )
+    linked = logs.filter(caseid=task.uuid)
+    if detail_text:
+        linked = linked.filter(
+            Q(detail=attempt.detail or "")
+            | Q(detaildescription=attempt.detaildescription or "")
+        )
+    if linked.exists():
+        for log in linked[:20]:
+            log.delete()
+    elif detail_text and attempt.create_time:
+        for log in logs.filter(
+            Q(detail=attempt.detail or "")
+            | Q(detaildescription=attempt.detaildescription or ""),
+            ecode=attempt.creater or "",
+        )[:20]:
+            if log.create_time and abs((log.create_time - attempt.create_time).total_seconds()) <= 300:
+                log.delete()
+    attempt.delete()
+
+
+@csrf_exempt
+def crm_task_attempt_delete(request, uuid, attempt_uuid):
+    """DELETE /crm/pc/tasks/<uuid>/attempt/<attempt_uuid>/ - 删除触达记录。"""
+    if request.method != "DELETE":
+        return _err("method not allowed", 405)
+    company = _param(request, "company")
+    if not company:
+        return _err("缺少 company")
+    storecodes, profile, ecode, err = _resolve_scope(request, company)
+    if err:
+        return _err(err, 403)
+    try:
+        task = CrmCase.objects.select_related("vipuuid").get(
+            uuid=uuid, company=company, flag="Y"
+        )
+    except CrmCase.DoesNotExist:
+        return _err("任务不存在", 404)
+    if storecodes and task.storecode and task.storecode not in storecodes:
+        return _err("无权访问该任务", 403)
+    attempt = CrmCaseDetail.objects.filter(uuid=attempt_uuid, caseid=task, flag="Y").first()
+    if not attempt:
+        return _err("触达记录不存在", 404)
+    _delete_attempt_and_log(task, attempt)
+    return _ok({"uuid": str(attempt.uuid), "deleted": True})
 
 
 @csrf_exempt
@@ -729,6 +784,12 @@ def crm_task_suggest(request, uuid):
         variants = int(variants_raw)
     except (TypeError, ValueError):
         variants = 3
+    current_ecode = ecode or ""
+    current_ename = ""
+    if current_ecode:
+        emp = Empl.objects.filter(company=company, ecode=current_ecode, flag="Y").first()
+        if emp and emp.ename:
+            current_ename = emp.ename
     result = generate_touch_suggestion(
         company,
         task.storecode or "",
@@ -736,6 +797,8 @@ def crm_task_suggest(request, uuid):
         channel=_param(request, "channel"),
         outcome=_param(request, "outcome"),
         variants=variants,
+        current_ecode=current_ecode,
+        current_ename=current_ename,
     )
     return _ok(result)
 
@@ -785,6 +848,7 @@ def crm_task_complete(request, uuid):
                 company=company,
                 storecode=task.storecode or "",
                 vipuuid=task.vipuuid,
+                caseid=task.uuid,
                 casetype=task.casetype or "10",
                 detail=note[:1024],
                 detaildescription=note,

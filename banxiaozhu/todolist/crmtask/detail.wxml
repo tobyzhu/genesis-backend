@@ -1,0 +1,102 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="loading-tip">加载中…</view>
+  <block wx:elif="{{task}}">
+    <view class="task-hero">
+      <view class="hero-left" bindtap="onVipDetail">
+        <view class="hero-name">{{task.vip.vname || '-'}}</view>
+        <view class="hero-sub">{{task.vip.vcode}} · {{task.vip.mtcode || ''}}</view>
+      </view>
+      <view class="hero-right">
+        <view class="status-tag">{{task.status_name}}</view>
+        <view class="detail-link" bindtap="onVipDetail">查看客户详情</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">任务信息</view>
+      <view class="info-row"><text class="info-label">任务类型</text><text>{{task.casetype_name}}</text></view>
+      <view class="info-row"><text class="info-label">计划期</text><text>{{task.planbegindate}} ~ {{task.planfinishdate}}</text></view>
+      <view class="info-row"><text class="info-label">任务内容</text><text>{{task.casedesc || '-'}}</text></view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">触达记录</view>
+      <view wx:if="{{!attempts.length}}" class="empty-tip">暂无触达记录</view>
+      <view wx:for="{{attempts}}" wx:key="uuid" class="attempt-item">
+        <view class="attempt-meta">
+          <text class="attempt-channel">{{item.channel_name}}</text>
+          <text class="attempt-outcome">{{item.outcome_name}}</text>
+          <text class="attempt-time">{{item.contact_time}}</text>
+          <text class="attempt-delete" bindtap="onDeleteAttempt" data-uuid="{{item.uuid}}">删除</text>
+        </view>
+        <view class="attempt-content">{{item.content || '（无内容记录）'}}</view>
+        <view wx:if="{{item.nextdate}}" class="attempt-next">下次跟进：{{item.nextdate}}（{{item.nextecode || '未指定'}}）</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">新增触达</view>
+      <view class="form-row">
+        <text class="form-label">渠道</text>
+        <picker range="{{channels}}" range-key="label" value="{{channelIndex}}" bindchange="onChannelChange">
+          <view class="picker-value">{{channels[channelIndex].label}}</view>
+        </picker>
+      </view>
+      <view class="form-row">
+        <text class="form-label">结果</text>
+        <picker range="{{outcomes}}" range-key="label" value="{{outcomeIndex}}" bindchange="onOutcomeChange">
+          <view class="picker-value">{{outcomes[outcomeIndex].label}}</view>
+        </picker>
+      </view>
+      <view class="form-row">
+        <text class="form-label">内容</text>
+        <textarea class="form-textarea" placeholder="本次沟通情况" value="{{detail}}" bindinput="onDetailInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">下次跟进</text>
+        <picker mode="date" value="{{nextdate}}" bindchange="onNextdateChange">
+          <view class="picker-value">{{nextdate || '选择日期'}}</view>
+        </picker>
+      </view>
+
+      <view class="suggest-head">
+        <view class="suggest-btn {{suggestLoading ? 'loading' : ''}}" bindtap="onSuggest">
+          {{suggestLoading ? '生成中…' : 'AI 话术建议'}}
+        </view>
+        <text wx:if="{{suggestions.length}}" class="suggest-count">{{suggestions.length}} 套可选</text>
+      </view>
+      <view wx:for="{{suggestions}}" wx:key="opening" wx:for-item="sug" wx:for-index="si" class="suggest-card">
+        <view class="suggest-title">方案 {{si + 1}}</view>
+        <view class="sug-row">
+          <view class="sug-label">开场白</view>
+          <view class="sug-text">{{sug.opening}}</view>
+          <view class="sug-actions">
+            <text class="sug-use" bindtap="onUseSuggestion" data-text="{{sug.opening}}">使用</text>
+            <text class="sug-copy" bindtap="onCopySuggestion" data-text="{{sug.opening}}">复制</text>
+          </view>
+        </view>
+        <view class="sug-row" wx:if="{{sug.care_points.length}}">
+          <view class="sug-label">关怀点</view>
+          <view class="sug-text">{{sug.care_points[0]}}</view>
+          <view class="sug-actions">
+            <text class="sug-use" bindtap="onUseSuggestion" data-text="{{sug.care_points[0]}}">使用</text>
+          </view>
+        </view>
+        <view class="sug-row" wx:if="{{sug.invitation}}">
+          <view class="sug-label">邀约</view>
+          <view class="sug-text">{{sug.invitation}}</view>
+          <view class="sug-actions">
+            <text class="sug-use" bindtap="onUseSuggestion" data-text="{{sug.invitation}}">使用</text>
+          </view>
+        </view>
+        <view class="sug-avoid" wx:if="{{sug.avoid.length}}">避免：{{sug.avoid[0]}}</view>
+      </view>
+
+      <view class="action-row">
+        <button class="action-btn primary" bindtap="saveAttempt" disabled="{{saving}}">{{saving ? '保存中…' : '保存触达'}}</button>
+        <button class="action-btn success" bindtap="completeTask">完成回访</button>
+        <button class="action-btn plain" bindtap="togglePause">{{task.status === '40' ? '恢复' : '暂停'}}</button>
+      </view>
+    </view>
+  </block>
+</view>

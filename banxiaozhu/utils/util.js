@@ -1308,6 +1308,9 @@ function isDevEnvironment() {
     return true;
   }
   try {
+    if (wx.getWindowInfo) {
+      return wx.getWindowInfo().platform === 'devtools';
+    }
     return wx.getSystemInfoSync().platform === 'devtools';
   } catch (e) {
     return false;

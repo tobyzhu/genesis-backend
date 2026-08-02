@@ -339,6 +339,45 @@ class TestTaskWorkflow:
         assert task.ecode == "1003"
         assert task.empl.ecode == "1003"
 
+    def test_delete_attempt_soft_deletes_and_log(self, client, vip, empl):
+        task = CrmCase.objects.create(
+            company=COMPANY,
+            storecode=STORECODE,
+            vipuuid=vip,
+            casetype="10",
+            casedesc="删除测试",
+            planbegindate=datetime.date.today(),
+            planfinishdate=datetime.date.today(),
+            status="20",
+            ecode="1001",
+            empl=empl,
+        )
+        resp = client.post(
+            f"/crm/pc/tasks/{task.uuid}/attempt/",
+            {
+                "company": COMPANY,
+                "channel": "20",
+                "outcome": "30",
+                "detail": "误录的触达",
+                "ecode": "1001",
+            },
+            format="json",
+        )
+        assert resp.status_code == 201
+        attempt_uuid = resp.json()["data"]["uuid"]
+
+        resp = client.delete(
+            f"/crm/pc/tasks/{task.uuid}/attempt/{attempt_uuid}/?company={COMPANY}"
+        )
+        assert resp.status_code == 200
+        assert not CrmCaseDetail.objects.filter(uuid=attempt_uuid, flag="Y").exists()
+        assert VipCaseDetail.objects.filter(vipuuid=vip, flag="Y").count() == 0
+
+        resp = client.delete(
+            f"/crm/pc/tasks/{task.uuid}/attempt/{attempt_uuid}/?company={COMPANY}"
+        )
+        assert resp.status_code == 404
+
 
 @pytest.mark.django_db
 class TestTimeline:

@@ -38,13 +38,9 @@
                     <input class="weui-input" password="true" bindinput="bindPasswordChange" values="{{password}}" />
                 </view>
             </view>
-            <view wx:if="{{networkenable}}">
+            <!-- <view wx:if="{{networkenable}}">
                 <button class="weui-btn" bindtap="userLogin" type="primary">登录</button>
-            </view> 
-            <!-- <view >
-                <button class="weui-btn" bindtap="bindDateCheck" type="default">日期测试</button>
             </view>  -->
-
             <!-- <view class="weui-cells weui-cells_after-title">
                 <button open-type="getUserInfo" lang="zh_CN" bindgetuserinfo="onGotUserInfo">微信登陆</button>
                 <button open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber">微信用户快捷登陆</button>
@@ -52,6 +48,9 @@
             </view> -->
 
         </view>
+        <view wx:if="{{networkenable}}">
+                <button class="weui-btn" bindtap="userLogin" type="primary">登录</button>
+        </view> 
     </view>
 </view>
 

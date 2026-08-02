@@ -6,6 +6,10 @@
     <view class="page__bd">
       <view class="page__bd page__bd_spacing">
         <view class="weui-grids">
+              <navigator url="/todolist/crmtask/crmtask" class="weui-grid" hover-class="weui-grid_active">
+                  <image class="weui-grid__icon" src="../images/MoreSelected.png" />
+                  <view class="weui-grid__label">客户关怀</view>
+              </navigator>
               <navigator url="/assistant/lifecycle/lifecycle" class="weui-grid" hover-class="weui-grid_active">
                   <image class="weui-grid__icon" src="../images/MoreSelected.png" />
                   <view class="weui-grid__label">客户生命周期</view>

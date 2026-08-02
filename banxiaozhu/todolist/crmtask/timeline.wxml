@@ -1,0 +1,47 @@
+<view class="page">
+  <view wx:if="{{!vipuuid}}" class="search-box">
+    <input
+      class="search-input"
+      placeholder="搜索客户（姓名/手机/会员号）"
+      value="{{keyword}}"
+      bindinput="onKeywordInput"
+      confirm-type="search"
+      bindconfirm="onSearchVip"
+    />
+    <view class="search-btn" bindtap="onSearchVip">搜索</view>
+  </view>
+
+  <view wx:if="{{vips.length}}" class="vip-list">
+    <view wx:for="{{vips}}" wx:key="uuid" class="vip-item" bindtap="onSelectVip" data-uuid="{{item.uuid}}">
+      <view class="vip-name">{{item.vname}}（{{item.vcode}}）</view>
+      <view class="vip-phone">{{item.mtcode}}</view>
+    </view>
+  </view>
+
+  <block wx:if="{{vipuuid}}">
+    <view class="card">
+      <view class="card-title">沟通记录</view>
+      <view wx:if="{{!logs.length && !loading}}" class="empty-tip">暂无沟通记录</view>
+      <view wx:for="{{logs}}" wx:key="uuid" class="log-item">
+        <view class="log-meta">
+          <text class="log-time">{{item.create_time}}</text>
+          <text class="log-emp">{{item.ecode || '-'}}</text>
+        </view>
+        <view class="log-content">{{item.content || '-'}}</view>
+        <view wx:if="{{item.nextdate}}" class="log-next">下次回访：{{item.nextdate}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">新增记录</view>
+      <textarea class="log-textarea" placeholder="本次联系客户的情况" value="{{detail}}" bindinput="onDetailInput" />
+      <view class="form-row">
+        <text class="form-label">下次回访</text>
+        <picker mode="date" value="{{nextdate}}" bindchange="onNextdateChange">
+          <view class="picker-value">{{nextdate || '选择日期'}}</view>
+        </picker>
+      </view>
+      <button class="save-btn" bindtap="addLog">保存记录</button>
+    </view>
+  </block>
+</view>

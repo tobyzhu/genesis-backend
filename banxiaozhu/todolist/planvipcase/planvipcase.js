@@ -61,16 +61,16 @@ Page({
     var app = getApp();
     this.getNowTime();    
     var that = this;
-    wx.getSystemInfo({
-      success: function (res) {
-        that.setData({
-          host: app.globalData.host,
-          sliderLeft: (res.windowWidth / that.data.tabs.length - sliderWidth) / 2,
-          sliderOffset: res.windowWidth / that.data.tabs.length * that.data.activeIndex
-        });
-        that.getPlanVipCase()
-      }
+    var width = 375;
+    try {
+      width = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 375;
+    } catch (e) {}
+    that.setData({
+      host: app.globalData.host,
+      sliderLeft: (width / that.data.tabs.length - sliderWidth) / 2,
+      sliderOffset: width / that.data.tabs.length * that.data.activeIndex
     });
+    that.getPlanVipCase();
   },
 
   /**

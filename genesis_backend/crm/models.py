@@ -17,6 +17,7 @@ class VipCaseDetail(GenesisModel):
     detaildescription = models.TextField(blank=True,null=True,verbose_name='沟通情况记录')
     detail = models.CharField(max_length=1024,blank=True,null=True,verbose_name='情况描述')
     ecode = models.CharField(max_length=16,blank=True,null=True,verbose_name='员工')
+    caseid = models.UUIDField(blank=True,null=True,verbose_name='关联回访任务')
     nextdate = models.DateField(auto_now_add=False,auto_created=False,blank=True,null=True,verbose_name='下次回访日期')
     nextecode = models.CharField(max_length=16,blank=True,null=True,verbose_name='下次任务执行人工号')
     status = models.CharField(max_length=8,choices=CASESTATUS,blank=True,default='10',verbose_name='状态')

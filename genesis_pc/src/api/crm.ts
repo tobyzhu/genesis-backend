@@ -58,6 +58,10 @@ export function addCrmTaskAttempt(uuid: string, data: Record<string, any>) {
   return request.post(`/crm/pc/tasks/${uuid}/attempt/`, { ...crmScope(), ...data })
 }
 
+export function deleteCrmTaskAttempt(uuid: string, attemptUuid: string) {
+  return request.delete(`/crm/pc/tasks/${uuid}/attempt/${attemptUuid}/`, { params: crmScope() })
+}
+
 export function suggestCrmTaskTouch(uuid: string, data: Record<string, any>) {
   return request.post(`/crm/pc/tasks/${uuid}/suggest/`, { ...crmScope(), ...data })
 }

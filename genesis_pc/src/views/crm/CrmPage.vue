@@ -235,6 +235,7 @@
               <el-tag size="small">{{ a.channel_name }}</el-tag>
               <el-tag size="small" :type="outcomeTagType(a.outcome)">{{ a.outcome_name }}</el-tag>
               <span class="attempt-emp">{{ a.ecode || '-' }}</span>
+              <el-button size="small" type="danger" :icon="Delete" circle @click="deleteAttempt(a)" />
             </div>
             <div class="attempt-detail">{{ a.content || a.detail || a.detaildescription || '（无内容记录）' }}</div>
             <div v-if="a.nextdate" class="attempt-next">下次跟进：{{ a.nextdate }}（{{ a.nextecode || '未指定' }}）</div>
@@ -500,6 +501,7 @@ import {
   getCrmTask,
   createCrmTask,
   addCrmTaskAttempt,
+  deleteCrmTaskAttempt,
   suggestCrmTaskTouch,
   completeCrmTask,
   updateCrmTaskStatus,
@@ -748,6 +750,19 @@ async function saveAttempt() {
     ElMessage.error('保存失败')
   } finally {
     attemptSaving.value = false
+  }
+}
+
+async function deleteAttempt(attempt: any) {
+  if (!currentTask.value) return
+  try {
+    await ElMessageBox.confirm('确定删除这条触达记录？删除后客户流水中的对应记录也会移除。', '删除触达记录', { type: 'warning' })
+    await deleteCrmTaskAttempt(currentTask.value.uuid, attempt.uuid)
+    ElMessage.success('已删除')
+    await openTaskDetail(currentTask.value.uuid)
+    loadTasks()
+  } catch {
+    // 用户取消
   }
 }
 

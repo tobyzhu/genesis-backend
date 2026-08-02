@@ -1,0 +1,93 @@
+<view class="page">
+  <view class="page__hd">
+    <view class="page__title">客户关怀</view>
+    <view class="page__desc">{{storeLabel}}</view>
+  </view>
+
+  <view class="page__bd">
+    <view class="stat-bar">
+      <view class="stat-item {{activeStatus === '' ? 'active' : ''}}" bindtap="onStatusTap" data-key="">
+        <view class="stat-num">{{counts.total}}</view>
+        <view class="stat-label">全部</view>
+      </view>
+      <view class="stat-item {{activeStatus === 'today' ? 'active' : ''}}" bindtap="onStatusTap" data-key="today">
+        <view class="stat-num">{{counts.today}}</view>
+        <view class="stat-label">今日</view>
+      </view>
+      <view class="stat-item {{activeStatus === 'overdue' ? 'active' : ''}}" bindtap="onStatusTap" data-key="overdue">
+        <view class="stat-num">{{counts.overdue}}</view>
+        <view class="stat-label">超期</view>
+      </view>
+      <view class="stat-item {{activeStatus === 'in_progress' ? 'active' : ''}}" bindtap="onStatusTap" data-key="in_progress">
+        <view class="stat-num">{{counts.in_progress}}</view>
+        <view class="stat-label">进行中</view>
+      </view>
+      <view class="stat-item {{activeStatus === 'completed' ? 'active' : ''}}" bindtap="onStatusTap" data-key="completed">
+        <view class="stat-num">{{counts.completed}}</view>
+        <view class="stat-label">已完成</view>
+      </view>
+    </view>
+
+    <view class="group-bar">
+      <scroll-view scroll-x class="group-scroll">
+        <view
+          wx:for="{{groups}}"
+          wx:key="key"
+          class="group-chip {{activeGroup === item.key ? 'active' : ''}}"
+          bindtap="onGroupTap"
+          data-key="{{item.key}}"
+        >{{item.label}} {{item.count}}</view>
+        <view wx:if="{{!groups.length}}" class="group-empty">暂无任务分组</view>
+      </scroll-view>
+    </view>
+
+    <view class="search-bar">
+      <input
+        class="search-input"
+        placeholder="搜索姓名/会员号/手机"
+        value="{{keyword}}"
+        bindinput="onKeywordInput"
+        confirm-type="search"
+        bindconfirm="onSearch"
+      />
+      <view class="search-btn" bindtap="onSearch">搜索</view>
+    </view>
+
+    <view wx:if="{{error}}" class="error-tip">{{error}}</view>
+
+    <view class="task-list">
+      <view wx:for="{{tasks}}" wx:key="uuid" class="task-item">
+        <view class="task-head" bindtap="onTaskTap" data-uuid="{{item.uuid}}">
+          <view class="task-vip">
+            <text class="task-name">{{item.vip.vname || '-'}}</text>
+            <text class="task-detail-link" catchtap="onVipTap" data-uuid="{{item.vip.uuid}}">查看详情</text>
+          </view>
+          <view class="task-code">{{item.vip.vcode || ''}}</view>
+        </view>
+        <view class="task-meta">
+          <text class="task-tag">{{item.casetype_name || '-'}}</text>
+          <text class="task-date">{{item.planbegindate}} ~ {{item.planfinishdate}}</text>
+          <text class="task-status">{{item.status_name}}</text>
+        </view>
+        <view class="task-desc">{{item.casedesc || '-'}}</view>
+      </view>
+      <view wx:if="{{!loading && !tasks.length}}" class="empty-tip">暂无回访任务</view>
+      <view wx:if="{{loading}}" class="loading-tip">加载中…</view>
+    </view>
+
+    <view class="entry-grid">
+      <view class="entry-item" bindtap="onOpenLifecycle">
+        <view class="entry-title">预警客户</view>
+        <view class="entry-sub">生命周期与沉睡唤醒</view>
+      </view>
+      <view class="entry-item" bindtap="onOpenTimeline">
+        <view class="entry-title">沟通流水</view>
+        <view class="entry-sub">客户沟通记录</view>
+      </view>
+      <view class="entry-item" bindtap="onOpenAssistant">
+        <view class="entry-title">CRM 助手</view>
+        <view class="entry-sub">AI 查询与建议</view>
+      </view>
+    </view>
+  </view>
+</view>
