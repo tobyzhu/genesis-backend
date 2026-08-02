@@ -1,0 +1,250 @@
+/* ============================================================
+   Genesis PC 全站视觉打磨层（方案 A）
+   只做视觉统一，不改业务逻辑；颜色一律走 --g-color-* 语义 token
+   ============================================================ */
+
+:root {
+  --g-radius: 6px;
+  --g-radius-sm: 4px;
+  --g-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --g-shadow-pop: 0 8px 24px rgba(16, 24, 40, 0.12);
+  --g-page-max: 1440px;
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--g-color-text-muted) 35%, transparent);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--g-color-text-muted) 55%, transparent);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- 焦点 ---------- */
+:focus-visible {
+  outline: 2px solid var(--g-color-primary);
+  outline-offset: 2px;
+}
+
+/* ---------- Element Plus 基础覆盖 ---------- */
+.el-card {
+  --el-card-border-radius: var(--g-radius);
+  border-color: var(--g-color-border);
+  box-shadow: none !important;
+}
+.el-card.is-always-shadow,
+.el-card.is-hover-shadow {
+  box-shadow: none !important;
+}
+.el-card__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--g-color-border);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--g-color-text);
+}
+.el-card__body {
+  padding: 16px;
+}
+
+.el-table {
+  --el-table-border-color: var(--g-color-border);
+  --el-table-header-bg-color: var(--g-color-surface-muted);
+  --el-table-header-text-color: var(--g-color-text-secondary);
+  --el-table-row-hover-bg-color: var(--g-color-primary-soft);
+  font-size: 13px;
+}
+.el-table th.el-table__cell {
+  font-weight: 600;
+}
+.el-table .cell {
+  line-height: 1.5;
+}
+.el-table .el-table__empty-text {
+  color: var(--g-color-text-muted);
+}
+
+.el-button {
+  --el-border-radius-base: var(--g-radius-sm);
+  font-weight: 500;
+}
+.el-input__wrapper,
+.el-textarea__inner {
+  border-radius: var(--g-radius-sm);
+  box-shadow: 0 0 0 1px var(--g-color-border) inset !important;
+}
+.el-input__wrapper:hover,
+.el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px var(--g-color-border-strong) inset !important;
+}
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--g-color-primary) inset !important;
+}
+.el-select__wrapper {
+  border-radius: var(--g-radius-sm);
+  box-shadow: 0 0 0 1px var(--g-color-border) inset !important;
+}
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--g-color-primary) inset !important;
+}
+
+.el-pagination {
+  --el-pagination-button-bg-color: transparent;
+}
+.el-pagination .el-pager li {
+  border-radius: var(--g-radius-sm);
+  min-width: 30px;
+  height: 30px;
+  line-height: 30px;
+}
+.el-pagination .el-pager li.is-active {
+  background: var(--g-color-primary);
+  color: #fff;
+}
+
+.el-dialog {
+  --el-dialog-border-radius: var(--g-radius);
+  box-shadow: var(--g-shadow-pop);
+}
+.el-dialog__header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--g-color-border);
+}
+.el-dialog__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--g-color-text);
+}
+.el-dialog__body {
+  padding: 16px 20px;
+}
+.el-dialog__footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--g-color-border);
+}
+
+.el-tag {
+  --el-tag-border-radius: var(--g-radius-sm);
+  font-weight: 500;
+}
+
+.el-tabs__item {
+  font-weight: 500;
+}
+.el-tabs__nav-wrap::after {
+  height: 1px;
+  background-color: var(--g-color-border);
+}
+
+.el-message-box {
+  border-radius: var(--g-radius);
+  box-shadow: var(--g-shadow-pop);
+}
+
+/* ---------- 页面骨架工具类 ---------- */
+.page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.page-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--g-color-text);
+  letter-spacing: 0;
+}
+.page-subtitle {
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--g-color-text-muted);
+}
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.section {
+  background: var(--g-color-surface);
+  border: 1px solid var(--g-color-border);
+  border-radius: var(--g-radius);
+  overflow: hidden;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--g-color-border);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--g-color-text);
+}
+.section-body {
+  padding: 12px 14px;
+}
+.pagination-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 14px;
+  border-top: 1px solid var(--g-color-border);
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--g-color-surface);
+  border: 1px solid var(--g-color-border);
+  border-radius: var(--g-radius);
+}
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--g-color-text);
+  font-variant-numeric: tabular-nums;
+}
+.stat-label {
+  font-size: 12px;
+  color: var(--g-color-text-muted);
+}
+.empty-state {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--g-color-text-muted);
+  font-size: 13px;
+}
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

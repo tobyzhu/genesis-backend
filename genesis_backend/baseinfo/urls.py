@@ -48,6 +48,7 @@ urlpatterns = [
     url(r'^get_goods/?', get_goods),
     url(r'^get_appoption_byseg/?', get_appoption_byseg),
     url(r'^get_empllist/', views.get_empllist),
+    url(r'^employees/', views.employees_list),
     url(r'^get_pmcodelist/', views.get_pmcodelist),
     url(r'^get_seccodelist/', views.get_seccodelist),
     url(r'^get_roomlist/', views.get_roomlist),

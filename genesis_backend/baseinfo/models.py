@@ -15,7 +15,7 @@ from pypinyin import pinyin, lazy_pinyin, Style
 from datetime import datetime, date
 import re
 
-from common.constants import FLAG, SALESFLAG, COMPTYPE, TTYPE, STYPE, CASETYPE, CASESTATUS, VIPTYPE, DEFAULT_VCODE_LENGTH, DEFAULT_CCODE_LENGTH
+from common.constants import FLAG, SALESFLAG, COMPTYPE, TTYPE, STYPE, CASETYPE, CASESTATUS, DEFAULT_VCODE_LENGTH, DEFAULT_CCODE_LENGTH
 from common.constants import GenesisModel, BaseModel, CommonBaseModel
 import common.constants
 from multiselectfield import MultiSelectField
@@ -129,6 +129,7 @@ COMPANY_PAY_PERIOD = Appoption.objects.filter(flag='Y', company='common', seg='c
 UNITS = Appoption.objects.filter(flag='Y', company='common', seg='unit').values_list('itemname', 'itemvalues')
 SALEATR = Appoption.objects.filter(flag='Y', company='common', seg='saleatr').values_list('itemname', 'itemvalues')
 VIPSTATUS = Appoption.objects.filter(flag='Y', company='common', seg='vipstatus').values_list('itemname', 'itemvalues')
+VIPTYPE = Appoption.objects.filter(flag='Y', company='common', seg='viptype').values_list('itemname', 'itemvalues')
 
 class Storeinfo(BaseModel):
     # storecode = models.CharField(db_column='StoreCode',  default='0', max_length=16, blank=True, null=False, verbose_name='店铺编号')  # Field name made lowercase.

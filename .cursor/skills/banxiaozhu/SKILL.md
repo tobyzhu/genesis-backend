@@ -99,6 +99,8 @@ banxiaozhu/
 
 结账关键接口：`get_hung_byvipuuid/` → `get_checkout_shortfall/` → `checkout_hungs/`（均 `?param=JSON` 或 query params）。
 
+**PC 手工开单（genesis_pc）**：完整流程、储值卡定价规则、后端校验与测试见 [pc-manual-billing.md](pc-manual-billing.md)。**营销活动/活动设定**（特价/折扣走活动分组主从、组合销售走活动明细）见 [pc-promotions.md](pc-promotions.md)。PC **全站**业务色必须用 `--g-color-*` 语义 token（layouts/views/components），禁止新增业务裸十六进制；顶栏可切换 azure/salon/moss。
+
 ## 常见陷阱
 
 - 无统一 HTTP client，错误处理各页不一致 — 优先复用 util 封装

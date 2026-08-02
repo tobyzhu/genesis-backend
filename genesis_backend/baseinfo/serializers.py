@@ -121,12 +121,30 @@ class VipSerializer(serializers.HyperlinkedModelSerializer):
     company =serializers.CharField(required=False,allow_blank=True)
     storecode =serializers.CharField(required=False,allow_blank=True)
     uuid = serializers.UUIDField(format='hex_verbose', read_only=True)
+    status_name = serializers.SerializerMethodField()
+    viptype_name = serializers.SerializerMethodField()
 
     # mtcode = serializers.SerializerMethodField()
 
     class Meta:
         model = Vip
-        fields = ('uuid','company','storecode','viptype','vcode','vname','viplevel','mtcode','ecode','ecode2','url','pinyin','birth','indate','source','occupation','vdesc','sex','telph','wechat','addr','email','qq','status','tags')
+        fields = ('uuid','company','storecode','viptype','viptype_name','vcode','vname','viplevel','mtcode','ecode','ecode2','url','pinyin','birth','indate','source','occupation','vdesc','sex','telph','wechat','addr','email','qq','status','status_name','tags')
+
+    def _vip_dict_name(self, obj, key):
+        table = (self.context or {}).get('vip_dicts', {}).get(key)
+        if not table:
+            try:
+                table = dict(Vip._meta.get_field(key).choices)
+            except Exception:
+                table = {}
+        code = getattr(obj, key)
+        return table.get(code) or code or '--'
+
+    def get_status_name(self, obj):
+        return self._vip_dict_name(obj, 'status')
+
+    def get_viptype_name(self, obj):
+        return self._vip_dict_name(obj, 'viptype')
 
     def create(self, validated_data):
         return Vip.objects.create(**validated_data)

@@ -210,3 +210,24 @@ class TestSaveHungValidation:
         data = resp.json()
         assert data.get('ok') is False
         assert '单价不能为负数' in data.get('message', '')
+
+
+class TestCardSaleValidation:
+    def test_times_card_sale_initializes_leftmoney(
+        self, client, db, test_company, test_storecode, vip
+    ):
+        _make_cardtype(test_company, code='CT001', comptype='times')
+        resp = _post_save_hung(client, test_company, test_storecode, str(vip.uuid), [
+            {
+                'ttype': 'C', 'srvcode': 'CT001', 's_qty': 10, 's_price': 800,
+                'pay_type': 'cash', 'card_ccode': '',
+            },
+        ])
+        data = resp.json()
+        assert data.get('ok') is True
+        card = Cardinfo.objects.filter(
+            company=test_company, cardtype='CT001', status='P'
+        ).first()
+        assert card is not None
+        assert card.leftqty == 10
+        assert card.leftmoney == 8000

@@ -24,6 +24,8 @@ export interface CartItem {
   pmcode: string         // 开单员工
   asscode1: string       // 美疗师1
   asscode2: string       // 美疗师2
+  /** 是否指定美疗师1：Y/N → expense_hung.secoldcustflag_hung */
+  secoldcustflag: 'Y' | 'N'
   availableCards: VipCard[]
   /** 原价（切换付款卡后恢复用） */
   originalPrice?: number
@@ -38,6 +40,14 @@ export interface CartItem {
   topcode?: string
   /** 来源活动编号（如为活动项目） */
   promotionsid?: string
+}
+
+/** 分组展示行：携带真实列表来源与下标，避免组内 idx 误操作 */
+export type CartLineSource = 'cart' | 'void'
+export interface CartGroupRow {
+  item: CartItem
+  source: CartLineSource
+  index: number
 }
 
 export interface CategoryNode {
@@ -164,14 +174,19 @@ export function useBillingEngine() {
     )
   )
 
-  /** 购物车按 ttype 分组，用于 tree 展示 */
+  /** 购物车按 ttype 分组，用于 tree 展示（带真实 source/index） */
   const cartGroups = computed(() => {
-    const groups: Array<{ ttype: 'S' | 'G' | 'C' | 'I'; label: string; items: CartItem[] }> = []
+    const groups: Array<{ ttype: 'S' | 'G' | 'C' | 'I'; label: string; items: CartGroupRow[] }> = []
     const order = ['S', 'G', 'C', 'I'] as const
     const labels: Record<string, string> = { S: '服务', G: '商品', C: '售卡', I: '充值' }
-    const all = [...cart.value, ...voidItems.value]
     for (const t of order) {
-      const items = all.filter((i) => i.ttype === t)
+      const items: CartGroupRow[] = []
+      cart.value.forEach((item, index) => {
+        if (item.ttype === t) items.push({ item, source: 'cart', index })
+      })
+      voidItems.value.forEach((item, index) => {
+        if (item.ttype === t) items.push({ item, source: 'void', index })
+      })
       if (items.length) {
         groups.push({ ttype: t, label: labels[t] || t, items })
       }
@@ -318,6 +333,7 @@ export function useBillingEngine() {
   }
 
   async function addPromotionItem(promo: any, item: any) {
+    if (!requireVip()) return
     if (cart.value.length > 0) {
       const allSamePromo = cart.value.every((ci: CartItem) => ci.promotionsid === (promo.promotionsid || ''))
       if (!allSamePromo) {
@@ -355,6 +371,7 @@ export function useBillingEngine() {
         pmcode: selectedVip.value?.ecode || '',
         asscode1: selectedVip.value?.ecode2 || '',
         asscode2: '',
+        secoldcustflag: 'N',
         availableCards: selectedCard.value ? [selectedCard.value] : [],
         promotionsid: promo.promotionsid || '',
       })
@@ -370,6 +387,7 @@ export function useBillingEngine() {
   }
 
   function addCardSale(item: any) {
+    if (!requireVip()) return
     if (cardSaleMode.value === 'amount') {
       // 储值卡：直接加入
       addToCart(item)
@@ -393,6 +411,7 @@ export function useBillingEngine() {
   }
 
   function confirmCardSale() {
+    if (!requireVip()) return
     const qty = editQty.value
     const unitPrice = editUnitPrice.value
     const secdisc = editDiscountPct.value / 100
@@ -404,12 +423,14 @@ export function useBillingEngine() {
       code, name, price: unitPrice, qty, ttype: 'C', stype: 'N',
       secdisc, srvmondisc, payMethod: selectedCard.value ? 'card:' + selectedCard.value.ccode : 'cash',
       pmcode: defaultEmp.pmcode, asscode1: defaultEmp.asscode1, asscode2: defaultEmp.asscode2,
+      secoldcustflag: 'N',
       availableCards: selectedCard.value ? [selectedCard.value] : [],
     })
     showPriceSelector.value = false
   }
 
   function addRecharge(card: VipCard) {
+    if (!requireVip()) return
     const amount = rechargeAmounts.value[card.ccode] || 0
     if (amount <= 0) { ElMessage.warning('请输入金额'); return }
     const defaultEmp = getDefaultEmployees()
@@ -417,12 +438,14 @@ export function useBillingEngine() {
       code: card.ccode, name: card.cardname + ' 充值', price: amount, qty: 1,
       ttype: 'I', stype: 'N', secdisc: 1, srvmondisc: 0,
       payMethod: 'cash', pmcode: defaultEmp.pmcode, asscode1: defaultEmp.asscode1, asscode2: defaultEmp.asscode2,
+      secoldcustflag: 'N',
       availableCards: [],
     })
     rechargeAmounts.value[card.ccode] = 0
   }
 
  function addCardRefund(card: VipCard) {
+   if (!requireVip()) return
    const qtyOrAmt = rechargeAmounts.value[card.ccode] || 0
    if (qtyOrAmt <= 0) {
      ElMessage.warning(card.comptype === 'times' ? '请输入退卡次数' : '请输入金额');
@@ -436,12 +459,14 @@ export function useBillingEngine() {
       code: card.ccode, name: card.cardname + ' 退款', price: unitPrice, qty: refundQty,
       ttype: 'I', stype: 'N', secdisc: 1, srvmondisc: 0,
       payMethod: 'cash', pmcode: defaultEmp.pmcode, asscode1: defaultEmp.asscode1, asscode2: defaultEmp.asscode2,
+      secoldcustflag: 'N',
       availableCards: [],
     })
     rechargeAmounts.value[card.ccode] = 0
   }
 
   async function addComboToCart(promo: any) {
+    if (!requireVip()) return
     if (cart.value.length > 0) {
       const allSamePromo = cart.value.every((ci: CartItem) => ci.promotionsid === (promo.promotionsid || ''))
       if (!allSamePromo) {
@@ -472,6 +497,7 @@ export function useBillingEngine() {
           pmcode: selectedVip.value?.ecode || '',
           asscode1: selectedVip.value?.ecode2 || '',
           asscode2: '',
+          secoldcustflag: 'N',
           availableCards: selectedCard.value ? [selectedCard.value] : [],
           promotionsid: promo.promotionsid || '',
         })
@@ -560,6 +586,7 @@ export function useBillingEngine() {
   }
 
   async function addRefundToCart() {
+    if (!requireVip()) return
     let added = 0
     // 先预加载所有需要的订单明细
     const needFetch = checkedOutOrders.value.filter(o => {
@@ -596,6 +623,7 @@ export function useBillingEngine() {
             pmcode: item.pmcode || '',
             asscode1: item.asscode1 || '',
             asscode2: item.asscode2 || '',
+            secoldcustflag: (item.secoldcustflag === 'Y' || item.secoldcustflag === '1') ? 'Y' : 'N',
             availableCards: [],
           })
         }
@@ -606,6 +634,7 @@ export function useBillingEngine() {
   }
 
   async function autoAddCardItems(card: VipCard) {
+    if (!requireVip()) return
     if (card.comptype !== 'times') return
     if (!card.cardtypeuuid && !card.cardtype) return
     try {
@@ -643,8 +672,9 @@ export function useBillingEngine() {
       return
     }
     const seq = ++pricingSeq
+    const targetMethod = 'card:' + card.ccode
     const items = cart.value
-      .filter((i) => i.ttype !== 'I')
+      .filter((i) => i.ttype !== 'I' && i.payMethod === targetMethod)
       .map((i) => ({
         code: i.code,
         ttype: i.ttype,
@@ -664,7 +694,7 @@ export function useBillingEngine() {
       const rows: any[] = (res.data as any)?.results || []
       const map = new Map(rows.map((r: any) => [`${r.ttype}:${r.code}`, r]))
       cart.value.forEach((item) => {
-        if (item.ttype === 'I') return
+        if (item.ttype === 'I' || item.payMethod !== targetMethod) return
         const row = map.get(`${item.ttype}:${item.code}`)
         if (!row) return
         if (item.originalPrice == null) item.originalPrice = item.price
@@ -689,6 +719,46 @@ export function useBillingEngine() {
     } catch { /* 定价失败保持原价 */ }
   }
 
+  async function applyItemPricing(item: CartItem, card: VipCard): Promise<void> {
+    const seq = ++pricingSeq
+    try {
+      const res = await getCardPricing({
+        cardtypeuuid: card.cardtypeuuid || '',
+        ccode: card.ccode,
+        items: [{
+          code: item.code,
+          ttype: item.ttype,
+          price: item.originalPrice ?? item.price,
+          qty: item.qty,
+          discountclass: item.discountclass || '',
+          topcode: item.topcode || '',
+        }],
+      })
+      if (seq !== pricingSeq) return
+      const rows: any[] = (res.data as any)?.results || []
+      const row = rows.find(
+        (r: any) => `${r.ttype}:${r.code}` === `${item.ttype}:${item.code}`
+      )
+      if (!row) return
+      if (item.originalPrice == null) item.originalPrice = item.price
+      if (item.originalSecdisc == null) item.originalSecdisc = item.secdisc
+      if (row.allowed) {
+        item.cardAllowed = true
+        item.cardReason = ''
+        if (row.discounttype === 'DISC' && row.disc != null) {
+          item.secdisc = row.disc
+        } else {
+          item.price = row.price
+          item.secdisc = 1
+          item.srvmondisc = 0
+        }
+      } else {
+        item.cardAllowed = false
+        item.cardReason = row.reason || '此卡不可消费该项目'
+      }
+    } catch { /* 定价失败保持原价 */ }
+  }
+
   function selectCard(card: VipCard | null) {
     selectedCard.value = card
     cart.value.forEach((item) => {
@@ -699,13 +769,13 @@ export function useBillingEngine() {
     if (card?.comptype === 'times') {
       setTimeout(() => autoAddCardItems(card), 100)
     }
-    void applyCardPricing(card)
   }
 
   // ── 购物车操作 ──
   const clickGuard = new Map<string, number>()
 
   function addToCart(item: CartableItem) {
+    if (!requireVip()) return
     const now = Date.now()
     const last = clickGuard.get(item.code)
     if (last && now - last < 300) return
@@ -714,12 +784,11 @@ export function useBillingEngine() {
     const existing = cart.value.find((c) => c.code === item.code && c.ttype === (item.ttype || itemTab.value))
     if (existing) {
       existing.qty++
-      if (selectedCard.value) void applyCardPricing(selectedCard.value)
       return
     }
 
     const def = getDefaultEmployees()
-    cart.value.push({
+    const newItem: CartItem = {
       code: item.code,
       name: item.name,
       price: parseFloat(item.price as unknown as string) || 0,
@@ -732,9 +801,11 @@ export function useBillingEngine() {
       pmcode: def.pmcode,
       asscode1: def.asscode1,
       asscode2: def.asscode2,
+      secoldcustflag: 'N',
       availableCards: selectedCard.value ? [selectedCard.value] : [],
-    })
-    if (selectedCard.value) void applyCardPricing(selectedCard.value)
+    }
+    cart.value.push(newItem)
+    if (selectedCard.value) void applyItemPricing(newItem, selectedCard.value)
   }
 
   function getDefaultEmployees() {
@@ -746,19 +817,47 @@ export function useBillingEngine() {
     }
   }
 
-  function removeFromCart(index: number) {
-    cart.value.splice(index, 1)
+  function requireVip(): boolean {
+    if (selectedVip.value) return true
+    ElMessage.warning('请先选择会员')
+    return false
   }
 
-  function toggleRefund(index: number) {
-    const item = cart.value[index]
+  function resolveCartLine(index: number, source: CartLineSource = 'cart'): CartItem | undefined {
+    return source === 'void' ? voidItems.value[index] : cart.value[index]
+  }
+
+  function removeFromCart(index: number, source: CartLineSource = 'cart') {
+    if (source === 'void') voidItems.value.splice(index, 1)
+    else cart.value.splice(index, 1)
+  }
+
+  function toggleRefund(index: number, source: CartLineSource = 'cart') {
+    const item = resolveCartLine(index, source)
+    if (!item) return
     if (item.qty >= 0) item.qty = -Math.abs(item.qty || 1)
     else item.qty = Math.abs(item.qty || 1)
   }
 
-  function updateCartItem(index: number, field: keyof CartItem, value: any) {
-    const item = cart.value[index]
+  function updateCartItem(index: number, field: keyof CartItem, value: any, source: CartLineSource = 'cart') {
+    const item = resolveCartLine(index, source)
     if (item) (item as any)[field] = value
+  }
+
+  function changeCartItemPayMethod(index: number, payMethod: string, source: CartLineSource = 'cart') {
+    const item = resolveCartLine(index, source)
+    if (!item) return
+    if (item.originalPrice != null) item.price = item.originalPrice
+    if (item.originalSecdisc != null) item.secdisc = item.originalSecdisc
+    item.cardAllowed = undefined
+    item.cardReason = undefined
+    item.payMethod = payMethod
+    if (payMethod.startsWith('card:')) {
+      const ccode = payMethod.slice(5)
+      const card = vipCards.value.find((c: VipCard) => c.ccode === ccode)
+        || item.availableCards.find((c: VipCard) => c.ccode === ccode)
+      if (card) void applyItemPricing(item, card)
+    }
   }
 
   function clearCart() { cart.value = []; voidItems.value = [] }
@@ -807,6 +906,7 @@ export function useBillingEngine() {
   }
 
   function confirmVoid() {
+    if (!requireVip()) return
     let added = 0
     for (const [hunguuid, items] of Object.entries(voidOrderItems.value)) {
       const sels = voidSelections.value[hunguuid] || {}
@@ -831,6 +931,7 @@ export function useBillingEngine() {
             pmcode: '',
             asscode1: '',
             asscode2: '',
+            secoldcustflag: 'N',
             availableCards: [],
           })
         }
@@ -900,7 +1001,8 @@ export function useBillingEngine() {
         pmcode: i.pmcode || '',
         asscode1: i.asscode1 || '',
         asscode2: i.asscode2 || '',
-        promotionsid: i.promotionsid || '',
+        secoldcustflag: i.secoldcustflag === 'Y' ? 'Y' : 'N',
+        promotionsid: i.promotionsid || '0',
       }))
       const payload = { company, storecode: storecode || '01', vipuuid: selectedVip.value.uuid, items }
       const res = await request.post('/adviser/save_hung/', payload)
@@ -997,7 +1099,7 @@ export function useBillingEngine() {
     employees, cart, cartGroups, cartTotal, saving,
     searchVip, selectVip, fetchVipCards, fetchItems, fetchPromotions, fetchEmployees,
     selectCard, addToCart, removeFromCart, toggleRefund, autoAddCardItems,
-    updateCartItem, clearCart, saveHung, getDefaultEmployees,
+    updateCartItem, changeCartItemPayMethod, clearCart, saveHung, getDefaultEmployees,
     applyCardPricing, restoreCardPrices,
     ttypeLabel, formatDate, empName,
     // 模式

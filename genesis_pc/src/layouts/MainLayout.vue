@@ -3,8 +3,8 @@
     <!-- 侧边栏 -->
     <el-aside :width="appStore.sidebarCollapsed ? '64px' : '220px'" class="layout-aside">
       <div class="logo-area">
+        <span class="logo-mark">G</span>
         <span v-if="!appStore.sidebarCollapsed" class="logo-text">Genesis 管理系统</span>
-        <span v-else class="logo-mini">G</span>
       </div>
       <el-menu
         :default-active="route.path"
@@ -41,6 +41,20 @@
           </el-breadcrumb>
         </div>
         <div class="header-right">
+          <el-select
+            :model-value="appStore.themeId"
+            size="small"
+            class="theme-select"
+            placeholder="配色"
+            @change="(v: string) => appStore.setTheme(v)"
+          >
+            <el-option
+              v-for="opt in appStore.themeOptions"
+              :key="opt.id"
+              :label="opt.label"
+              :value="opt.id"
+            />
+          </el-select>
           <el-dropdown v-if="appStore.currentCompany" trigger="click" @command="handleSwitchStore">
             <el-tag size="small" type="info" class="store-tag" style="cursor:pointer">
               {{ appStore.currentStoreName || appStore.currentStorecode }}
@@ -154,6 +168,7 @@ const menuGroups = [
     title: '报表',
     icon: 'DataAnalysis',
     children: [
+      { path: '/report/business-flow', title: '营业流水表' },
       { path: '/report', title: '卡余额汇总' },
       { path: '/report/performance', title: '门店业绩' },
       { path: '/assistant', title: 'AI 助手' },
@@ -195,35 +210,69 @@ function handleSwitchStore(storecode: string) {
   height: 100vh;
 }
 .layout-aside {
-  background: #304156;
+  background: var(--g-color-sidebar);
   overflow-y: auto;
   overflow-x: hidden;
   transition: width 0.25s;
 }
 .logo-area {
-  height: 50px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  gap: 10px;
+  color: var(--g-color-sidebar-text);
   font-weight: 700;
-  font-size: 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 15px;
+  border-bottom: 1px solid var(--g-color-sidebar-border);
 }
-.logo-mini {
-  font-size: 22px;
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--g-color-sidebar-active);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 .layout-menu {
   border-right: none;
+  background: transparent !important;
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: var(--g-color-sidebar-text);
+  --el-menu-hover-bg-color: rgba(255, 255, 255, 0.08);
+  --el-menu-active-color: #fff;
+  --el-menu-item-height: 42px;
+  --el-menu-sub-item-height: 38px;
+  padding: 6px;
+}
+.layout-menu :deep(.el-menu-item),
+.layout-menu :deep(.el-sub-menu__title) {
+  border-radius: 6px;
+  margin: 2px 0;
+  transition: background 0.15s, color 0.15s;
+}
+.layout-menu :deep(.el-menu-item.is-active) {
+  background: var(--g-color-sidebar-active) !important;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.layout-menu :deep(.el-sub-menu__title) {
+  color: var(--g-color-sidebar-text);
+  font-weight: 600;
 }
 .layout-main {
   display: flex;
   flex-direction: column;
 }
 .layout-header {
-  height: 50px !important;
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  height: 56px !important;
+  background: var(--g-color-surface);
+  border-bottom: 1px solid var(--g-color-border-strong);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -237,13 +286,23 @@ function handleSwitchStore(storecode: string) {
 }
 .collapse-btn {
   cursor: pointer;
-  color: #606266;
+  color: var(--g-color-text-secondary);
+}
+.layout-header :deep(.el-breadcrumb__inner),
+.layout-header :deep(.el-breadcrumb__inner a) {
+  color: var(--g-color-text-secondary);
+  font-weight: 500;
+}
+.layout-header :deep(.el-breadcrumb__item:last-child .el-breadcrumb__inner) {
+  color: var(--g-color-text);
+  font-weight: 600;
 }
 .header-right {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+.theme-select { width: 108px; }
 .user-info {
   display: flex;
   align-items: center;
@@ -252,13 +311,13 @@ function handleSwitchStore(storecode: string) {
 }
 .user-name {
   font-size: 14px;
-  color: #303133;
+  color: var(--g-color-text);
 }
 .store-tag {
   margin-right: 4px;
 }
 .layout-content {
-  background: #f0f2f5;
+  background: var(--g-color-bg);
   padding: 16px;
   overflow-y: auto;
   flex: 1;

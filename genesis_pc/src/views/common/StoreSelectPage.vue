@@ -49,23 +49,23 @@ function handleConfirm() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--g-color-auth-grad-from) 0%, var(--g-color-auth-grad-to) 100%);
 }
 .select-card {
   width: 380px;
   padding: 32px;
-  background: #fff;
+  background: var(--g-color-surface);
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   text-align: center;
 }
-h2 { margin: 0 0 4px; font-weight:600; color:#303133; }
-.subtitle { font-size:14px; color:#909399; margin:0 0 20px; }
+h2 { margin: 0 0 4px; font-weight:600; color:var(--g-color-text); }
+.subtitle { font-size:14px; color:var(--g-color-text-muted); margin:0 0 20px; }
 .store-list { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
-.store-item { padding:12px; border:1px solid #ebeef5; border-radius:6px; cursor:pointer; text-align:left; transition:.15s; }
-.store-item:hover { border-color:#409eff; background:#ecf5ff; }
-.store-item.active { border-color:#409eff; background:#d9ecff; }
+.store-item { padding:12px; border:1px solid var(--g-color-border); border-radius:6px; cursor:pointer; text-align:left; transition:.15s; }
+.store-item:hover { border-color:var(--g-color-primary); background:var(--g-color-primary-soft); }
+.store-item.active { border-color:var(--g-color-primary); background:var(--g-color-primary-border); }
 .store-name { font-size:15px; font-weight:500; }
-.store-code { font-size:12px; color:#909399; margin-top:2px; }
+.store-code { font-size:12px; color:var(--g-color-text-muted); margin-top:2px; }
 .confirm-btn { width:100%; }
 </style>

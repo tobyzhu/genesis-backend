@@ -5,7 +5,7 @@
     <!-- 状态筛选标签 -->
     <el-card shadow="never" style="margin-bottom:12px;flex-shrink:0">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span style="font-size:13px;color:#606266;white-space:nowrap">状态：</span>
+        <span style="font-size:13px;color:var(--g-color-text-secondary);white-space:nowrap">状态：</span>
         <el-radio-group v-model="filterStatus" size="small" @change="onStatusChange">
           <el-radio-button value="">全部</el-radio-button>
           <el-radio-button value="10">开单</el-radio-button>
@@ -24,7 +24,7 @@
         <div style="flex:1" />
 
         <!-- 会员快捷筛选 -->
-        <span style="font-size:13px;color:#606266;white-space:nowrap">会员：</span>
+        <span style="font-size:13px;color:var(--g-color-text-secondary);white-space:nowrap">会员：</span>
         <div class="vip-chips">
           <el-tag
             v-for="vip in vipList" :key="vip.vcode"
@@ -45,10 +45,11 @@
     <!-- 挂单列表 -->
     <el-card shadow="never" class="hung-card" style="flex:1;min-height:0;display:flex;flex-direction:column">
       <div style="flex:5.5;min-height:0;overflow-y:auto" v-loading="loading">
-      <div v-if="!hungList.length && !loading" style="padding:40px;text-align:center;color:#c0c4cc;font-size:14px">暂无开单管理</div>
+      <div v-if="!hungList.length && !loading" style="padding:40px;text-align:center;color:var(--g-color-text-muted);font-size:14px">暂无开单管理</div>
       <div v-for="group in groupedByDate" :key="group.date" class="date-group">
         <div class="date-group-header">
-          📅 <span style="font-weight:600">{{ formatDate(group.date) }}</span>
+          <el-icon class="date-icon"><Calendar /></el-icon>
+          <span style="font-weight:600">{{ formatDate(group.date) }}</span>
           <span class="date-count">{{ group.items.length }} 单</span>
         </div>
         <el-table :data="group.items" size="small" stripe
@@ -57,7 +58,7 @@
             <template #default="{ row }">{{ row.exptxserno }}</template>
           </el-table-column>
           <el-table-column label="会员" width="150">
-            <template #default="{ row }">{{ row.vname || '--' }}<span style="color:#909399;font-size:11px;margin-left:4px">（{{ row.vcode || '' }}）</span></template>
+            <template #default="{ row }">{{ row.vname || '--' }}<span style="color:var(--g-color-text-muted);font-size:11px;margin-left:4px">（{{ row.vcode || '' }}）</span></template>
           </el-table-column>
           <el-table-column label="日期" width="90">
             <template #default="{ row }">{{ row.vsdate ? row.vsdate.slice(0,8) : '--' }}</template>
@@ -104,9 +105,10 @@
             </div>
           </div>
         </template>
+        <div class="detail-table-scroll">
         <el-table :data="detailItems" size="small" stripe v-loading="detailLoading">
           <el-table-column label="项目" min-width="160">
-            <template #default="{ row }">{{ row.itemname || '--' }}<span style="color:#909399;font-size:11px;margin-left:4px">（{{ row.srvcode || '' }}）</span></template>
+            <template #default="{ row }">{{ row.itemname || '--' }}<span style="color:var(--g-color-text-muted);font-size:11px;margin-left:4px">（{{ row.srvcode || '' }}）</span></template>
           </el-table-column>
           <el-table-column label="类型" width="50">
             <template #default="{ row }">{{ row.ttypename }}</template>
@@ -123,25 +125,32 @@
           <el-table-column label="金额" width="110" align="right">
             <template #default="{ row }">¥{{ row.mount.toFixed(2) }}</template>
           </el-table-column>
-          <el-table-column label="员工" min-width="280">
+          <el-table-column :label="empTitles.pmname" min-width="100">
             <template #default="{ row }">
-              <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
-                <el-select v-model="row.pmcode" size="small" placeholder="开单" @change="saveEmp(row)" style="width:80px">
-                  <el-option label="--" value="" />
-                  <el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" />
-                </el-select>
-                <el-select v-model="row.asscode1" size="small" placeholder="美1" @change="saveEmp(row)" style="width:80px">
-                  <el-option label="--" value="" />
-                  <el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" />
-                </el-select>
-                <el-select v-model="row.asscode2" size="small" placeholder="美2" @change="saveEmp(row)" style="width:80px">
-                  <el-option label="--" value="" />
-                  <el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" />
-                </el-select>
-              </div>
+              <el-select v-model="row.pmcode" size="small" :placeholder="empTitles.pmname" @change="saveEmp(row)" style="width:100%">
+                <el-option label="--" value="" />
+                <el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column :label="empTitles.secname" min-width="100">
+            <template #default="{ row }">
+              <el-select v-model="row.asscode1" size="small" :placeholder="empTitles.secname" @change="saveEmp(row)" style="width:100%">
+                <el-option label="--" value="" />
+                <el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column :label="empTitles.thrname" min-width="100">
+            <template #default="{ row }">
+              <el-select v-model="row.asscode2" size="small" :placeholder="empTitles.thrname" @change="saveEmp(row)" style="width:100%">
+                <el-option label="--" value="" />
+                <el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" />
+              </el-select>
             </template>
           </el-table-column>
         </el-table>
+        </div>
         <el-empty v-if="!detailItems.length && !detailLoading" :description="selectedOrder ? '无明细数据' : '请从上方选择一条挂单'" />
       </el-card>
 
@@ -154,42 +163,42 @@
     <el-dialog v-model="custCheckoutVisible" title="客户结账" width="720px" top="3vh" :close-on-click-modal="false">
       <template v-if="!custCheckoutVipSelected">
         <div style="margin-bottom:10px">
-          <div style="font-size:13px;font-weight:600;color:#606266;margin-bottom:6px">请选择要结账的客户：</div>
+          <div style="font-size:13px;font-weight:600;color:var(--g-color-text-secondary);margin-bottom:6px">请选择要结账的客户：</div>
           <el-input v-model="custCheckoutSearchKeyword" placeholder="输入客户姓名/手机号/会员号" clearable size="default" @keyup.enter="searchCheckoutVip" @clear="custCheckoutSearchResults=[]">
             <template #append><el-button @click="searchCheckoutVip">搜索</el-button></template>
           </el-input>
         </div>
-        <div v-if="custCheckoutSearchResults.length" style="border:1px solid #ebeef5;border-radius:6px;max-height:300px;overflow-y:auto">
-          <div v-for="v in custCheckoutSearchResults" :key="v.uuid" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #f5f5f5;cursor:pointer" @click="selectCheckoutVip(v)">
+        <div v-if="custCheckoutSearchResults.length" style="border:1px solid var(--g-color-border);border-radius:6px;max-height:300px;overflow-y:auto">
+          <div v-for="v in custCheckoutSearchResults" :key="v.uuid" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid var(--g-color-border);cursor:pointer" @click="selectCheckoutVip(v)">
             <span style="font-size:14px;font-weight:500">{{ v.vname }}</span>
-            <span style="font-size:12px;color:#909399;margin-left:6px">{{ v.vcode }}</span>
-            <span style="font-size:11px;color:#c0c4cc;margin-left:6px">{{ v.mtcode }}</span>
+            <span style="font-size:12px;color:var(--g-color-text-muted);margin-left:6px">{{ v.vcode }}</span>
+            <span style="font-size:11px;color:var(--g-color-text-muted);margin-left:6px">{{ v.mtcode }}</span>
           </div>
         </div>
         <el-empty v-if="!custCheckoutLoading && custCheckoutSearchKeyword && !custCheckoutSearchResults.length" description="未找到匹配的客户" :image-size="50" />
       </template>
       <template v-else>
-        <div v-if="custCheckoutLoading" style="text-align:center;padding:40px;color:#909399">加载中...</div>
+        <div v-if="custCheckoutLoading" style="text-align:center;padding:40px;color:var(--g-color-text-muted)">加载中...</div>
         <template v-else-if="custCheckoutData">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(135deg,#f0f9ff,#e6f7ff);border-radius:8px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(135deg,var(--g-color-primary-soft),var(--g-color-primary-soft));border-radius:8px;margin-bottom:10px">
           <div>
-            <span style="font-size:15px;font-weight:600">👤 {{ custCheckoutData.vname }}</span>
-            <span style="font-size:12px;color:#909399;margin-left:6px">({{ custCheckoutData.vcode }})</span>
+            <span style="font-size:15px;font-weight:600"><el-icon class="inline-icon"><User /></el-icon>{{ custCheckoutData.vname }}</span>
+            <span style="font-size:12px;color:var(--g-color-text-muted);margin-left:6px">({{ custCheckoutData.vcode }})</span>
             <el-button text type="info" size="small" style="margin-left:6px;font-size:11px" @click="custCheckoutVipSelected = false; custCheckoutSearchKeyword=''; custCheckoutSearchResults=[]">切换客户</el-button>
           </div>
           <div style="text-align:right">
-            <div style="font-size:12px;color:#606266">{{ custCheckoutData.orders }} 单 / {{ custCheckoutData.items }} 项</div>
-            <div style="font-size:16px;font-weight:700;color:#e6a23c">总计 ¥{{ custCheckoutData.total.toFixed(2) }}</div>
+            <div style="font-size:12px;color:var(--g-color-text-secondary)">{{ custCheckoutData.orders }} 单 / {{ custCheckoutData.items }} 项</div>
+            <div style="font-size:16px;font-weight:700;color:var(--g-color-money)">总计 ¥{{ custCheckoutData.total.toFixed(2) }}</div>
           </div>
         </div>
         <div style="max-height:48vh;overflow-y:auto">
           <!-- 按挂单分组展示 -->
-          <div v-for="grp in custGroupedOrders" :key="grp.order_no" style="border:1px solid #ebeef5;border-radius:6px;margin-bottom:6px;overflow:hidden">
-            <div style="display:flex;align-items:center;padding:5px 10px;background:#f5f7fa;font-size:12px;font-weight:600;color:#606266;border-bottom:1px solid #ebeef5">
+          <div v-for="grp in custGroupedOrders" :key="grp.order_no" style="border:1px solid var(--g-color-border);border-radius:6px;margin-bottom:6px;overflow:hidden">
+            <div style="display:flex;align-items:center;padding:5px 10px;background:var(--g-color-surface-muted);font-size:12px;font-weight:600;color:var(--g-color-text-secondary);border-bottom:1px solid var(--g-color-border)">
               <span style="font-family:monospace">{{ grp.order_no }}</span>
               <span style="margin-left:auto">¥{{ grp.total.toFixed(2) }}</span>
             </div>
-            <div style="display:flex;align-items:center;padding:3px 10px;background:#fafafa;font-size:11px;color:#909399;border-bottom:1px solid #f0f0f0">
+            <div style="display:flex;align-items:center;padding:3px 10px;background:var(--g-color-surface-muted);font-size:11px;color:var(--g-color-text-muted);border-bottom:1px solid var(--g-color-border)">
               <span style="width:16px"></span>
               <span style="flex:1">交易类型 - 项目</span>
               <span style="width:24px;text-align:center">量</span>
@@ -198,10 +207,10 @@
               <span style="width:90px;text-align:center">处理方式</span>
               <span style="width:80px;text-align:center">员工</span>
             </div>
-            <div v-for="item in grp.items" :key="item.name + item.mount" style="display:flex;align-items:center;padding:4px 10px;border-bottom:1px solid #f5f5f5;font-size:12px">
-              <span :style="{color: item._cat === 'pending' ? '#e6a23c' : '#67c23a', width:16, flexShrink:0}">{{ item._cat === 'pending' ? '⚠' : '✅' }}</span>
+            <div v-for="item in grp.items" :key="item.name + item.mount" style="display:flex;align-items:center;padding:4px 10px;border-bottom:1px solid var(--g-color-border);font-size:12px">
+              <span class="status-dot" :class="item._cat === 'pending' ? 'dot-warn' : 'dot-ok'" />
               <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</span>
-              <span style="width:24px;text-align:center;color:#606266">×{{ Number(item.qty).toFixed(0) }}</span>
+              <span style="width:24px;text-align:center;color:var(--g-color-text-secondary)">×{{ Number(item.qty).toFixed(0) }}</span>
               <span style="width:55px;text-align:right">¥{{ Number(item.price).toFixed(2) }}</span>
               <span style="width:55px;text-align:right;font-weight:500">¥{{ Number(item.mount).toFixed(2) }}</span>
               <span style="width:90px;text-align:center;font-size:11px">
@@ -209,59 +218,59 @@
                   {{ item._cat === 'times' ? '扣次 ' + (item.times_qty || 1) : item._cat === 'auto' ? '卡付' : item._cat === 'gift' ? '赠送' : '待付' }}
                 </el-tag>
               </span>
-              <span style="width:80px;text-align:center;font-size:11px;color:#909399;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ empNamesFromCodes(item.pmcode, item.asscode1, item.asscode2) }}</span>
+              <span style="width:80px;text-align:center;font-size:11px;color:var(--g-color-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ empNamesFromCodes(item.pmcode, item.asscode1, item.asscode2) }}</span>
             </div>
           </div>
           <!-- 结算汇总 -->
-          <div style="border:1px solid #ebeef5;border-radius:6px;padding:8px;margin-bottom:6px">
-            <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">📊 结算汇总</div>
+          <div style="border:1px solid var(--g-color-border);border-radius:6px;padding:8px;margin-bottom:6px">
+            <div style="font-size:12px;font-weight:600;color:var(--g-color-text-secondary);margin-bottom:4px"><el-icon class="inline-icon"><DataAnalysis /></el-icon>结算汇总</div>
             <div v-for="ac in custCheckoutData.summary.auto_cards" :key="ac.ccode" style="display:flex;align-items:center;font-size:12px;padding:3px 0">
-              <span>✅ 💳 {{ ac.ccode }}</span><span style="color:#909399;margin-left:4px;font-size:11px">余额 ¥{{ ac.balance.toFixed(0) }}</span>
-              <span style="margin-left:auto;font-weight:600;color:#67c23a">¥{{ ac.deduct_amount.toFixed(2) }}</span>
+              <span><el-icon class="inline-icon ok"><CircleCheck /></el-icon><el-icon class="inline-icon"><CreditCard /></el-icon>{{ ac.ccode }}</span><span style="color:var(--g-color-text-muted);margin-left:4px;font-size:11px">余额 ¥{{ ac.balance.toFixed(0) }}</span>
+              <span style="margin-left:auto;font-weight:600;color:var(--g-color-success)">¥{{ ac.deduct_amount.toFixed(2) }}</span>
             </div>
             <div v-for="tc in custCheckoutData.summary.times_cards" :key="tc.ccode" style="display:flex;align-items:center;font-size:12px;padding:3px 0">
-              <span>✅ 💳 {{ tc.ccode }}</span><span style="color:#909399;margin-left:4px;font-size:11px">余 {{ tc.leftqty }} 次</span>
-              <span style="margin-left:auto;font-weight:600;color:#e6a23c">{{ tc.deduct_qty }} 次</span>
+              <span><el-icon class="inline-icon ok"><CircleCheck /></el-icon><el-icon class="inline-icon"><CreditCard /></el-icon>{{ tc.ccode }}</span><span style="color:var(--g-color-text-muted);margin-left:4px;font-size:11px">余 {{ tc.leftqty }} 次</span>
+              <span style="margin-left:auto;font-weight:600;color:var(--g-color-money)">{{ tc.deduct_qty }} 次</span>
             </div>
             <div v-if="custCheckoutData.summary.gift.total > 0" style="display:flex;align-items:center;font-size:12px;padding:3px 0">
-              <span>✅ 🎁 赠送</span>
-              <span style="margin-left:auto;font-weight:600;color:#909399">-¥{{ custCheckoutData.summary.gift.total.toFixed(2) }}</span>
+              <span><el-icon class="inline-icon ok"><CircleCheck /></el-icon><el-icon class="inline-icon"><Present /></el-icon>赠送</span>
+              <span style="margin-left:auto;font-weight:600;color:var(--g-color-text-muted)">-¥{{ custCheckoutData.summary.gift.total.toFixed(2) }}</span>
             </div>
-            <div style="border-top:1px dashed #dcdfe6;margin:4px 0 2px"></div>
+            <div style="border-top:1px dashed var(--g-color-border-strong);margin:4px 0 2px"></div>
             <div style="display:flex;align-items:center;font-size:13px;font-weight:600;padding:3px 0">
-              <span>⚠ 待付金额</span>
-              <span style="margin-left:auto;color:#e6a23c">¥{{ custCheckoutData.summary.pending.total.toFixed(2) }}</span>
+              <span><el-icon class="inline-icon warn"><Warning /></el-icon>待付金额</span>
+              <span style="margin-left:auto;color:var(--g-color-money)">¥{{ custCheckoutData.summary.pending.total.toFixed(2) }}</span>
             </div>
           </div>
           <!-- 待付付款分配 -->
-          <div v-if="custCheckoutData.summary.pending.total !== undefined" style="border:2px solid #e6a23c;border-radius:6px;padding:8px;margin-bottom:6px">
-            <div style="font-size:12px;font-weight:600;color:#e6a23c;margin-bottom:6px">💳 付款分配（金额 ¥{{ custCheckoutData.summary.pending.total.toFixed(2) }}）</div>
+          <div v-if="custCheckoutData.summary.pending.total !== undefined" style="border:2px solid var(--g-color-warning);border-radius:6px;padding:8px;margin-bottom:6px;background:var(--g-color-warning-bg)">
+            <div style="font-size:12px;font-weight:600;color:var(--g-color-warning-text);margin-bottom:6px"><el-icon class="inline-icon"><CreditCard /></el-icon>付款分配（金额 <span style="color:var(--g-color-money)">¥{{ custCheckoutData.summary.pending.total.toFixed(2) }}</span>）</div>
             <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">
-              <div v-for="(pm, pi) in custCheckoutPayments" :key="pi" style="display:inline-flex;align-items:center;gap:2px;padding:2px 4px;background:#fff;border:1px solid #ebeef5;border-radius:4px;font-size:12px">
+              <div v-for="(pm, pi) in custCheckoutPayments" :key="pi" style="display:inline-flex;align-items:center;gap:2px;padding:2px 4px;background:var(--g-color-surface);border:1px solid var(--g-color-border);border-radius:4px;font-size:12px">
                 <el-select v-model="pm.pcode" size="small" style="width:130px" filterable @change="custOnPmChange(pi)">
                   <el-option v-for="opt in allPaymodeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
                 </el-select>
                 <el-input-number v-model="pm.amount" :min="0" :max="Math.abs(custCheckoutData.summary.pending.total)" size="small" :controls="false" :precision="2" style="width:110px" @change="custOnAmountChange" />
-                <span style="font-size:10px;color:#909399">元</span>
-                <el-button v-if="custCheckoutPayments.length > 1" text type="danger" size="small" style="padding:0" @click="custRemovePayment(pi)">✕</el-button>
+                <span style="font-size:10px;color:var(--g-color-text-muted)">元</span>
+                <el-button v-if="custCheckoutPayments.length > 1" text type="danger" size="small" :icon="Close" @click="custRemovePayment(pi)" />
               </div>
               <el-button size="small" text type="primary" @click="custAddPayment" style="font-size:11px;padding:0 4px">+ 添加</el-button>
             </div>
             <div style="text-align:right;font-size:12px">
               已分配: ¥{{ custPaidTotal.toFixed(2) }}
-              <b :style="{color:custRemaining <= 0.01 ? '#67c23a' : '#f56c6c',marginLeft:6}">
-                {{ custRemaining <= 0.01 ? '✅ 已平衡' : `剩余 ¥${custRemaining.toFixed(2)}` }}
+              <b :style="{color:custRemaining <= 0.01 ? 'var(--g-color-success)' : 'var(--g-color-danger)',marginLeft:6}">
+                <el-icon v-if="custRemaining <= 0.01" class="inline-icon ok"><CircleCheck /></el-icon>{{ custRemaining <= 0.01 ? '已平衡' : `剩余 ¥${custRemaining.toFixed(2)}` }}
               </b>
             </div>
           </div>
-          <div v-else-if="custCheckoutData.summary.pending.total < 0" style="padding:8px;text-align:center;background:#f0f9eb;border-radius:6px;color:#67c23a;font-size:13px">✅ 所有项目已自动结算，无需额外付款</div>
+          <div v-else-if="custCheckoutData.summary.pending.total < 0" style="padding:8px;text-align:center;background:var(--g-color-success-soft);border-radius:6px;color:var(--g-color-success);font-size:13px"><el-icon class="inline-icon ok"><CircleCheck /></el-icon>所有项目已自动结算，无需额外付款</div>
         </div>
         <!-- 收银员 -->
-        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fafafa;border-radius:6px">
-          <span style="font-size:13px;font-weight:500;white-space:nowrap">🔑 收银员：</span>
-          <span style="font-size:14px;color:#303133">👤 {{ checkoutCashierName }}（{{ checkoutCashier }}）</span>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--g-color-surface-muted);border-radius:6px">
+          <span style="font-size:13px;font-weight:500;white-space:nowrap"><el-icon class="inline-icon"><Key /></el-icon>收银员：</span>
+          <span style="font-size:14px;color:var(--g-color-text)"><el-icon class="inline-icon"><User /></el-icon>{{ checkoutCashierName }}（{{ checkoutCashier }}）</span>
           <el-button text type="primary" size="small" @click="showCashierPicker = true">切换</el-button>
-          <span style="font-size:11px;color:#c0c4cc;margin-left:4px">开单与结账人员可以是不同的人</span>
+          <span style="font-size:11px;color:var(--g-color-text-muted);margin-left:4px">开单与结账人员可以是不同的人</span>
         </div>
       </template>
       </template>
@@ -275,31 +284,31 @@
     
     <!-- 结账确认弹窗 -->
     <el-dialog v-model="checkoutDialogVisible" title="结账确认" width="700px" :close-on-click-modal="false" top="5vh">
-      <div v-if="checkoutLoading" style="text-align:center;padding:40px;color:#909399;font-size:14px">加载中...</div>
+      <div v-if="checkoutLoading" style="text-align:center;padding:40px;color:var(--g-color-text-muted);font-size:14px">加载中...</div>
       <template v-else>
-        <div v-if="!checkoutOrders.length" style="text-align:center;padding:40px;color:#c0c4cc;font-size:14px">该会员暂无待结账的挂单</div>
+        <div v-if="!checkoutOrders.length" style="text-align:center;padding:40px;color:var(--g-color-text-muted);font-size:14px">该会员暂无待结账的挂单</div>
         <template v-else>
           <!-- 会员信息头 -->
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(135deg,#f0f9ff,#e6f7ff);border-radius:8px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(135deg,var(--g-color-primary-soft),var(--g-color-primary-soft));border-radius:8px;margin-bottom:12px">
             <div>
-              <div style="font-size:15px;font-weight:600;color:#303133">👤 {{ checkoutVipName }}</div>
+              <div style="font-size:15px;font-weight:600;color:var(--g-color-text)"><el-icon class="inline-icon"><User /></el-icon>{{ checkoutVipName }}</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:13px;color:#606266"><b style="color:#e6a23c;font-size:18px">{{ checkoutSelectedCount }}</b><span style="font-size:13px;color:#c0c4cc">/{{ checkoutOrders.length }}</span> 单</div>
-              <div style="font-size:15px;font-weight:700;color:#e6a23c">合计 ¥{{ checkoutTotal.toFixed(2) }}</div>
+              <div style="font-size:13px;color:var(--g-color-text-secondary)"><b style="color:var(--g-color-money);font-size:18px">{{ checkoutSelectedCount }}</b><span style="font-size:13px;color:var(--g-color-text-muted)">/{{ checkoutOrders.length }}</span> 单</div>
+              <div style="font-size:15px;font-weight:700;color:var(--g-color-money)">合计 ¥{{ checkoutTotal.toFixed(2) }}</div>
             </div>
           </div>
 
           <!-- 全选 + 表格表头 -->
           <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;padding:0 4px">
             <el-checkbox v-model="checkoutSelectAll" @change="toggleAllCheckout" :indeterminate="checkoutIndeterminate" style="font-size:13px">全选</el-checkbox>
-            <span style="font-size:12px;color:#909399">共 {{ checkoutOrders.length }} 单</span>
+            <span style="font-size:12px;color:var(--g-color-text-muted)">共 {{ checkoutOrders.length }} 单</span>
           </div>
 
           <!-- 挂单列表 -->
-          <div style="border:1px solid #ebeef5;border-radius:6px;overflow:hidden">
+          <div style="border:1px solid var(--g-color-border);border-radius:6px;overflow:hidden">
             <!-- 表头 -->
-            <div style="display:flex;align-items:center;padding:6px 10px;background:#fafafa;font-size:12px;font-weight:600;color:#606266;border-bottom:1px solid #ebeef5">
+            <div style="display:flex;align-items:center;padding:6px 10px;background:var(--g-color-surface-muted);font-size:12px;font-weight:600;color:var(--g-color-text-secondary);border-bottom:1px solid var(--g-color-border)">
               <span style="width:30px;flex-shrink:0"></span>
               <span style="flex:1">挂单内容</span>
               <span style="width:100px;text-align:right">金额</span>
@@ -309,79 +318,79 @@
             <template v-for="o in checkoutOrders" :key="o.uuid">
             <div :style="{
               display:'flex', alignItems:'center', padding:'8px 10px',
-              borderBottom: o.item_details?.length ? 'none' : '1px solid #f5f5f5',
-              background: checkoutSelections[o.uuid] ? '#ecf5ff' : '#fff',
+              borderBottom: o.item_details?.length ? 'none' : '1px solid var(--g-color-border)',
+              background: checkoutSelections[o.uuid] ? 'var(--g-color-primary-soft)' : 'var(--g-color-surface)',
               fontSize: '13px'
             }">
               <span style="width:30px;flex-shrink:0"><el-checkbox v-model="checkoutSelections[o.uuid]" /></span>
               <div style="flex:1;min-width:0">
                 <div style="display:flex;align-items:center;gap:6px">
-                  <span style="font-family:monospace;font-size:12px;color:#303133">{{ o.exptxserno }}</span>
-                  <span style="font-size:11px;color:#909399">{{ (o.vsdate||'').slice(0,4) }}/{{ (o.vsdate||'').slice(4,6) }}/{{ (o.vsdate||'').slice(6,8) }}</span>
+                  <span style="font-family:monospace;font-size:12px;color:var(--g-color-text)">{{ o.exptxserno }}</span>
+                  <span style="font-size:11px;color:var(--g-color-text-muted)">{{ (o.vsdate||'').slice(0,4) }}/{{ (o.vsdate||'').slice(4,6) }}/{{ (o.vsdate||'').slice(6,8) }}</span>
                 </div>
               </div>
-              <span style="width:100px;text-align:right;font-weight:600;color:#e6a23c">¥{{ (o.totmount||0).toFixed(2) }}</span>
-              <span style="width:110px;text-align:center;font-size:11px;color:#909399">付款 {{ checkoutSplits[o.uuid]?.length || 0 }} 项</span>
+              <span style="width:100px;text-align:right;font-weight:600;color:var(--g-color-money)">¥{{ (o.totmount||0).toFixed(2) }}</span>
+              <span style="width:110px;text-align:center;font-size:11px;color:var(--g-color-text-muted)">付款 {{ checkoutSplits[o.uuid]?.length || 0 }} 项</span>
             </div>
-            <div style="padding:4px 10px 4px 46px;background:#f8f8f8;border-bottom:1px solid #f0f0f0;font-size:12px">
+            <div style="padding:4px 10px 4px 46px;background:var(--g-color-surface-muted);border-bottom:1px solid var(--g-color-border);font-size:12px">
               <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-                <span style="font-weight:600;color:#606266;font-size:12px;margin-right:2px">付款方式：</span>
+                <span style="font-weight:600;color:var(--g-color-text-secondary);font-size:12px;margin-right:2px">付款方式：</span>
                 <template v-for="(sp, si) in checkoutSplits[o.uuid]" :key="si">
-                  <div style="display:inline-flex;align-items:center;gap:2px;padding:2px 4px;background:#fff;border:1px solid #ebeef5;border-radius:4px;margin:1px">
+                  <div style="display:inline-flex;align-items:center;gap:2px;padding:2px 4px;background:var(--g-color-surface);border:1px solid var(--g-color-border);border-radius:4px;margin:1px">
                     <el-select v-model="sp.pcode" size="small" style="width:130px" @change="onSplitMethodChange(o, si)" filterable>
                       <el-option v-for="pm in availableSplitsForSplit(o, sp)" :key="pm.value" :label="pm.label" :value="pm.value" />
                     </el-select>
                     <el-input-number v-model="sp.amount" :min="0" :max="sp.cardBalance || (o.totmount||0)" size="small" :controls="false" :precision="2" style="width:110px" @change="onSplitAmountChange(o, si)" :step="0.01" />
-                    <span style="font-size:10px;color:#909399">元</span>
-                    <el-button v-if="!sp._default" text type="danger" size="small" :disabled="checkoutSplits[o.uuid].length <= 1" @click="removeSplit(o, si)" style="padding:0">✕</el-button>
-                    <span v-if="sp._default" style="font-size:10px;color:#c0c4cc">(默认)</span>
+                    <span style="font-size:10px;color:var(--g-color-text-muted)">元</span>
+                    <el-button v-if="!sp._default" text type="danger" size="small" :disabled="checkoutSplits[o.uuid].length <= 1" @click="removeSplit(o, si)" :icon="Close" />
+                    <span v-if="sp._default" style="font-size:10px;color:var(--g-color-text-muted)">(默认)</span>
                   </div>
                 </template>
                 <el-button size="small" text type="primary" @click="addSplitMethod(o)" style="font-size:11px;padding:0 4px">+ 添加</el-button>
-                <span style="margin-left:auto;font-size:11px;color:#909399">
-                  剩余: <b :style="{color:splitRemaining(o) <= 0.01 ? '#67c23a' : '#f56c6c'}">¥{{ splitRemaining(o).toFixed(2) }}</b>
+                <span style="margin-left:auto;font-size:11px;color:var(--g-color-text-muted)">
+                  剩余: <b :style="{color:splitRemaining(o) <= 0.01 ? 'var(--g-color-success)' : 'var(--g-color-danger)'}">¥{{ splitRemaining(o).toFixed(2) }}</b>
                 </span>
               </div>
             </div>
-            <div v-if="o.item_details?.length" style="padding:4px 10px 4px 46px;background:#f8f8f8;border-bottom:1px solid #f0f0f0;font-size:12px">
-              <div style="display:flex;gap:6px;padding:2px 0;color:#909399;font-weight:500;border-bottom:1px solid #ebeef5">
+            <div v-if="o.item_details?.length" style="padding:4px 10px 4px 46px;background:var(--g-color-surface-muted);border-bottom:1px solid var(--g-color-border);font-size:12px">
+              <div style="display:flex;gap:6px;padding:2px 0;color:var(--g-color-text-muted);font-weight:500;border-bottom:1px solid var(--g-color-border)">
                 <span style="flex:1">交易类型 - 项目</span>
                 <span style="width:38px;text-align:center">数量</span>
                 <span style="width:60px;text-align:right">单价</span><span style="width:60px;text-align:right">金额</span>
                 <span style="width:44px;text-align:center">属性</span>
                 <span style="width:95px;text-align:center">员工</span>
               </div>
-              <div v-for="d in o.item_details" :key="d.name" style="display:flex;gap:6px;align-items:center;padding:3px 0;color:#606266;border-bottom:1px solid #f5f5f5">
+              <div v-for="d in o.item_details" :key="d.name" style="display:flex;gap:6px;align-items:center;padding:3px 0;color:var(--g-color-text-secondary);border-bottom:1px solid var(--g-color-border)">
                 <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ (d.ttypename ? d.ttypename + '-' : '') + d.name + (['售卡','充值'].includes(d.ttypename) && d.ccode ? '（' + d.ccode.split('-').pop() + '）' : '') }}</span>
-                <span style="width:38px;text-align:center;color:#606266">×{{ Number(d.qty).toFixed(0) }}</span>
+                <span style="width:38px;text-align:center;color:var(--g-color-text-secondary)">×{{ Number(d.qty).toFixed(0) }}</span>
                 <span style="width:60px;text-align:right">¥{{ Number(d.price).toFixed(2) }}</span>
-                <span style="width:60px;text-align:right;font-weight:500;color:#e6a23c">¥{{ Number(d.subtotal).toFixed(2) }}</span>
+                <span style="width:60px;text-align:right;font-weight:500;color:var(--g-color-money)">¥{{ Number(d.subtotal).toFixed(2) }}</span>
                 <span style="width:44px;text-align:center"><el-tag size="small" effect="plain" :type="d.stypename === '赠送' ? 'warning' : undefined">{{ d.stypename }}</el-tag></span>
-                <span style="width:95px;text-align:center;font-size:11px;color:#909399;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ empNamesFromCodes(d.pmcode, d.asscode1, d.asscode2) }}</span>
+                <span style="width:95px;text-align:center;font-size:11px;color:var(--g-color-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ empNamesFromCodes(d.pmcode, d.asscode1, d.asscode2) }}</span>
               </div>
             </div>
             </template>
           </div>
 
           <!-- 付款汇总 -->
-          <div v-if="Object.keys(checkoutPaymentSummary).length > 0" style="border:1px solid #ebeef5;border-radius:6px;padding:8px;margin:10px 0">
-            <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">💰 付款汇总</div>
+          <div v-if="Object.keys(checkoutPaymentSummary).length > 0" style="border:1px solid var(--g-color-border);border-radius:6px;padding:8px;margin:10px 0">
+            <div style="font-size:12px;font-weight:600;color:var(--g-color-text-secondary);margin-bottom:4px"><el-icon class="inline-icon"><Money /></el-icon>付款汇总</div>
             <div v-for="(total, pcode) in checkoutPaymentSummary" :key="pcode" style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
               <span>{{ findPaymodeName(pcode) }}</span>
               <span style="font-weight:600">¥{{ total.toFixed(2) }}</span>
             </div>
-            <div style="border-top:1px dashed #dcdfe6;margin:4px 0 2px"></div>
-            <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:3px 0;color:#303133">
+            <div style="border-top:1px dashed var(--g-color-border-strong);margin:4px 0 2px"></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:3px 0;color:var(--g-color-text)">
               <span>合计</span>
-              <span style="color:#e6a23c">¥{{ checkoutTotal.toFixed(2) }}</span>
+              <span style="color:var(--g-color-money)">¥{{ checkoutTotal.toFixed(2) }}</span>
             </div>
           </div>
 
-          <div style="margin-top:14px;display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fafafa;border-radius:6px">
-            <span style="font-size:13px;font-weight:500;color:#606266;white-space:nowrap">🔑 收银员：</span>
-            <span style="font-size:14px;color:#303133">👤 {{ checkoutCashierName }}（{{ checkoutCashier }}）</span>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--g-color-surface-muted);border-radius:6px">
+            <span style="font-size:13px;font-weight:500;color:var(--g-color-text-secondary);white-space:nowrap"><el-icon class="inline-icon"><Key /></el-icon>收银员：</span>
+            <span style="font-size:14px;color:var(--g-color-text)"><el-icon class="inline-icon"><User /></el-icon>{{ checkoutCashierName }}（{{ checkoutCashier }}）</span>
             <el-button text type="primary" size="small" @click="showCashierPicker = true">切换</el-button>
-            <span style="font-size:11px;color:#c0c4cc;margin-left:4px">开单与结账人员可以是不同的人</span>
+            <span style="font-size:11px;color:var(--g-color-text-muted);margin-left:4px">开单与结账人员可以是不同的人</span>
           </div>
         </template>
       </template>
@@ -400,14 +409,14 @@
           <template #append><el-button @click="searchCashierUser" :loading="cashierSearching">搜索</el-button></template>
         </el-input>
       </div>
-      <div v-if="cashierSearchResults.length" style="border:1px solid #ebeef5;border-radius:6px;max-height:300px;overflow-y:auto">
+      <div v-if="cashierSearchResults.length" style="border:1px solid var(--g-color-border);border-radius:6px;max-height:300px;overflow-y:auto">
         <div v-for="u in cashierSearchResults" :key="u.uuid"
-          style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #f5f5f5;cursor:pointer;border-radius:4px"
-          :style="{background: checkoutCashier === u.sys_userid ? '#ecf5ff' : 'transparent'}"
+          style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid var(--g-color-border);cursor:pointer;border-radius:4px"
+          :style="{background: checkoutCashier === u.sys_userid ? 'var(--g-color-primary-soft)' : 'transparent'}"
           @click="selectCashier(u)">
           <span style="font-size:14px;font-weight:500">{{ u.sys_fullname || u.sys_userid }}</span>
-          <span style="font-size:12px;color:#909399;margin-left:6px">{{ u.sys_userid }}</span>
-          <span v-if="u.storelist" style="font-size:11px;color:#c0c4cc;margin-left:8px">{{ u.storelist }}</span>
+          <span style="font-size:12px;color:var(--g-color-text-muted);margin-left:6px">{{ u.sys_userid }}</span>
+          <span v-if="u.storelist" style="font-size:11px;color:var(--g-color-text-muted);margin-left:8px">{{ u.storelist }}</span>
           <el-tag v-if="checkoutCashier === u.sys_userid" size="small" type="success" style="margin-left:auto">当前</el-tag>
         </div>
       </div>
@@ -421,17 +430,17 @@
     <el-dialog v-model="receiptDialogVisible" title="消费单" width="580px" top="3vh" :close-on-click-modal="false">
       <template v-if="receiptData">
         <div id="receipt-content" style="padding:8px 0">
-          <h2 style="text-align:center;margin:0 0 16px;font-size:17px;color:#303133;font-weight:600">消 费 单</h2>
-          <div style="display:flex;justify-content:space-between;font-size:13px;color:#606266;margin-bottom:10px;border-bottom:1px solid #ebeef5;padding-bottom:8px">
+          <h2 style="text-align:center;margin:0 0 16px;font-size:17px;color:var(--g-color-text);font-weight:600">消 费 单</h2>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--g-color-text-secondary);margin-bottom:10px;border-bottom:1px solid var(--g-color-border);padding-bottom:8px">
             <span>客户：<b>{{ receiptData.vipName }}</b>（{{ receiptData.vipCode }}）</span>
             <span>日期：{{ receiptData.date }}</span>
           </div>
-          <div v-for="(o, oi) in receiptData.orders" :key="oi" style="margin-bottom:8px;border:1px solid #ebeef5;border-radius:6px;overflow:hidden">
-            <div style="display:flex;align-items:center;padding:6px 10px;background:#f5f7fa;font-size:12px;font-weight:600;color:#606266;border-bottom:1px solid #ebeef5">
+          <div v-for="(o, oi) in receiptData.orders" :key="oi" style="margin-bottom:8px;border:1px solid var(--g-color-border);border-radius:6px;overflow:hidden">
+            <div style="display:flex;align-items:center;padding:6px 10px;background:var(--g-color-surface-muted);font-size:12px;font-weight:600;color:var(--g-color-text-secondary);border-bottom:1px solid var(--g-color-border)">
               <span>第 {{ oi + 1 }} 单</span>
-              <span style="margin-left:auto;font-size:10px;font-family:monospace;color:#c0c4cc">{{ o.serno }}</span>
+              <span style="margin-left:auto;font-size:10px;font-family:monospace;color:var(--g-color-text-muted)">{{ o.serno }}</span>
             </div>
-            <div style="display:flex;align-items:center;padding:4px 10px;background:#fafafa;font-size:11px;color:#909399;border-bottom:1px solid #f0f0f0">
+            <div style="display:flex;align-items:center;padding:4px 10px;background:var(--g-color-surface-muted);font-size:11px;color:var(--g-color-text-muted);border-bottom:1px solid var(--g-color-border)">
               <span style="width:30px;text-align:center">类别</span>
               <span style="flex:3">项目</span>
               <span style="width:38px;text-align:center">数量</span>
@@ -441,50 +450,54 @@
               <span style="width:80px;text-align:center">员工</span>
             </div>
             <template v-for="grp in groupedItems(o.items)" :key="grp.type">
-              <div v-for="(item, ii) in grp.items" :key="ii" style="display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid #f5f5f5;font-size:13px">
-                <span style="width:30px;text-align:center;font-size:11px;color:#909399">{{ ii === 0 ? grp.type : '' }}</span>
+              <div v-for="(item, ii) in grp.items" :key="ii" style="display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid var(--g-color-border);font-size:13px">
+                <span style="width:30px;text-align:center;font-size:11px;color:var(--g-color-text-muted)">{{ ii === 0 ? grp.type : '' }}</span>
                 <span style="flex:3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</span>
-                <span style="width:38px;text-align:center;color:#606266">×{{ Number(item.qty).toFixed(0) }}</span>
+                <span style="width:38px;text-align:center;color:var(--g-color-text-secondary)">×{{ Number(item.qty).toFixed(0) }}</span>
                 <span style="width:70px;text-align:right">¥{{ Number(item.price).toFixed(2) }}</span>
                 <span style="width:70px;text-align:right;font-weight:500">¥{{ Number(item.amount).toFixed(2) }}</span>
                 <span style="width:38px;text-align:center"><el-tag size="small" effect="plain" :type="item.stype === '赠送' ? 'warning' : undefined" style="font-size:10px">{{ item.stypeabbr || item.stype }}</el-tag></span>
-                <span style="width:80px;text-align:center;font-size:11px;color:#909399;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.empName }}</span>
+                <span style="width:80px;text-align:center;font-size:11px;color:var(--g-color-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.empName }}</span>
               </div>
-              <div style="display:flex;justify-content:flex-end;padding:3px 10px;gap:10px;font-size:12px;color:#303133;font-weight:500;border-bottom:1px dashed #e0e0e0">
+              <div style="display:flex;justify-content:flex-end;padding:3px 10px;gap:10px;font-size:12px;color:var(--g-color-text);font-weight:500;border-bottom:1px dashed var(--g-color-border-strong)">
                 <span>{{ grp.type }}小计</span>
-                <span style="color:#e6a23c">¥{{ grp.subtotal.toFixed(2) }}</span>
+                <span style="color:var(--g-color-money)">¥{{ grp.subtotal.toFixed(2) }}</span>
               </div>
             </template>
           </div>
-          <div style="border:1px solid #ebeef5;border-radius:6px;padding:8px;margin-bottom:8px">
-            <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">💳 付款方式</div>
+          <div style="border:1px solid var(--g-color-border);border-radius:6px;padding:8px;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:600;color:var(--g-color-text-secondary);margin-bottom:4px"><el-icon class="inline-icon"><CreditCard /></el-icon>付款方式</div>
             <div v-for="(p, pi) in receiptData.payments" :key="pi" style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
               <span>{{ p.method }}</span>
               <span style="font-weight:500">¥{{ Number(p.amount).toFixed(2) }}</span>
             </div>
-            <div v-if="receiptData.cards?.length" style="border-top:1px dashed #ebeef5;margin-top:6px;padding-top:6px">
-              <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">💳 卡余额</div>
+            <div v-if="receiptData.cards?.length" style="border-top:1px dashed var(--g-color-border);margin-top:6px;padding-top:6px">
+              <div style="font-size:12px;font-weight:600;color:var(--g-color-text-secondary);margin-bottom:4px"><el-icon class="inline-icon"><CreditCard /></el-icon>卡余额</div>
               <div v-for="(c, ci) in receiptData.cards" :key="ci" style="display:flex;gap:6px;font-size:12px;padding:2px 0">
-                <span style="flex:1">{{ c.comptype === 'times' ? '📋' : '💳' }} {{ c.cardname || c.ccode }}</span>
+                <span style="flex:1;display:inline-flex;align-items:center;gap:4px">
+                  <el-icon v-if="c.comptype === 'times'" class="inline-icon"><Tickets /></el-icon>
+                  <el-icon v-else class="inline-icon"><CreditCard /></el-icon>
+                  {{ c.cardname || c.ccode }}
+                </span>
                 <div style="text-align:right">
                   <template v-if="c.comptype === 'times'">
-                    <div v-if="c.added_qty && Number(c.added_qty) > 0" style="font-weight:500;color:#409eff">充值 {{ Number(c.added_qty || 0).toFixed(0) }} 次</div>
-                    <div style="font-weight:500;color:#e6a23c">消费 {{ Number(c.consumed_qty || 0).toFixed(0) }} 次</div>
+                    <div v-if="c.added_qty && Number(c.added_qty) > 0" style="font-weight:500;color:var(--g-color-primary)">充值 {{ Number(c.added_qty || 0).toFixed(0) }} 次</div>
+                    <div style="font-weight:500;color:var(--g-color-money)">消费 {{ Number(c.consumed_qty || 0).toFixed(0) }} 次</div>
                   </template>
                   <template v-else>
-                    <div v-if="c.added_amount && Number(c.added_amount) > 0" style="font-weight:500;color:#409eff">充值 ¥{{ Number(c.added_amount || 0).toFixed(2) }}</div>
-                    <div style="font-weight:500;color:#e6a23c">消费 ¥{{ Number(c.consumed_amount || 0).toFixed(2) }}</div>
+                    <div v-if="c.added_amount && Number(c.added_amount) > 0" style="font-weight:500;color:var(--g-color-primary)">充值 ¥{{ Number(c.added_amount || 0).toFixed(2) }}</div>
+                    <div style="font-weight:500;color:var(--g-color-money)">消费 ¥{{ Number(c.consumed_amount || 0).toFixed(2) }}</div>
                   </template>
-                  <div style="font-weight:500;color:#67c23a">{{ c.comptype === 'times' ? '剩余 ' + Number(c.leftqty).toFixed(0) + ' 次' : '剩余 ¥' + Number(c.leftmoney).toFixed(2) }}</div>
+                  <div style="font-weight:500;color:var(--g-color-success)">{{ c.comptype === 'times' ? '剩余 ' + Number(c.leftqty).toFixed(0) + ' 次' : '剩余 ¥' + Number(c.leftmoney).toFixed(2) }}</div>
                 </div>
               </div>
             </div>
-            <div style="border-top:2px solid #303133;margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-size:15px;font-weight:700">
+            <div style="border-top:2px solid var(--g-color-text);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-size:15px;font-weight:700">
               <span>合计</span>
-              <span style="color:#e6a23c">¥{{ Number(receiptData.total).toFixed(2) }}</span>
+              <span style="color:var(--g-color-money)">¥{{ Number(receiptData.total).toFixed(2) }}</span>
             </div>
           </div>
-          <div style="text-align:center;font-size:11px;color:#c0c4cc;margin-top:4px">
+          <div style="text-align:center;font-size:11px;color:var(--g-color-text-muted);margin-top:4px">
             收银员：{{ receiptData.cashierName }}（{{ receiptData.cashierCode }}）
           </div>
         </div>
@@ -492,7 +505,7 @@
       <template #footer>
         <el-button size="default" @click="receiptDialogVisible = false">关闭</el-button>
         <el-button size="default" @click="copyReceiptText">复制文本</el-button>
-        <el-button size="default" type="primary" @click="printReceipt">🖨 打印</el-button>
+        <el-button size="default" type="primary" :icon="Printer" @click="printReceipt">打印</el-button>
       </template>
     </el-dialog>
   </div>
@@ -503,7 +516,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/store/app'
 import request from '@/api/request'
+import { getAppoptionBySeg } from '@/api/vip'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Calendar, User, Warning, CircleCheck, CreditCard, Present, Key, Money, DataAnalysis, Close, Printer, Tickets,
+} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const appStore = useAppStore()
@@ -516,6 +533,8 @@ const fullData = ref<any[]>([])
 const selectedOrder = ref<any>(null)
 const detailItems = ref<any[]>([])
 const employees = ref<{ecode: string; ename: string}[]>([])
+/** 三位员工角色标题：来自 appoption seg=common 的 pmname/secname/thrname */
+const empTitles = ref({ pmname: '开单', secname: '美疗师1', thrname: '美疗师2' })
 const detailLoading = ref(false)
 
 const hungList = computed(() => {
@@ -653,27 +672,27 @@ function paymodeOptionsForOrder(o: any) {
   const opts: {label:string;value:string}[] = []
   if (hasCard) {
     const card = vipCheckoutCards.value.find((c: any) => c.ccode === o.paycode)
-    opts.push({ label: `💳 ${card ? card.cardname + '(' + card.ccode + ')' : o.paycode}`, value: o.paycode })
+    opts.push({ label: `卡 · ${card ? card.cardname + '(' + card.ccode + ')' : o.paycode}`, value: o.paycode })
     for (const pm of paymodes.value) {
-      if (pm.iscash === '1') opts.push({ label: `💵 ${pm.pname}`, value: '' })
+      if (pm.iscash === '1') opts.push({ label: `现金 · ${pm.pname}`, value: '' })
     }
   } else if (allGift) {
     for (const pm of paymodes.value) {
       if (pm.iscash === '2') {
         const def = pm.pcode === defs.send_pcode ? ' (默认)' : ''
-        opts.push({ label: `🎁 ${pm.pname}${def}`, value: pm.pcode })
+        opts.push({ label: `赠送 · ${pm.pname}${def}`, value: pm.pcode })
       }
     }
   } else {
     for (const pm of paymodes.value) {
       if (pm.iscash === '1') {
         const def = pm.pcode === defs.normal_pcode ? ' (默认)' : ''
-        opts.push({ label: `💵 ${pm.pname}${def}`, value: pm.pcode })
+        opts.push({ label: `现金 · ${pm.pname}${def}`, value: pm.pcode })
       }
     }
     if (!allNormal) {
       for (const pm of paymodes.value) {
-        if (pm.iscash === '2') opts.push({ label: `🎁 ${pm.pname}`, value: pm.pcode })
+        if (pm.iscash === '2') opts.push({ label: `赠送 · ${pm.pname}`, value: pm.pcode })
       }
     }
   }
@@ -686,7 +705,7 @@ function toggleAllCheckout(val: boolean) {
   }
 }
 
-const allPaymodeOptions = computed(() => paymodes.value.map((pm: any) => ({ label: (pm.iscash === '0' ? '💳' : pm.iscash === '1' ? '💵' : '🎁') + ' ' + pm.pname, value: pm.pcode })))
+const allPaymodeOptions = computed(() => paymodes.value.map((pm: any) => ({ label: (pm.iscash === '0' ? '卡 · ' : pm.iscash === '1' ? '现金 · ' : '赠送 · ') + pm.pname, value: pm.pcode })))
 
 function empNamesFromCodes(pmcode?: string, a1?: string, a2?: string): string {
   const es = employees.value
@@ -798,12 +817,12 @@ function splitRemaining(o: any) {
 const allSplitOptions = computed(() => {
   const opts: {label:string;value:string;isCard?:boolean;balance?:number}[] = []
   for (const pm of paymodes.value) {
-    opts.push({ label: (pm.iscash === '0' ? '💳' : pm.iscash === '1' ? '💵' : '🎁') + ' ' + pm.pname, value: pm.pcode })
+    opts.push({ label: (pm.iscash === '0' ? '卡 · ' : pm.iscash === '1' ? '现金 · ' : '赠送 · ') + pm.pname, value: pm.pcode })
   }
   for (const c of vipCheckoutCards.value) {
     if (!opts.some((o: any) => o.value === c.ccode)) {
       const bal = c.comptype === 'times' ? parseFloat(c.leftqty || 0) : parseFloat(c.leftmoney || 0)
-      opts.push({ label: '💳 ' + (c.cardname || c.ccode) + ' (余额¥' + bal.toFixed(0) + ')', value: c.ccode, isCard: true, balance: bal })
+      opts.push({ label: '卡 · ' + (c.cardname || c.ccode) + ' (余额¥' + bal.toFixed(0) + ')', value: c.ccode, isCard: true, balance: bal })
     }
   }
   return opts
@@ -1078,7 +1097,25 @@ async function confirmCheckout() {
   finally { checkoutSubmitting.value = false }
 }
 
-onMounted(() => { fetchData(); fetchEmployees() })
+onMounted(() => { fetchData(); fetchEmployees(); loadEmpTitles() })
+
+async function loadEmpTitles() {
+  try {
+    const res = await getAppoptionBySeg('common')
+    const list = Array.isArray(res.data) ? res.data : []
+    const map: Record<string, string> = {}
+    for (const row of list) {
+      if (row?.itemname) map[row.itemname] = (row.itemvalues || '').trim()
+    }
+    empTitles.value = {
+      pmname: map.pmname || '开单',
+      secname: map.secname || '美疗师1',
+      thrname: map.thrname || '美疗师2',
+    }
+  } catch {
+    /* 保持默认标题 */
+  }
+}
 
 async function fetchEmployees() {
   try {
@@ -1401,12 +1438,20 @@ function custOnPmChange(idx: number) {
 .hung-card { flex:1; min-height:0; display:flex; flex-direction:column; }
 .hung-card :deep(.el-card__body) { flex:1; min-height:0; display:flex; flex-direction:column; padding:12px; }
 .hung-detail-card { display:flex; flex-direction:column; min-height:0; }
-.hung-detail-card :deep(.el-card__body) { flex:1; min-height:0; display:flex; flex-direction:column; overflow:auto; }
+.hung-detail-card :deep(.el-card__body) { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.detail-table-scroll { flex:1; min-height:0; overflow:auto; }
 .date-group { margin-bottom:10px; }
-.date-group-header { padding:6px 10px; font-size:13px; color:#606266; background:#f5f7fa; border-radius:4px; margin-bottom:2px; display:flex; align-items:center; gap:6px; }
-.date-count { font-weight:400; color:#909399; font-size:12px; margin-left:auto; }
-:deep(.selected-row) { background-color: var(--el-table-current-row-bg-color, #ecf5ff); }
-:deep(.selected-row td:first-child .cell)::before { content: "● "; color: #409eff; font-size:13px; font-weight:700; }
+.date-group-header { padding:6px 10px; font-size:13px; color:var(--g-color-text-secondary); background:var(--g-color-surface-muted); border-radius:4px; margin-bottom:2px; display:flex; align-items:center; gap:6px; }
+.date-count { font-weight:400; color:var(--g-color-text-muted); font-size:12px; margin-left:auto; }
+:deep(.selected-row) { background-color: var(--el-table-current-row-bg-color, var(--g-color-primary-soft)); }
+:deep(.selected-row td:first-child .cell)::before { content: "● "; color: var(--g-color-primary); font-size:13px; font-weight:700; }
 .vip-chips { display:flex; flex-wrap:wrap; gap:4px; }
-.stats-bar { margin-top:12px; padding:8px 12px; background:#f5f7fa; border-radius:6px; font-size:13px; color:#606266; }
+.stats-bar { margin-top:12px; padding:8px 12px; background:var(--g-color-surface-muted); border-radius:6px; font-size:13px; color:var(--g-color-text-secondary); }
+.inline-icon { vertical-align: -2px; margin-right: 4px; }
+.inline-icon.ok { color: var(--g-color-success); }
+.inline-icon.warn { color: var(--g-color-warning); }
+.date-icon { vertical-align: -2px; margin-right: 2px; color: var(--g-color-text-muted); }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-dot.dot-ok { background: var(--g-color-success); }
+.status-dot.dot-warn { background: var(--g-color-warning); }
 </style>

@@ -34,15 +34,26 @@ beforeEach(() => {
 
 import { useBillingEngine } from '@/composables/useBillingEngine'
 
+function engineWithVip(): ReturnType<typeof useBillingEngine> {
+  const e = useBillingEngine()
+  e.selectedVip.value = { uuid: 'v-1', vname: '测试', ecode: 'E001', ecode2: 'E002' } as any
+  return e
+}
+
+async function flushAsync() {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
 describe('useBillingEngine cart', () => {
   it('should start empty', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     expect(e.cart.value).toEqual([])
     expect(e.cartTotal.value).toBe(0)
   })
 
   it('should add items', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
     expect(e.cart.value).toHaveLength(1)
     expect(e.cartTotal.value).toBe(100)
@@ -50,7 +61,7 @@ describe('useBillingEngine cart', () => {
 
   it('should deduplicate same code after debounce', () => {
     vi.useFakeTimers()
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
     vi.advanceTimersByTime(400)
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
@@ -61,7 +72,7 @@ describe('useBillingEngine cart', () => {
   })
 
   it('should handle discount', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 200, ttype: 'S' })
     e.cart.value[0].secdisc = 0.8
     e.cart.value[0].srvmondisc = 10
@@ -69,16 +80,18 @@ describe('useBillingEngine cart', () => {
   })
 
   it('should apply card pricing when selecting a card', async () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    e.cart.value[0].payMethod = 'card:C001'
     await e.applyCardPricing({ ccode: 'C001', comptype: 'amount' } as any)
     expect(e.cart.value[0].price).toBe(80)
     expect(e.cart.value[0].secdisc).toBe(1)
   })
 
   it('should restore original price when clearing card', async () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    e.cart.value[0].payMethod = 'card:C001'
     await e.applyCardPricing({ ccode: 'C001', comptype: 'amount' } as any)
     expect(e.cart.value[0].price).toBe(80)
     await e.applyCardPricing(null)
@@ -86,7 +99,7 @@ describe('useBillingEngine cart', () => {
   })
 
   it('should group by ttype', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 's', name: 'S', price: 10, ttype: 'S' })
     e.addToCart({ code: 'g', name: 'G', price: 20, ttype: 'G' })
     e.addToCart({ code: 'c', name: 'C', price: 30, ttype: 'C' })
@@ -96,12 +109,30 @@ describe('useBillingEngine cart', () => {
   })
 
   it('should toggle refund', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
     e.toggleRefund(0)
     expect(e.cart.value[0].qty).toBe(-1)
     e.toggleRefund(0)
     expect(e.cart.value[0].qty).toBe(1)
+  })
+
+  it('should keep cartGroup source/index aligned with cart when mixed ttypes', () => {
+    const e = engineWithVip()
+    e.addToCart({ code: 's1', name: 'S1', price: 10, ttype: 'S' })
+    e.addToCart({ code: 'g1', name: 'G1', price: 20, ttype: 'G' })
+    e.addToCart({ code: 's2', name: 'S2', price: 30, ttype: 'S' })
+
+    const sGroup = e.cartGroups.value.find((g) => g.ttype === 'S')!
+    expect(sGroup.items.map((r) => ({ code: r.item.code, source: r.source, index: r.index }))).toEqual([
+      { code: 's1', source: 'cart', index: 0 },
+      { code: 's2', source: 'cart', index: 2 },
+    ])
+
+    // 组内第二行对应 cart[2]；若误用组内 idx=1 会删掉 g1
+    const target = sGroup.items[1]
+    e.removeFromCart(target.index, target.source)
+    expect(e.cart.value.map((i) => i.code)).toEqual(['s1', 'g1'])
   })
 })
 
@@ -120,7 +151,7 @@ describe('useBillingEngine — searchVip', () => {
     const vip = { uuid: 'v-1', vname: '张三', vcode: 'V001', mtcode: '13800138000' }
     mockSearchVip.mockResolvedValue({ data: { results: [vip] } })
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.vipKeyword.value = '张三'
     await e.searchVip()
     expect(e.selectedVip.value?.vname).toBe('张三')
@@ -135,7 +166,7 @@ describe('useBillingEngine — searchVip', () => {
     ]
     mockSearchVip.mockResolvedValue({ data: { results } })
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.vipKeyword.value = '张三'
     await e.searchVip()
     expect(e.selectedVip.value).toBeNull()
@@ -147,7 +178,7 @@ describe('useBillingEngine — searchVip', () => {
     const mockSearchVip = (await import('@/api/vip')).searchVip as any
     mockSearchVip.mockResolvedValue({ data: { results: [] } })
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.vipKeyword.value = '不可达'
     await e.searchVip()
     expect(e.selectedVip.value).toBeNull()
@@ -158,7 +189,7 @@ describe('useBillingEngine — searchVip', () => {
     const mockSearchVip = (await import('@/api/vip')).searchVip as any
     mockSearchVip.mockRejectedValue(new Error('API error'))
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.vipKeyword.value = '错误'
     await e.searchVip()
     expect(e.selectedVip.value).toBeNull()
@@ -168,7 +199,7 @@ describe('useBillingEngine — searchVip', () => {
 
 describe('useBillingEngine — selectVip', () => {
   it('should reset cart and set employees on select', async () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'old', name: 'Old', price: 10, ttype: 'S' })
 
     const vip = { uuid: 'v-3', vname: '李四', vcode: 'V003', ecode: 'E001', ecode2: 'E002' } as any
@@ -186,7 +217,7 @@ describe('useBillingEngine — selectVip', () => {
 
 describe('useBillingEngine — cart operations', () => {
   it('should remove item by index', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 10, ttype: 'S' })
     e.addToCart({ code: 'b', name: 'B', price: 20, ttype: 'S' })
     expect(e.cart.value).toHaveLength(2)
@@ -196,7 +227,7 @@ describe('useBillingEngine — cart operations', () => {
   })
 
   it('should clear entire cart', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 10, ttype: 'S' })
     e.addToCart({ code: 'b', name: 'B', price: 20, ttype: 'S' })
     e.clearCart()
@@ -205,7 +236,7 @@ describe('useBillingEngine — cart operations', () => {
   })
 
   it('should update individual cart item fields', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
     e.updateCartItem(0, 'secdisc', 0.8)
     e.updateCartItem(0, 'qty', 3)
@@ -215,7 +246,7 @@ describe('useBillingEngine — cart operations', () => {
   })
 
   it('should use default employees from selectedVip', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedVip.value = { uuid: 'v-1', vname: '张三', ecode: 'E001', ecode2: 'E002' } as any
     e.addToCart({ code: 's1', name: '服务1', price: 200, ttype: 'S' })
     expect(e.cart.value[0].pmcode).toBe('E001')
@@ -225,7 +256,7 @@ describe('useBillingEngine — cart operations', () => {
 
   it('should not deduplicate across different ttypes', () => {
     vi.useFakeTimers()
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'x', name: 'X', price: 100, ttype: 'S' })
     vi.advanceTimersByTime(400)
     e.addToCart({ code: 'x', name: 'X', price: 100, ttype: 'G' })
@@ -234,20 +265,20 @@ describe('useBillingEngine — cart operations', () => {
   })
 
   it('should set default payMethod to cash when no card selected', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 50, ttype: 'S' })
     expect(e.cart.value[0].payMethod).toBe('cash')
   })
 
   it('should set payMethod to card when card selected', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedCard.value = { uuid: 'c-1', ccode: 'C001', cardname: '金卡' } as any
     e.addToCart({ code: 'a', name: 'A', price: 50, ttype: 'S' })
     expect(e.cart.value[0].payMethod).toBe('card:C001')
   })
 
   it('should compute cartGroups in correct order (S, G, C, I)', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'c', name: 'C', price: 30, ttype: 'C' })
     e.addToCart({ code: 's', name: 'S', price: 10, ttype: 'S' })
     e.addToCart({ code: 'g', name: 'G', price: 20, ttype: 'G' })
@@ -264,7 +295,7 @@ describe('useBillingEngine — saveHung', () => {
 
   it('should save and clear cart on success', async () => {
     vi.useFakeTimers()
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedVip.value = { uuid: 'v-1' } as any
     e.addToCart({ code: 's1', name: 'S1', price: 100, ttype: 'S' })
     vi.advanceTimersByTime(400)
@@ -280,7 +311,7 @@ describe('useBillingEngine — saveHung', () => {
   })
 
   it('should return false on save failure', async () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedVip.value = { uuid: 'v-1' } as any
     e.addToCart({ code: 's1', name: 'S1', price: 100, ttype: 'S' })
 
@@ -294,7 +325,7 @@ describe('useBillingEngine — saveHung', () => {
 
 describe('useBillingEngine — switchBillingMode', () => {
   it('should switch between normal and refund mode', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     expect(e.billingMode.value).toBe('normal')
     e.switchBillingMode('refund')
     expect(e.billingMode.value).toBe('refund')
@@ -305,7 +336,7 @@ describe('useBillingEngine — switchBillingMode', () => {
 
 describe('useBillingEngine — void flow', () => {
   it('should toggle void panel', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     expect(e.voidPanelOpen.value).toBe(false)
     e.openVoidPanel()
     expect(e.voidPanelOpen.value).toBe(true)
@@ -314,7 +345,7 @@ describe('useBillingEngine — void flow', () => {
   })
 
   it('should toggle void item selection', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.toggleVoidItem('order-1', 'item-1')
     expect(e.voidSelections.value['order-1']['item-1']).toBe(true)
     e.toggleVoidItem('order-1', 'item-1')
@@ -322,7 +353,7 @@ describe('useBillingEngine — void flow', () => {
   })
 
   it('should toggle checked-out refund selection', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.toggleCheckedOutItem('order-1', 'd1')
     expect(e.checkedOutSelections.value['order-1']['d1']).toBe(true)
     e.toggleCheckedOutItem('order-1', 'd1')
@@ -330,7 +361,7 @@ describe('useBillingEngine — void flow', () => {
   })
 
   it('should add void items to cart when confirmed', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.voidOrderItems.value['order-1'] = [
       { ditem: 'd1', srvcode: 'srv1', itemname: '服务1', qty: 2, price: 100, ttype: 'S' },
     ]
@@ -344,7 +375,7 @@ describe('useBillingEngine — void flow', () => {
 
 describe('useBillingEngine — category filtering', () => {
   it('should filter items by category and keyword', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.categories.value = [
       { code: 'root', name: '全部', children: [
         { code: 'cat1', name: '面部', children: [
@@ -365,7 +396,7 @@ describe('useBillingEngine — category filtering', () => {
   })
 
   it('should filter by keyword across items', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.itemKeyword.value = '清洁'
     e.allItems.value = [
       { code: 'a', name: '清洁A', price: 100, ttype: 'S' } as any,
@@ -378,7 +409,7 @@ describe('useBillingEngine — category filtering', () => {
 
 describe('useBillingEngine — card sale mode', () => {
   it('should filter card sale items by comptype', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.allItems.value = [
       { code: 'c1', name: '储值卡', price: 1000, comptype: 'amount' } as any,
       { code: 'c2', name: '疗程卡', price: 2000, comptype: 'times' } as any,
@@ -394,7 +425,7 @@ describe('useBillingEngine — card sale mode', () => {
 
 describe('useBillingEngine — card groups', () => {
   it('should group cards by promotionsid and comptype', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.vipCards.value = [
       { uuid: 'c1', ccode: 'C001', cardname: '金卡', promotionsid: '0', comptype: 'amount', leftmoney: 1000 } as any,
       { uuid: 'c2', ccode: 'C002', cardname: '银卡', promotionsid: '0', comptype: 'amount', leftmoney: 500 } as any,
@@ -416,7 +447,7 @@ describe('useBillingEngine — card groups', () => {
 
 describe('useBillingEngine — ttypeLabel and formatDate', () => {
   it('should return correct ttype labels', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     expect(e.ttypeLabel('S')).toBe('服务')
     expect(e.ttypeLabel('G')).toBe('商品')
     expect(e.ttypeLabel('C')).toBe('售卡')
@@ -425,7 +456,7 @@ describe('useBillingEngine — ttypeLabel and formatDate', () => {
   })
 
   it('should format 8-digit date', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     expect(e.formatDate('20260701')).toBe('2026-07-01')
     expect(e.formatDate('')).toBe('')
     expect(e.formatDate('2026')).toBe('2026')
@@ -435,7 +466,7 @@ describe('useBillingEngine — ttypeLabel and formatDate', () => {
 describe('useBillingEngine — click guard (debounce)', () => {
   it('should debounce rapid clicks to same item', () => {
     vi.useFakeTimers()
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
     expect(e.cart.value).toHaveLength(1)
@@ -446,7 +477,7 @@ describe('useBillingEngine — click guard (debounce)', () => {
 
 describe('useBillingEngine — recharge flow', () => {
   it('should add recharge item to cart', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedVip.value = { uuid: 'v-1', vname: '张三', ecode: 'E001' } as any
     const card = { uuid: 'c-1', ccode: 'C001', cardname: '储值卡' } as any
     e.rechargeAmounts.value['C001'] = 500
@@ -461,14 +492,14 @@ describe('useBillingEngine — recharge flow', () => {
   })
 
   it('should not add recharge with zero amount', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     const card = { uuid: 'c-1', ccode: 'C001', cardname: '储值卡' } as any
     e.addRecharge(card)
     expect(e.cart.value).toHaveLength(0)
   })
 
   it('should add card refund with negative qty', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedVip.value = { uuid: 'v-1', vname: '张三', ecode: 'E001' } as any
     const card = { uuid: 'c-1', ccode: 'C001', cardname: '储值卡' } as any
     e.rechargeAmounts.value['C001'] = 300
@@ -479,7 +510,7 @@ describe('useBillingEngine — recharge flow', () => {
   })
 
   it('should filter refundable cards by recharge mode', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.vipCards.value = [
       { uuid: 'c1', ccode: 'C001', comptype: 'amount', status: 'Y' } as any,
       { uuid: 'c2', ccode: 'C002', comptype: 'times', status: 'Y' } as any,
@@ -494,7 +525,7 @@ describe('useBillingEngine — recharge flow', () => {
 
 describe('useBillingEngine — promotion flow', () => {
   it('should add promotion item with discounted price (mainttype 10)', async () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     const promo = { promotionsid: 'p1', mainttype: '10' }
     const item = { sgcode: 'sg1', itemname: '特价服务', s_price: 100, promotionsprice: 80, ttype: 'S', s_qty: 1 }
     await e.addPromotionItem(promo, item)
@@ -503,7 +534,7 @@ describe('useBillingEngine — promotion flow', () => {
   })
 
   it('should handle percentage discount promotion (mainttype 20)', async () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     const promo = { promotionsid: 'p2', mainttype: '20', disc: 0.85 }
     const item = { sgcode: 'sg2', itemname: '打折服务', s_price: 200, ttype: 'S', s_qty: 1 }
     await e.addPromotionItem(promo, item)
@@ -514,7 +545,7 @@ describe('useBillingEngine — promotion flow', () => {
 
 describe('useBillingEngine — card menu and drag', () => {
   it('should show and close card context menu', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     const card = { uuid: 'c-1', ccode: 'C001' } as any
     e.showCardMenu({ clientX: 100, clientY: 200, preventDefault: () => {} } as any, card)
     expect(e.cardMenuVisible.value).toBe(true)
@@ -526,7 +557,7 @@ describe('useBillingEngine — card menu and drag', () => {
   })
 
   it('should track dragged card', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     const card = { uuid: 'c-1' } as any
     e.onCardDragStart(card)
     expect(e.draggedCard.value?.uuid).toBe('c-1')
@@ -534,7 +565,7 @@ describe('useBillingEngine — card menu and drag', () => {
 
   it('should handle drop and auto-load card items for times card', () => {
     vi.useFakeTimers()
-    const e = useBillingEngine()
+    const e = engineWithVip()
     const card = { uuid: 'c-1', ccode: 'C001', comptype: 'times' } as any
     e.draggedCard.value = card
     e.onCardDrop()
@@ -545,7 +576,7 @@ describe('useBillingEngine — card menu and drag', () => {
 
 describe('useBillingEngine — selectCard updates cart payment', () => {
   it('should update payment method for cart items when card selected', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
     const card = { uuid: 'c-1', ccode: 'C001', cardname: '金卡' } as any
     e.selectCard(card)
@@ -557,7 +588,7 @@ describe('useBillingEngine — selectCard updates cart payment', () => {
 describe('useBillingEngine — saveHung payload structure', () => {
   it('should send srvcode=i.code for card sale (ttype=C)', async () => {
     // 售卡时，前端传的是卡类编号，后端负责转成卡号
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedVip.value = { uuid: 'v-1' } as any
     e.addToCart({ code: '10010', name: '测试卡类', price: 1000, ttype: 'C' } as any)
 
@@ -577,7 +608,7 @@ describe('useBillingEngine — saveHung payload structure', () => {
   })
 
   it('should send srvcode=card.ccode for recharge (ttype=I)', async () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedVip.value = { uuid: 'v-1', vname: '张三', ecode: 'E001' } as any
     const card = { uuid: 'c-1', ccode: 'YIREN01-000002', cardname: '储值卡' } as any
     e.rechargeAmounts.value['YIREN01-000002'] = 500
@@ -611,13 +642,13 @@ describe('useBillingEngine — P1 card pricing guard', () => {
       ] },
     })
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     const card = { uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any
     e.selectCard(card)
     await Promise.resolve()
 
     e.addToCart({ code: 'b', name: 'B', price: 200, ttype: 'S' })
-    await Promise.resolve()
+    await flushAsync()
 
     const lastCall = mockPricing.mock.calls[mockPricing.mock.calls.length - 1][0]
     expect(lastCall.items.map((i: any) => i.code)).toContain('b')
@@ -635,9 +666,10 @@ describe('useBillingEngine — P1 card pricing guard', () => {
     const request = (await import('@/api/request')).default as any
     request.post.mockClear()
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.selectedVip.value = { uuid: 'v-1' } as any
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    e.cart.value[0].payMethod = 'card:C001'
     await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
 
     const result = await e.saveHung()
@@ -653,8 +685,9 @@ describe('useBillingEngine — P1 card pricing guard', () => {
       ] },
     })
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    e.cart.value[0].payMethod = 'card:C001'
     await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
 
     expect(e.cart.value[0].price).toBe(100)
@@ -670,8 +703,9 @@ describe('useBillingEngine — P1 card pricing guard', () => {
       ] },
     })
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    e.cart.value[0].payMethod = 'card:C001'
     await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
 
     expect(e.cart.value[0].price).toBe(90)
@@ -686,8 +720,9 @@ describe('useBillingEngine — P1 card pricing guard', () => {
       ] },
     })
 
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    e.cart.value[0].payMethod = 'card:C001'
     await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
     expect(e.cart.value[0].secdisc).toBe(0.8)
 
@@ -695,11 +730,105 @@ describe('useBillingEngine — P1 card pricing guard', () => {
     expect(e.cart.value[0].price).toBe(100)
     expect(e.cart.value[0].secdisc).toBe(1)
   })
+
+  it('should not apply card pricing to items paid by another card', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    ;(getCardPricing as any).mockClear()
+    ;(getCardPricing as any).mockResolvedValue({
+      data: { results: [
+        { code: 'svc-b', ttype: 'S', allowed: true, price: 60, source: 'discountclass', discounttype: 'DISC', disc: 0.6, reason: '' },
+      ] },
+    })
+
+    const e = engineWithVip()
+    e.addToCart({ code: 'svc-a', name: 'A', price: 100, ttype: 'S' })
+    e.cart.value[0].payMethod = 'card:OTHER'
+    e.addToCart({ code: 'svc-b', name: 'B', price: 100, ttype: 'S' })
+    e.cart.value[1].payMethod = 'card:C001'
+
+    await e.applyCardPricing({ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any)
+
+    expect(e.cart.value[0].price).toBe(100)
+    expect(e.cart.value[0].secdisc).toBe(1)
+    expect(e.cart.value[1].price).toBe(100)
+    expect(e.cart.value[1].secdisc).toBe(0.6)
+  })
+
+  it('should not re-price cash item when adding a card-paid item', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    ;(getCardPricing as any).mockClear()
+    ;(getCardPricing as any).mockResolvedValue({
+      data: { results: [
+        { code: 'cash-item', ttype: 'S', allowed: true, price: 90, source: 'discountclass', discounttype: 'DISC', disc: 0.9, reason: '' },
+        { code: 'card-item', ttype: 'S', allowed: true, price: 160, source: 'discountclass', discounttype: 'DISC', disc: 0.8, reason: '' },
+      ] },
+    })
+
+    const e = engineWithVip()
+    e.addToCart({ code: 'cash-item', name: 'Cash', price: 100, ttype: 'S' })
+    e.cart.value[0].payMethod = 'cash'
+    e.selectedCard.value = { uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any
+    e.addToCart({ code: 'card-item', name: 'Card', price: 200, ttype: 'S' })
+    await e.applyCardPricing(e.selectedCard.value)
+
+    expect(e.cart.value[0].price).toBe(100)
+    expect(e.cart.value[0].secdisc).toBe(1)
+    expect(e.cart.value[1].price).toBe(200)
+    expect(e.cart.value[1].secdisc).toBe(0.8)
+  })
+
+  it('should only price the newly added item when adding after card selection', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    ;(getCardPricing as any).mockClear()
+    ;(getCardPricing as any).mockResolvedValue({
+      data: { results: [
+        { code: 'a', ttype: 'S', allowed: true, price: 100, source: 'discountclass', discounttype: 'DISC', disc: 0.6, reason: '' },
+        { code: 'b', ttype: 'S', allowed: true, price: 200, source: 'discountclass', discounttype: 'DISC', disc: 0.8, reason: '' },
+      ] },
+    })
+
+    const e = engineWithVip()
+    const card = { uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any
+    e.selectCard(card)
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    await flushAsync()
+    // 模拟已定价行被人工改过折扣率
+    e.cart.value[0].secdisc = 0.5
+
+    e.addToCart({ code: 'b', name: 'B', price: 200, ttype: 'S' })
+    await flushAsync()
+
+    expect(e.cart.value[0].secdisc).toBe(0.5)
+    expect(e.cart.value[1].secdisc).toBe(0.8)
+  })
+
+  it('should re-price only the changed row when payment method changes', async () => {
+    const { getCardPricing } = await import('@/api/card-admin')
+    ;(getCardPricing as any).mockClear()
+    ;(getCardPricing as any).mockResolvedValue({
+      data: { results: [
+        { code: 'b', ttype: 'S', allowed: true, price: 100, source: 'discountclass', discounttype: 'DISC', disc: 0.8, reason: '' },
+      ] },
+    })
+
+    const e = engineWithVip()
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    e.addToCart({ code: 'b', name: 'B', price: 100, ttype: 'S' })
+    e.vipCards.value = [{ uuid: 'c-1', ccode: 'C001', cardtypeuuid: 'ct-1', comptype: 'amount' } as any]
+    e.changeCartItemPayMethod(1, 'card:C001')
+    await flushAsync()
+
+    expect(e.cart.value[0].secdisc).toBe(1)
+    expect(e.cart.value[1].secdisc).toBe(0.8)
+
+    e.changeCartItemPayMethod(1, 'cash')
+    expect(e.cart.value[1].secdisc).toBe(1)
+  })
 })
 
 describe('useBillingEngine — P1 void items visible in cart', () => {
   it('should include void items in cartGroups and cartTotal', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.addToCart({ code: 's', name: 'S', price: 10, ttype: 'S' })
     e.voidOrderItems.value['order-1'] = [
       { ditem: 'd1', srvcode: 'v1', itemname: 'V1', qty: 2, price: 50, ttype: 'S' },
@@ -710,13 +839,21 @@ describe('useBillingEngine — P1 void items visible in cart', () => {
     expect(e.voidItems.value).toHaveLength(1)
     expect(e.cartGroups.value).toHaveLength(1)
     expect(e.cartGroups.value[0].items).toHaveLength(2)
+    expect(e.cartGroups.value[0].items.map((r) => ({ code: r.item.code, source: r.source, index: r.index }))).toEqual([
+      { code: 's', source: 'cart', index: 0 },
+      { code: 'v1', source: 'void', index: 0 },
+    ])
     expect(e.cartTotal.value).toBe(10 - 100)
+
+    e.removeFromCart(0, 'void')
+    expect(e.voidItems.value).toHaveLength(0)
+    expect(e.cart.value.map((i) => i.code)).toEqual(['s'])
   })
 })
 
 describe('useBillingEngine — promotions display', () => {
   it('should group promotions by mainttype with display names', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     e.promotions.value = [
       { uuid: 'p1', promotionsname: '特价A', mainttype: '10', mainttype_name: '特价活动', combo_total: 0 },
       { uuid: 'p2', promotionsname: '折扣B', mainttype: '20', mainttype_name: '特殊折扣活动', combo_total: 0 },
@@ -729,7 +866,7 @@ describe('useBillingEngine — promotions display', () => {
   })
 
   it('should return combo total from group_items or combo_total', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     expect(e.comboTotal({ combo_total: 1000 })).toBe(1000)
     expect(e.comboTotal({
       group_items: [
@@ -740,10 +877,41 @@ describe('useBillingEngine — promotions display', () => {
   })
 
   it('should map promo type to tag type', () => {
-    const e = useBillingEngine()
+    const e = engineWithVip()
     expect(e.promoTypeTag('10')).toBe('success')
     expect(e.promoTypeTag('20')).toBe('warning')
     expect(e.promoTypeTag('30')).toBe('danger')
     expect(e.promoTypeTag('99')).toBe('info')
+  })
+})
+
+describe('useBillingEngine — require member before adding items', () => {
+  it('should not add item without selectedVip', () => {
+    const e = useBillingEngine()
+    e.addToCart({ code: 'a', name: 'A', price: 100, ttype: 'S' })
+    expect(e.cart.value).toEqual([])
+  })
+
+  it('should not add card sale without selectedVip', () => {
+    const e = useBillingEngine()
+    e.addCardSale({ code: 'c1', name: 'C', price: 100, ttype: 'C', comptype: 'amount' } as any)
+    expect(e.cart.value).toEqual([])
+  })
+
+  it('should not add recharge without selectedVip', () => {
+    const e = useBillingEngine()
+    const card = { uuid: 'c-1', ccode: 'C001', cardname: '储值卡' } as any
+    e.rechargeAmounts.value['C001'] = 100
+    e.addRecharge(card)
+    expect(e.cart.value).toEqual([])
+  })
+
+  it('should not add promotion item without selectedVip', async () => {
+    const e = useBillingEngine()
+    await e.addPromotionItem(
+      { promotionsid: 'p1', mainttype: '10' },
+      { sgcode: 's1', itemname: 'A', s_price: 100, promotionsprice: 80, ttype: 'S', s_qty: 1 },
+    )
+    expect(e.cart.value).toEqual([])
   })
 })

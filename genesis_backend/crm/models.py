@@ -62,6 +62,14 @@ class CrmCase(GenesisModel):
     planfinishdate =  models.DateField(blank=True,null=True,verbose_name='计划完成日期')
     casedesc = models.CharField(max_length=128,blank=True,null=True,verbose_name='描述')
     vsdate = models.DateField(blank=True,null=True,verbose_name='交易日期')
+    rule = models.ForeignKey(
+        'CrmRule',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name='cases',
+        verbose_name='来源规则',
+    )
 
     class Meta:
         verbose_name = '案例'
@@ -88,12 +96,31 @@ class CrmCaseDetail(GenesisModel):
         ('30','客情处理'),
         ('90','其他'),
     )
+    CRM_CHANNEL = (
+        ('10', '电话'),
+        ('20', '微信'),
+        ('30', '短信'),
+        ('40', '到店'),
+        ('90', '其他'),
+    )
+    CRM_OUTCOME = (
+        ('10', '已联系'),
+        ('20', '未接通'),
+        ('30', '待跟进'),
+        ('40', '已拒绝'),
+        ('50', '已预约'),
+    )
 
     caseid = models.ForeignKey('CrmCase',blank=True,null=True,on_delete=models.SET_NULL,verbose_name='案例')
 #    vsdate = models.DateTimeField(default=timezone.now(),blank=True,null=True)
     detaildescription = models.TextField(blank=True,null=True,verbose_name='沟通情况记录')
     detail = models.CharField(max_length=512,blank=True,null=True,verbose_name='咨询记录')
     ecode = models.ForeignKey('baseinfo.Empl',db_column='ecode',blank=True,null=True,on_delete=models.SET_NULL,verbose_name='员工')
+    channel = models.CharField(max_length=8,choices=CRM_CHANNEL,blank=True,null=True,verbose_name='触达渠道')
+    outcome = models.CharField(max_length=8,choices=CRM_OUTCOME,blank=True,null=True,verbose_name='触达结果')
+    contact_time = models.DateTimeField(blank=True,null=True,verbose_name='触达时间')
+    nextdate = models.DateField(blank=True,null=True,verbose_name='下次回访日期')
+    nextecode = models.CharField(max_length=16,blank=True,null=True,verbose_name='下次任务员工')
 
     class Meta:
         verbose_name='沟通记录'
@@ -106,6 +133,64 @@ class CrmCaseDetail(GenesisModel):
         if self.detail ==None:
             self.detail=''
         return self.detail
+
+
+class CrmRule(GenesisModel):
+    """客户关怀规则：按规则批量生成 CrmCase 回访/回馈任务。"""
+    RULE_TYPE = (
+        ('birthday', '生日关怀'),
+        ('anniversary', '入会周年'),
+        ('transaction', '成交回访'),
+        ('lifecycle', '生命周期预警'),
+        ('custom', '自定义'),
+    )
+    ASSIGNEE_POLICY = (
+        ('vip_ecode', '客户顾问'),
+        ('vip_ecode2', '指定美疗师'),
+        ('fixed', '固定员工'),
+        ('store_manager', '店长'),
+    )
+
+    rule_name = models.CharField(max_length=64, verbose_name='规则名称')
+    rule_type = models.CharField(
+        max_length=16, choices=RULE_TYPE, default='birthday', verbose_name='规则类型'
+    )
+    casetype = models.CharField(
+        max_length=8, choices=CASETYPE, blank=True, null=True, verbose_name='任务类型'
+    )
+    days_offset = models.IntegerField(default=0, blank=True, null=True, verbose_name='天数偏移')
+    month_offset = models.IntegerField(default=1, blank=True, null=True, verbose_name='月份偏移')
+    ttype = models.CharField(
+        max_length=8, blank=True, null=True, verbose_name='交易类型(S/G/C/I)'
+    )
+    lifecycle_segment = models.CharField(
+        max_length=16, blank=True, null=True, verbose_name='生命周期分段'
+    )
+    casedesc_template = models.CharField(
+        max_length=256, blank=True, null=True, verbose_name='任务描述模板'
+    )
+    assignee_policy = models.CharField(
+        max_length=16, choices=ASSIGNEE_POLICY, default='vip_ecode', verbose_name='派单策略'
+    )
+    fixed_ecode = models.CharField(
+        max_length=16, blank=True, null=True, verbose_name='固定员工工号'
+    )
+    enabled = models.CharField(
+        max_length=8, choices=FLAG, default='Y', blank=True, null=True, verbose_name='是否启用'
+    )
+    last_run_at = models.DateTimeField(blank=True, null=True, verbose_name='上次执行时间')
+    last_run_summary = models.CharField(
+        max_length=256, blank=True, null=True, verbose_name='上次执行结果'
+    )
+
+    class Meta:
+        verbose_name = '关怀规则'
+        verbose_name_plural = '关怀规则'
+        managed = True
+        db_table = 'crm_rule'
+
+    def __str__(self):
+        return self.rule_name or self.rule_type or str(self.uuid)
 
 class Term(models.Model):
     termtype=models.CharField(max_length=8,blank=True,null=True,verbose_name='术语类型')

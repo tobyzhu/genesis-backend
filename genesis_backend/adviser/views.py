@@ -2814,9 +2814,14 @@ def save_hung_order(request):
     if not company or not vipuuid or not items:
         return JsonResponse({'ok': False, 'message': '缺少必要参数'})
 
-    # 校验活动一致性
-    promo_ids = set(str(it.get('promotionsid', '') or '') for it in items if it.get('promotionsid'))
-    if len(promo_ids) > 1:
+    # 校验活动一致性（空 / 0 视为无活动）
+    def _norm_promo_id(raw):
+        s = str(raw or '').strip()
+        return s if s else '0'
+
+    promo_ids = set(_norm_promo_id(it.get('promotionsid')) for it in items)
+    real_promo_ids = {p for p in promo_ids if p != '0'}
+    if len(real_promo_ids) > 1:
         return JsonResponse({'ok': False, 'message': '不同活动的项目不能挂在同一张单上'})
 
     validate_err = _validate_hung_items(company, vipuuid, items)
@@ -2834,7 +2839,8 @@ def save_hung_order(request):
             except (ValueError, TypeError, AttributeError):
                 vip_code = ''
 
-            order_promotionsid = next((it.get('promotionsid', '') for it in items if it.get('promotionsid', '')), '')
+            # 无活动时默认活动编码为 0
+            order_promotionsid = next(iter(real_promo_ids), '0')
 
             # 按卡号分组
             groups = group_items_by_card(company, items)
@@ -2899,6 +2905,8 @@ def save_hung_order(request):
                     pmcode = item.get('pmcode', '') or ''
                     asscode1 = item.get('asscode1', '') or ''
                     asscode2 = item.get('asscode2', '') or ''
+                    sec_flag = (item.get('secoldcustflag') or item.get('specified') or 'N')
+                    sec_flag = 'Y' if str(sec_flag).strip().upper() in ('Y', '1', '是') else 'N'
 
                     ExpenseHung.objects.create(
                         company=company,
@@ -2918,6 +2926,7 @@ def save_hung_order(request):
                         pmcode_hung=pmcode,
                         asscode1_hung=asscode1,
                         asscode2_hung=asscode2,
+                        secoldcustflag_hung=sec_flag,
                         depositeflag='N',
                         addvamoney_hung=s_mount,
                         otherserno_hung=card_ccode or '',
@@ -2934,6 +2943,7 @@ def save_hung_order(request):
                             if ct:
                                 if ct.comptype == 'times':
                                     card_leftqty = int(item.get('s_qty', 1))
+                                    card_leftmoney = card_leftqty * s_price
                                 elif ct.comptype == 'amount':
                                     card_leftmoney = s_price
                         except Exception:
@@ -3362,10 +3372,11 @@ def get_hung_list(request):
         if uuid_objs:
             item_lines = list(ExpenseHung.objects.filter(
                 hunguuid__in=uuid_objs, flag='Y'
-            ).values('hunguuid_id', 'ttype_hung', 'srvcode_hung', 'stype_hung',
+            ).values('uuid', 'hunguuid_id', 'ditem_hung', 'ttype_hung', 'srvcode_hung', 'stype_hung',
                      's_qty_hung', 's_price_hung', 's_mount_hung',
                      'secdisc_hung', 'srvmondisc_hung',
                      'pmcode_hung', 'asscode1_hung', 'asscode2_hung',
+                     'secoldcustflag_hung',
                      'otherserno_hung').order_by('ditem_hung'))
             name_maps = _build_hung_item_name_maps(company, item_lines)
             stype_map = {}
@@ -3389,17 +3400,24 @@ def get_hung_list(request):
                     item_details_map[key] = []
                 ttype_val = ln['ttype_hung'] or ''
                 item_details_map[key].append({
+                    'uuid': str(ln['uuid']) if ln.get('uuid') else '',
+                    'ditem': ln['ditem_hung'] or '',
                     'name': name or ln['srvcode_hung'] or '',
                     'qty': float(ln['s_qty_hung'] or 0),
                     'price': float(ln['s_price_hung'] or 0),
                     'subtotal': float(ln['s_mount_hung'] or 0),
-                    'secdisc': float(ln['secdisc_hung'] or 1),
+                    'secdisc': float(ln['secdisc_hung'] if ln['secdisc_hung'] is not None else 1),
                     'mondisc': float(ln['srvmondisc_hung'] or 0),
                     'ttypename': _hung_line_ttypename(ttype_val),
+                    'stype': ln['stype_hung'] or 'N',
                     'stypename': _hung_line_stypename(ln['stype_hung']),
                     'pmcode': ln['pmcode_hung'] or '',
                     'asscode1': ln['asscode1_hung'] or '',
                     'asscode2': ln['asscode2_hung'] or '',
+                    'secoldcustflag': (
+                        'Y' if str(ln.get('secoldcustflag_hung') or '').strip().upper() in ('Y', '1', '是')
+                        else 'N'
+                    ),
                     'ccode': ln['otherserno_hung'] or '',
                 })
             for d in data:
@@ -3443,12 +3461,22 @@ def get_hung_list(request):
             d['paytypename'] = info.get('paytypename', '')
             d['cardtypename'] = info.get('paycardtypename', '')
             d['paycardtypename'] = info.get('paycardtypename', '')
+        # 付款卡状态（收银队列「卡未生效」标记 / 结账提醒用）
+        paycodes = list({(d.get('paycode') or '').strip() for d in data if (d.get('paycode') or '').strip()})
+        status_map = {}
+        if paycodes:
+            for ci in Cardinfo.objects.filter(company=company, ccode__in=paycodes, flag='Y').only('ccode', 'status'):
+                status_map[ci.ccode] = ci.status or ''
+        for d in data:
+            pc = (d.get('paycode') or '').strip()
+            d['paycard_status'] = status_map.get(pc, '') if pc else ''
     else:
         for d in data:
             d['paytype'] = ''
             d['paytypename'] = ''
             d['cardtypename'] = ''
             d['paycardtypename'] = ''
+            d['paycard_status'] = ''
 
     if psstatus == '70':
         hungs_list = [d['exptxserno'] for d in data if d.get('exptxserno')]
@@ -3508,6 +3536,10 @@ def get_hung_detail(request):
             'pmcode': item.pmcode_hung or '',
             'asscode1': item.asscode1_hung or '',
             'asscode2': item.asscode2_hung or '',
+            'secoldcustflag': (
+                'Y' if str(item.secoldcustflag_hung or '').strip().upper() in ('Y', '1', '是')
+                else 'N'
+            ),
         })
     return JsonResponse(data, safe=False)
 
@@ -3563,6 +3595,92 @@ def update_hung_item_employees(request):
             asscode2_hung=asscode2,
         )
         return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+
+@csrf_exempt
+def update_hung_items_audit(request):
+    '''结账前批量更新挂单明细：折扣率/赠送/三位员工，并重算行金额与挂单总额'''
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'})
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        data = request.POST.dict()
+    company = data.get('company', '')
+    storecode = data.get('storecode', '')
+    items = data.get('items') or []
+    if not company or not items:
+        return JsonResponse({'ok': False, 'message': '缺少必要参数'})
+    try:
+        affected_hung = set()
+        with transaction.atomic():
+            for row in items:
+                hunguuid = row.get('hunguuid') or ''
+                item_uuid = row.get('uuid') or ''
+                ditem = row.get('ditem') or ''
+                if not hunguuid or (not item_uuid and not ditem):
+                    return JsonResponse({'ok': False, 'message': '明细缺少 hunguuid/uuid'})
+                hung_uuid_obj = _parse_uuid_loose(hunguuid)
+                qs = ExpenseHung.objects.filter(
+                    company=company, hunguuid=hung_uuid_obj, flag='Y',
+                )
+                if storecode:
+                    qs = qs.filter(storecode=storecode)
+                if item_uuid:
+                    qs = qs.filter(uuid=_parse_uuid_loose(item_uuid))
+                else:
+                    qs = qs.filter(ditem_hung=ditem)
+                hung_item = qs.first()
+                if not hung_item:
+                    return JsonResponse({'ok': False, 'message': '挂单明细不存在'})
+
+                if 'secdisc' in row and row.get('secdisc') is not None:
+                    secdisc = Decimal(str(row.get('secdisc')))
+                    if secdisc < 0 or secdisc > 1:
+                        return JsonResponse({'ok': False, 'message': '折扣率须在 0~1'})
+                    hung_item.secdisc_hung = secdisc
+                if 'stype' in row and row.get('stype') is not None:
+                    hung_item.stype_hung = (row.get('stype') or 'N')[:1]
+                if 'pmcode' in row and row.get('pmcode') is not None:
+                    hung_item.pmcode_hung = row.get('pmcode') or ''
+                if 'asscode1' in row and row.get('asscode1') is not None:
+                    hung_item.asscode1_hung = row.get('asscode1') or ''
+                if 'asscode2' in row and row.get('asscode2') is not None:
+                    hung_item.asscode2_hung = row.get('asscode2') or ''
+                if 'secoldcustflag' in row and row.get('secoldcustflag') is not None:
+                    sf = str(row.get('secoldcustflag') or '').strip().upper()
+                    hung_item.secoldcustflag_hung = 'Y' if sf in ('Y', '1', '是') else 'N'
+                if 'mondisc' in row and row.get('mondisc') is not None:
+                    mondisc = Decimal(str(row.get('mondisc') or 0))
+                    if mondisc < 0:
+                        return JsonResponse({'ok': False, 'message': '金额折扣不能为负'})
+                    hung_item.srvmondisc_hung = mondisc
+
+                qty = Decimal(str(hung_item.s_qty_hung or 0))
+                price = Decimal(str(hung_item.s_price_hung or 0))
+                secdisc = Decimal(str(hung_item.secdisc_hung if hung_item.secdisc_hung is not None else 1))
+                mondisc = Decimal(str(hung_item.srvmondisc_hung or 0))
+                amount = (qty * price * secdisc - mondisc).quantize(Decimal('0.01'))
+                hung_item.s_mount_hung = amount
+                hung_item.save()
+                affected_hung.add(hung_item.hunguuid_id)
+
+            for hung_id in affected_hung:
+                lines = ExpenseHung.objects.filter(
+                    company=company, hunguuid=hung_id, flag='Y',
+                )
+                if storecode:
+                    lines = lines.filter(storecode=storecode)
+                total = sum(
+                    (Decimal(str(ln.s_mount_hung or 0)) for ln in lines),
+                    Decimal('0'),
+                ).quantize(Decimal('0.01'))
+                ExpvstollHung.objects.filter(
+                    company=company, uuid=hung_id, flag='Y',
+                ).update(totmount_hung=total)
+        return JsonResponse({'ok': True, 'updated': len(items)})
     except Exception as e:
         return JsonResponse({'ok': False, 'message': str(e)})
 
@@ -3759,6 +3877,238 @@ def active_promotions(request):
         'combo_total': combo_totals.get(p.promotionsid, 0) if p.mainttype == '30' else 0,
     } for p in promos], safe=False)
 
+
+def _save_promotion_group(company, group_data):
+    """保存活动分组主表并重建分组明细，返回 pgroupid。"""
+    pgroupid = (group_data.get('pgroupid') or '').strip()
+    if not pgroupid:
+        raise ValueError('特价/折扣活动必须填写活动分组编号')
+    pgrouptype = (group_data.get('pgrouptype') or '').strip().upper()
+    if pgrouptype not in ('BUY', 'SEND'):
+        raise ValueError('活动分组类型必须为 BUY（购买）或 SEND（赠送）')
+    items = [
+        it for it in (group_data.get('items') or [])
+        if (it.get('pgcode') or '').strip()
+    ]
+    if not items:
+        raise ValueError('活动分组至少需要一条分组明细')
+
+    group = Promotionsgroup.objects.filter(company=company, pgroupid=pgroupid).first()
+    fields = {
+        'pgroupname': group_data.get('pgroupname') or '',
+        'pgrouptype': pgrouptype,
+        'fromdate': group_data.get('fromdate') or '',
+        'todate': group_data.get('todate') or '',
+        'status': group_data.get('status') or '',
+    }
+    if group:
+        for k, v in fields.items():
+            setattr(group, k, v)
+        group.flag = 'Y'
+        group.save()
+    else:
+        group = Promotionsgroup.objects.create(
+            company=company, pgroupid=pgroupid, flag='Y', **fields
+        )
+
+    Promotionsgroupdetail.objects.filter(
+        company=company, pgroupid=pgroupid, flag='Y'
+    ).update(flag='N')
+    for idx, it in enumerate(items, start=1):
+        Promotionsgroupdetail.objects.create(
+            company=company, flag='Y',
+            pgroupuuid=group,
+            pgroupid=pgroupid,
+            pgroupitem=int(it.get('pgroupitem') or idx),
+            pgroupcondition=it.get('pgroupcondition') or '',
+            ttype=it.get('ttype') or 'S',
+            pgcode=(it.get('pgcode') or '').strip(),
+            qty1=it.get('qty1'),
+            price1=it.get('price1'),
+            disc=it.get('disc'),
+            amount1=it.get('amount1'),
+            oriprice=it.get('oriprice'),
+        )
+    return pgroupid
+
+
+@csrf_exempt
+def save_promotion_setup(request):
+    """原子保存营销活动：特价/折扣走活动分组（主从），组合销售走活动明细。"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST'}, status=405)
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False, 'message': '无效的 JSON'}, status=400)
+
+    company = data.get('company') or request.headers.get('X-Company', '')
+    promotionsid = (data.get('promotionsid') or '').strip()
+    promotionsname = (data.get('promotionsname') or '').strip()
+    mainttype = str(data.get('mainttype') or '')
+    if not company or not promotionsid or not promotionsname or mainttype not in ('10', '20', '30'):
+        return JsonResponse({'ok': False, 'message': '缺少活动编号/名称/大类'}, status=400)
+
+    try:
+        with transaction.atomic():
+            promo_uuid = data.get('uuid') or ''
+            if promo_uuid:
+                promotion = Promotions.objects.filter(
+                    company=company, uuid=_parse_uuid_loose(promo_uuid), flag='Y'
+                ).first()
+                if not promotion:
+                    return JsonResponse({'ok': False, 'message': '活动不存在'}, status=404)
+            else:
+                promotion = Promotions(company=company, flag='Y')
+
+            promotion.promotionsid = promotionsid
+            promotion.promotionsname = promotionsname
+            promotion.mainttype = mainttype
+            promotion.promotionsstatus = data.get('promotionsstatus') or ''
+            promotion.fromdate = data.get('fromdate') or ''
+            promotion.todate = data.get('todate') or ''
+            promotion.s_price = data.get('s_price')
+            promotion.disc = data.get('disc')
+            promotion.emplperc = data.get('emplperc')
+            promotion.mainqty = data.get('mainqty')
+            promotion.sendqty = data.get('sendqty')
+
+            if mainttype in ('10', '20'):
+                pgroupid = _save_promotion_group(company, data.get('group') or {})
+                promotion.mainpgroupid = pgroupid
+            else:
+                items = [
+                    it for it in (data.get('items') or [])
+                    if (it.get('sgcode') or '').strip()
+                ]
+                if not items:
+                    return JsonResponse({'ok': False, 'message': '组合销售活动至少需要一条明细'}, status=400)
+                promotion.mainpgroupid = ''
+
+            promotion.save()
+
+            # 清理旧明细后按当前活动类型重建
+            Promotionsdetail.objects.filter(
+                company=company, promotionsuuid=promotion, flag='Y'
+            ).update(flag='N')
+            if mainttype in ('10', '20'):
+                pass
+            else:
+                for idx, it in enumerate(items, start=1):
+                    Promotionsdetail.objects.create(
+                        company=company, flag='Y',
+                        promotionsuuid=promotion,
+                        promotionsid=promotionsid,
+                        promotionsseq=str(idx).zfill(4),
+                        ttype=it.get('ttype') or 'S',
+                        sgcode=(it.get('sgcode') or '').strip(),
+                        s_qty=it.get('s_qty'),
+                        s_price=it.get('s_price'),
+                        promotionsqty=it.get('promotionsqty'),
+                        promotionsprice=it.get('promotionsprice'),
+                        promotionsamount=it.get('promotionsamount'),
+                        stype=it.get('stype') or 'N',
+                    )
+
+            return JsonResponse({
+                'ok': True,
+                'uuid': str(promotion.uuid),
+                'promotionsid': promotion.promotionsid,
+            })
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+
+
+@csrf_exempt
+def get_promotion_setup(request):
+    """返回活动完整配置：头部 + 组合明细 + 活动分组（主从）。"""
+    company = request.GET.get('company') or request.headers.get('X-Company', '')
+    uuid_param = request.GET.get('uuid', '')
+    promotionsid = request.GET.get('promotionsid', '')
+    if not company or (not uuid_param and not promotionsid):
+        return JsonResponse({'error': '缺少参数'}, status=400)
+
+    try:
+        qs = Promotions.objects.filter(company=company, flag='Y')
+        if uuid_param:
+            qs = qs.filter(uuid=_parse_uuid_loose(uuid_param))
+        else:
+            qs = qs.filter(promotionsid=promotionsid)
+        promotion = qs.first()
+    except Exception:
+        promotion = None
+    if not promotion:
+        return JsonResponse({'error': '活动不存在'}, status=404)
+
+    details = list(Promotionsdetail.objects.filter(
+        company=company, promotionsuuid=promotion, flag='Y'
+    ).order_by('promotionsseq'))
+    group = None
+    group_items = []
+    if promotion.mainpgroupid:
+        group = Promotionsgroup.objects.filter(
+            company=company, pgroupid=promotion.mainpgroupid, flag='Y'
+        ).first()
+        if group:
+            group_items = list(Promotionsgroupdetail.objects.filter(
+                company=company, pgroupid=group.pgroupid, flag='Y'
+            ).order_by('pgroupitem'))
+
+    def _detail_row(d):
+        return {
+            'ttype': d.ttype or 'S',
+            'sgcode': d.sgcode or '',
+            's_qty': float(d.s_qty) if d.s_qty is not None else 1,
+            's_price': float(d.s_price) if d.s_price is not None else 0,
+            'promotionsqty': float(d.promotionsqty) if d.promotionsqty is not None else 1,
+            'promotionsprice': float(d.promotionsprice) if d.promotionsprice is not None else 0,
+            'promotionsamount': float(d.promotionsamount) if d.promotionsamount is not None else 0,
+            'stype': d.stype or 'N',
+        }
+
+    def _group_item_row(d):
+        return {
+            'pgroupitem': d.pgroupitem or 0,
+            'pgroupcondition': d.pgroupcondition or '',
+            'ttype': d.ttype or 'S',
+            'pgcode': d.pgcode or '',
+            'qty1': float(d.qty1) if d.qty1 is not None else 1,
+            'price1': float(d.price1) if d.price1 is not None else 0,
+            'disc': float(d.disc) if d.disc is not None else None,
+            'amount1': float(d.amount1) if d.amount1 is not None else 0,
+            'oriprice': float(d.oriprice) if d.oriprice is not None else 0,
+        }
+
+    return JsonResponse({
+        'ok': True,
+        'promotion': {
+            'uuid': str(promotion.uuid),
+            'promotionsid': promotion.promotionsid or '',
+            'promotionsname': promotion.promotionsname or '',
+            'mainttype': promotion.mainttype or '',
+            'promotionsstatus': promotion.promotionsstatus or '',
+            'fromdate': promotion.fromdate or '',
+            'todate': promotion.todate or '',
+            's_price': float(promotion.s_price) if promotion.s_price is not None else 0,
+            'disc': float(promotion.disc) if promotion.disc is not None else 1,
+            'emplperc': float(promotion.emplperc) if promotion.emplperc is not None else 1,
+            'mainpgroupid': promotion.mainpgroupid or '',
+            'mainqty': float(promotion.mainqty) if promotion.mainqty is not None else 1,
+            'sendqty': float(promotion.sendqty) if promotion.sendqty is not None else 0,
+        },
+        'items': [_detail_row(d) for d in details],
+        'group': {
+            'pgroupid': group.pgroupid or '',
+            'pgroupname': group.pgroupname or '',
+            'pgrouptype': group.pgrouptype or '',
+            'fromdate': group.fromdate or '',
+            'todate': group.todate or '',
+            'status': group.status or '',
+        } if group else None,
+        'group_items': [_group_item_row(d) for d in group_items],
+    })
 
 
 # ====== 选品接口（从 cashier 迁入） ======

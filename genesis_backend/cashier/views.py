@@ -24,6 +24,7 @@ from adviser.views import (
     _parse_request_param_json,
     _hung_line_ttypename,
     _resolve_paycard_plan_info,
+    _resolve_item_classification,
 )
 import common.constants
 from .emplarch_yiren import cal_emplarchivement_yiren,process_pertrans_yiren,EmplArchivement
@@ -1244,7 +1245,6 @@ def checkout_hungs(request):
                 .filter(
                     company=company,
                     flag='Y',
-                    status__in=('O', 'P'),
                     vipuuid=vipuuid,
                     ccode=ccode,
                 )
@@ -1252,6 +1252,16 @@ def checkout_hungs(request):
             )
             if not paycard:
                 return JsonResponse({'ok': False, 'message': '付款卡不存在或不属于该客人：' + ccode}, status=400)
+            if paycard.status == 'P':
+                return JsonResponse({
+                    'ok': False,
+                    'message': '付款卡尚未生效（挂账卡），不能用于结账：' + ccode,
+                }, status=400)
+            if paycard.status != 'O':
+                return JsonResponse({
+                    'ok': False,
+                    'message': '付款卡状态不可用，无法结账：' + ccode,
+                }, status=400)
 
             comptype = ''
             if paycard.cardtypeuuid and paycard.cardtypeuuid.comptype:
@@ -1973,6 +1983,78 @@ def payment_methods(request):
 
 
 
+def _collect_checkout_pay_ccodes(hung, hung_splits=None):
+    """收集本单实际用于付款的卡号。
+
+    有支付拆分时只看拆分里的卡付；无拆分时看抬头卡 + 明细卡付。
+    """
+    ccodes = set()
+    if hung_splits:
+        for sp in hung_splits:
+            try:
+                amount = float(sp.get('amount', 0) or 0)
+            except (TypeError, ValueError):
+                amount = 0
+            ccode = (sp.get('ccode') or '').strip()
+            if amount > 0 and ccode:
+                ccodes.add(ccode)
+        return ccodes
+    head = (hung.ccode_hung or '').strip()
+    if head:
+        ccodes.add(head)
+    for ln in ExpenseHung.objects.filter(company=hung.company, hunguuid=hung, flag='Y'):
+        ccode = (ln.otherserno_hung or '').strip()
+        if ccode and (ln.ttype_hung or '') not in ('C', 'I'):
+            ccodes.add(ccode)
+    return ccodes
+
+
+def _validate_paycards_active(company, hung, hung_splits=None):
+    """付款卡必须已生效（status=O）；挂账卡(status=P)或作废卡禁止结账。"""
+    ccodes = _collect_checkout_pay_ccodes(hung, hung_splits)
+    for ccode in sorted(ccodes):
+        ci = Cardinfo.objects.filter(company=company, ccode=ccode, flag='Y').only('ccode', 'status').first()
+        if not ci:
+            return f'挂单 {hung.exptxserno_hung}：付款卡 {ccode} 不存在或已无效'
+        if ci.status == 'P':
+            return f'挂单 {hung.exptxserno_hung}：付款卡 {ccode} 尚未生效（挂账卡），请先完成该卡购买结账后再用作付款'
+        if ci.status != 'O':
+            return f'挂单 {hung.exptxserno_hung}：付款卡 {ccode} 状态不可用（{ci.status}），无法结账'
+    return ''
+
+
+def _validate_hung_checkout_permission(company, hung):
+    """结账前校验卡付明细的消费权限，禁止时明确报错而非静默转现金。"""
+    from baseinfo.card_rules import resolve_card_item_price
+
+    lines = ExpenseHung.objects.filter(company=company, hunguuid=hung, flag='Y')
+    for ln in lines:
+        ccode = (ln.otherserno_hung or '').strip()
+        if not ccode or (ln.ttype_hung or '') in ('C', 'I'):
+            continue
+        # 仅对已生效卡做消费权限校验；未生效卡由 _validate_paycards_active 拦截
+        ci = Cardinfo.objects.filter(
+            company=company, ccode=ccode, flag='Y', status='O'
+        ).select_related('cardtypeuuid').first()
+        if not ci:
+            continue
+        discountclass, topcode = _resolve_item_classification(
+            company, ln.ttype_hung or 'S', ln.srvcode_hung or ''
+        )
+        res = resolve_card_item_price(
+            company, ci.cardtypeuuid, ci,
+            ttype=ln.ttype_hung or 'S',
+            itemcode=ln.srvcode_hung or '',
+            discountclass=discountclass,
+            topcode=topcode,
+            original_price=ln.s_price_hung or 0,
+        )
+        if not res.get('allowed'):
+            reason = res.get('reason') or '不可消费'
+            return f'挂单 {hung.exptxserno_hung} 项目不可使用付款卡 {ccode}: {reason}'
+    return ''
+
+
 @csrf_exempt
 def batch_checkout(request):
     '''批量结账：对指定的挂单进行结账（调用 cashier.hung_to_trans）'''
@@ -1992,6 +2074,7 @@ def batch_checkout(request):
         return JsonResponse({'ok': False, 'message': '请输入收银员工号'})
 
     payments = data.get('payments', {})
+    splits = data.get('splits', {}) or {}
 
     print('batch_checkout post',company, uuids, payments)
     results = []
@@ -2002,15 +2085,22 @@ def batch_checkout(request):
             if hung.psstatus_hung == '70':
                 results.append({'uuid': hunguuid, 'exptxserno': hung.exptxserno_hung, 'ok': False, 'message': '已结账'})
                 continue
-            # 更新付款方式（结账时可修改）
+            # 更新付款方式（结账时可修改）— 先更新再校验，使 payments 覆盖生效
             if hunguuid in payments:
                 new_ccode = (payments[hunguuid] or '').strip()
                 if new_ccode != (hung.ccode_hung or ''):
                     hung.ccode_hung = new_ccode
                     hung.save(update_fields=['ccode_hung'])
+            hung_splits = splits.get(hunguuid, []) or []
+            err = _validate_paycards_active(company, hung, hung_splits)
+            if err:
+                results.append({'uuid': hunguuid, 'exptxserno': hung.exptxserno_hung, 'ok': False, 'message': err})
+                continue
+            err = _validate_hung_checkout_permission(company, hung)
+            if err:
+                results.append({'uuid': hunguuid, 'exptxserno': hung.exptxserno_hung, 'ok': False, 'message': err})
+                continue
             # 多支付方式拆分
-            splits = data.get('splits', {})
-            hung_splits = splits.get(hunguuid, [])
             if hung_splits and len(hung_splits) > 0:
                 print(f'[batch_checkout] SPLIT BRANCH: {hunguuid} splits={hung_splits}')
                 # 使用 hung_to_trans 创建 expvstoll + expense，跳过 set_toll()
@@ -2049,10 +2139,14 @@ def batch_checkout(request):
                     toll.totmount = amount
                     toll.save()
                     st.tolls.append(toll)
-                    # 卡付款：扣余额
+                    # 卡付款：扣余额（未生效卡禁止支出，双保险）
                     if ccode:
                         try:
                             card = Cardinfo.objects.get(company=company, ccode=ccode, flag='Y')
+                            if card.status != 'O':
+                                raise ValueError(
+                                    f'付款卡 {ccode} 尚未生效或状态不可用，不能扣款'
+                                )
                             ct = card.cardtypeuuid
                             if ct and ct.comptype == 'amount' and (card.leftmoney or 0) >= Decimal(str(amount)):
                                 card.leftmoney = (card.leftmoney or Decimal('0')) - Decimal(str(amount))

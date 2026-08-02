@@ -34,3 +34,14 @@ export function deleteModelData(appLabel: string, modelName: string, pk: number)
 export function searchRelated(modelPath: string, q: string, params?: Record<string, any>) {
   return request.get<{results: Array<{value: string; label: string}>}>('/adviser/sysadmin-search/', { params: { model: modelPath, q, ...params } })
 }
+
+/** 获取活动完整配置（头部 + 组合明细 + 活动分组主从） */
+export function getPromotionSetup(uuid: string) {
+  const company = localStorage.getItem('genesis_pc_company') || ''
+  return request.get('/adviser/get_promotion_setup/', { params: { company, uuid } })
+}
+
+/** 原子保存活动配置 */
+export function savePromotionSetup(data: Record<string, any>) {
+  return request.post('/adviser/save_promotion_setup/', data)
+}

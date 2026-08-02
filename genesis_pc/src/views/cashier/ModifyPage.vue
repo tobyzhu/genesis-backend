@@ -11,7 +11,7 @@
         <el-input v-model="vipKeyword" placeholder="会员姓名/手机号" clearable size="small" style="width:170px" @keyup.enter="loadOrders" />
         <el-input v-model="sernoKeyword" placeholder="单号" clearable size="small" style="width:120px" @keyup.enter="loadOrders" />
         <el-button size="small" type="primary" @click="loadOrders">查询</el-button>
-        <span style="font-size:12px;color:#909399;margin-left:4px">共 {{ filteredOrders.length }} 单</span>
+        <span style="font-size:12px;color:var(--g-color-text-muted);margin-left:4px">共 {{ filteredOrders.length }} 单</span>
       </div>
     </div>
 
@@ -39,21 +39,21 @@
         <template #default="{ row }">{{ empNameFromItem(row) }}</template>
       </el-table-column>
     </el-table>
-    <div v-if="loading" style="text-align:center;padding:30px;color:#909399">加载中...</div>
+    <div v-if="loading" style="text-align:center;padding:30px;color:var(--g-color-text-muted)">加载中...</div>
     <el-empty v-if="!loading && !filteredOrders.length" description="暂无已结账订单" />
 
     <el-card v-if="selectedOrder" shadow="never" class="detail-card">
       <template #header>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span>📋 {{ selectedOrder.exptxserno }} — {{ selectedOrder.vname || selectedOrder.vcode || '--' }} ｜ ¥{{ (selectedOrder.totmount || 0).toFixed(2) }}</span>
+          <span>{{ selectedOrder.exptxserno }} — {{ selectedOrder.vname || selectedOrder.vcode || '--' }} ｜ ¥{{ (selectedOrder.totmount || 0).toFixed(2) }}</span>
           <div style="display:flex;gap:6px">
             <el-button size="small" text @click="selectedOrder = null">关闭</el-button>
             <el-button size="small" type="primary" :loading="saving" @click="saveOrder">保存修改</el-button>
           </div>
         </div>
       </template>
-      <div v-if="selectedOrderPayments.length" style="font-size:12px;color:#606266;padding:6px 0 0">
-        💳 付款方式：<span v-for="(p, pi) in selectedOrderPayments" :key="pi" style="margin-right:8px">{{ p.name }} ¥{{ p.amount.toFixed(2) }}</span>
+      <div v-if="selectedOrderPayments.length" style="font-size:12px;color:var(--g-color-text-secondary);padding:6px 0 0">
+        付款方式：<span v-for="(p, pi) in selectedOrderPayments" :key="pi" style="margin-right:8px">{{ p.name }} ¥{{ p.amount.toFixed(2) }}</span>
       </div>
       <el-table :data="selectedOrder.item_details" size="small" stripe>
         <el-table-column label="项目" min-width="140">
@@ -90,14 +90,14 @@
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="selectedPayments.length" style="margin-top:8px;border-top:1px solid #ebeef5;padding-top:6px">
-        <div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:4px">💳 付款方式（可修改）</div>
+      <div v-if="selectedPayments.length" style="margin-top:8px;border-top:1px solid var(--g-color-border);padding-top:6px">
+        <div style="font-size:12px;font-weight:600;color:var(--g-color-text-secondary);margin-bottom:4px">付款方式（可修改）</div>
         <div v-for="(p, pi) in selectedPayments" :key="pi" style="display:flex;align-items:center;gap:4px;padding:3px 0;font-size:12px">
           <el-select v-model="p.pcode" size="small" style="width:120px" filterable>
             <el-option v-for="opt in paymentOptionsForType(p)" :key="opt.pcode" :label="opt.pname" :value="opt.pcode"></el-option>
           </el-select>
-          <span style="color:#909399">¥{{ Number(p.amount).toFixed(2) }}</span>
-          <span v-if="p._originalPcode !== p.pcode" style="font-size:10px;color:#e6a23c">已修改</span>
+          <span style="color:var(--g-color-text-muted)">¥{{ Number(p.amount).toFixed(2) }}</span>
+          <span v-if="p._originalPcode !== p.pcode" style="font-size:10px;color:var(--g-color-money)">已修改</span>
         </div>
       </div>
     </el-card>

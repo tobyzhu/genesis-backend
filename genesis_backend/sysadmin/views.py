@@ -44,6 +44,26 @@ def _get_verbose(model):
     return str(model._meta.verbose_name) if model._meta.verbose_name else ''
 
 
+def _coerce_fk_values(model, data):
+    """把通用 CRUD 提交的外键主键字符串解析为模型实例。"""
+    for name in list(data.keys()):
+        value = data.get(name)
+        if value in (None, ''):
+            continue
+        try:
+            field = model._meta.get_field(name)
+        except Exception:
+            continue
+        if not field.is_relation or not field.related_model:
+            continue
+        if isinstance(value, field.related_model):
+            continue
+        try:
+            data[name] = field.related_model.objects.get(pk=value)
+        except Exception:
+            continue
+
+
 def model_meta(request, app_label, model_name):
     """GET /sysadmin/models/{app}.{model}/meta/ — 字段元数据"""
     try:
@@ -109,7 +129,6 @@ def model_data(request, app_label, model_name):
                 qs = qs.filter(flag='Y')
         # 未分类：topcode 为空或 NULL
         if request.GET.get('uncategorized') == '1' and hasattr(model, 'topcode'):
-            from django.db.models import Q
             qs = qs.filter(Q(topcode__isnull=True) | Q(topcode=''))
         # 自定义过滤：允许通过 GET 参数筛选模型字段
         filterable = ['topcode', 'brand', 'displayclass1', 'valiflag']
@@ -121,7 +140,13 @@ def model_data(request, app_label, model_name):
         for key in request.GET:
             if key not in ('page', 'page_size', 'search', 'ordering', 'company', 'storecode', *filterable):
                 if hasattr(model, key) and request.GET[key]:
-                    qs = qs.filter(**{key: request.GET[key]})
+                    val = request.GET[key]
+                    if val == '__null__':
+                        qs = qs.filter(**{f'{key}__isnull': True})
+                    elif val == '__blank__':
+                        qs = qs.filter(Q(**{key: ''}) | Q(**{f'{key}__isnull': True}))
+                    else:
+                        qs = qs.filter(**{key: val})
 
         # 搜索
         if search:
@@ -138,6 +163,17 @@ def model_data(request, app_label, model_name):
         except:
             qs = qs.order_by('-pk')
 
+        # 预加载外键，避免逐行 getattr 触发 N+1 查询
+        fk_names = [
+            f.name for f in model._meta.fields
+            if f.is_relation and f.related_model and not getattr(f, 'many_to_many', False)
+        ]
+        if fk_names:
+            try:
+                qs = qs.select_related(*fk_names)
+            except Exception:
+                pass
+
         paginator = Paginator(qs, page_size)
         page_obj = paginator.get_page(page)
 
@@ -147,7 +183,9 @@ def model_data(request, app_label, model_name):
             for f in model._meta.fields:
                 val = getattr(obj, f.name, None)
                 if val is not None:
-                    if hasattr(val, 'strftime'):
+                    if f.get_internal_type() in ('FileField', 'ImageField'):
+                        val = str(val or '')
+                    elif hasattr(val, 'strftime'):
                         val = val.strftime('%Y-%m-%d %H:%M:%S')
                     elif isinstance(val, Decimal):
                         val = float(val)
@@ -178,6 +216,7 @@ def model_data(request, app_label, model_name):
             data['flag'] = 'Y'
 
         try:
+            _coerce_fk_values(model, data)
             obj = model.objects.create(**data)
             return JsonResponse({'ok': True, 'pk': obj.pk})
         except Exception as e:
@@ -202,7 +241,9 @@ def model_data_detail(request, app_label, model_name, pk):
         for f in model._meta.fields:
             val = getattr(obj, f.name, None)
             if val is not None:
-                if hasattr(val, 'strftime'):
+                if f.get_internal_type() in ('FileField', 'ImageField'):
+                    val = str(val or '')
+                elif hasattr(val, 'strftime'):
                     val = val.strftime('%Y-%m-%d %H:%M:%S')
                 elif isinstance(val, Decimal):
                     val = float(val)
@@ -217,6 +258,7 @@ def model_data_detail(request, app_label, model_name, pk):
         except:
             return JsonResponse({'error': '无效的 JSON'}, status=400)
 
+        _coerce_fk_values(model, data)
         for key, val in data.items():
             if hasattr(obj, key):
                 setattr(obj, key, val)

@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 from . import views
+from . import pc_views
 
 # from django.conf.urls import include
 from rest_framework import routers
@@ -46,6 +47,24 @@ urlpatterns=[
     url(r'^vip_insight/', views.vip_insight),
     url(r'^health_records/(?P<uuid>[^/]+)/', views.health_record_detail),
     url(r'^health_records/', views.health_record_list),
+
+    # PC 客户关怀工作台 API
+    url(r'^pc/dicts/?$', pc_views.crm_dicts),
+    url(r'^pc/rules/?$', pc_views.crm_rule_list),
+    url(r'^pc/rules/create/?$', pc_views.crm_rule_create),
+    url(r'^pc/rules/(?P<uuid>[^/]+)/preview/?$', pc_views.crm_rule_preview),
+    url(r'^pc/rules/(?P<uuid>[^/]+)/run/?$', pc_views.crm_rule_run),
+    url(r'^pc/rules/(?P<uuid>[^/]+)/?$', pc_views.crm_rule_detail),
+    url(r'^pc/tasks/?$', pc_views.crm_task_list),
+    url(r'^pc/tasks/summary/?$', pc_views.crm_task_summary),
+    url(r'^pc/tasks/create/?$', pc_views.crm_task_create),
+    url(r'^pc/tasks/(?P<uuid>[^/]+)/attempt/?$', pc_views.crm_task_attempt),
+    url(r'^pc/tasks/(?P<uuid>[^/]+)/suggest/?$', pc_views.crm_task_suggest),
+    url(r'^pc/tasks/(?P<uuid>[^/]+)/complete/?$', pc_views.crm_task_complete),
+    url(r'^pc/tasks/(?P<uuid>[^/]+)/status/?$', pc_views.crm_task_status),
+    url(r'^pc/tasks/(?P<uuid>[^/]+)/?$', pc_views.crm_task_detail),
+    url(r'^pc/timeline/?$', pc_views.crm_timeline),
+    url(r'^pc/timeline/(?P<uuid>[^/]+)/?$', pc_views.crm_timeline_detail),
 
 
     # url(r'queryroom/',views.queryroom),

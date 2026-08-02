@@ -23,12 +23,12 @@
         <el-tabs>
           <el-tab-pane label="卡套餐" name="cards">
             <div v-if="cards.length">
-              <div v-for="c in cards" :key="c.ccode" style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
+              <div v-for="c in cards" :key="c.ccode" style="padding:8px 0;border-bottom:1px solid var(--g-color-border);font-size:13px">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                   <span style="font-weight:500">{{ c.cardname || c.cardtype }}</span>
                   <el-tag :type="c.status === 'Y' ? 'success' : 'danger'" size="small">{{ c.status === 'Y' ? '\u6709\u6548' : '\u65e0\u6548' }}</el-tag>
                 </div>
-                <div style="color:#909399;margin-top:4px">\u5361\u53f7\uff1a{{ c.ccode }} \uff5c \u4f59\u989d\uff1a\u00a5{{ Number(c.leftmoney ?? 0).toFixed(2) }} \uff5c \u6b21\u6570\uff1a{{ c.leftqty ?? 0 }}</div>
+                <div style="color:var(--g-color-text-muted);margin-top:4px">\u5361\u53f7\uff1a{{ c.ccode }} \uff5c \u4f59\u989d\uff1a\u00a5{{ Number(c.leftmoney ?? 0).toFixed(2) }} \uff5c \u6b21\u6570\uff1a{{ c.leftqty ?? 0 }}</div>
               </div>
             </div>
             <el-empty v-else v-loading="loading" description="\u6682\u65e0\u5361\u5957\u9910" />

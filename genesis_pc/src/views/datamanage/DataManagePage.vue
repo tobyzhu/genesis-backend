@@ -114,7 +114,7 @@
           :prop="field.name"
         >
           <!-- 只读字段 -->
-          <span v-if="field.read_only" style="color:#909399">{{ form[field.name] || '--' }}</span>
+          <span v-if="field.read_only" style="color:var(--g-color-text-muted)">{{ form[field.name] || '--' }}</span>
 
           <!-- Boolean -->
           <el-switch
@@ -393,11 +393,11 @@ onMounted(() => {
 
 <style scoped>
 .data-admin-page { height: 100%; display: flex; }
-.admin-sidebar { background: #fff; border-right: 1px solid #ebeef5; overflow-y: auto; }
-.sidebar-title { padding: 16px; font-size: 15px; font-weight: 600; color: #303133; border-bottom: 1px solid #ebeef5; }
-.admin-main { background: #f5f7fa; display: flex; flex-direction: column; }
+.admin-sidebar { background:var(--g-color-surface); border-right: 1px solid var(--g-color-border); overflow-y: auto; }
+.sidebar-title { padding: 16px; font-size: 15px; font-weight: 600; color: var(--g-color-text); border-bottom: 1px solid var(--g-color-border); }
+.admin-main { background: var(--g-color-surface-muted); display: flex; flex-direction: column; }
 .admin-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
-.admin-title { font-size: 16px; font-weight: 600; color: #303133; margin: 0; }
+.admin-title { font-size: 16px; font-weight: 600; color: var(--g-color-text); margin: 0; }
 .admin-toolbar-right { display: flex; gap: 8px; }
 .admin-pagination { display: flex; justify-content: flex-end; padding: 12px 0; flex-shrink: 0; }
 </style>

@@ -37,6 +37,11 @@ export function getAppoptionBySeg(seg: string) {
   return request.get<Array<{itemname: string, itemvalues: string}>>('/baseinfo/get_appoption_byseg/', { params: { company, seg } })
 }
 
+/** 按指定公司读取 appoption（全局字典用 company='common'） */
+export function getAppoptionBySegFor(company: string, seg: string) {
+  return request.get<Array<{itemname: string, itemvalues: string}>>('/baseinfo/get_appoption_byseg/', { params: { company, seg } })
+}
+
 /** 会员消费记录 */
 export function getVipConsumption(vipUuid: string, params?: Record<string, any>) {
   const company = localStorage.getItem('genesis_pc_company') || ''

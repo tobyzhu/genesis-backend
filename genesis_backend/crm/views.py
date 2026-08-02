@@ -13,7 +13,7 @@ from django.db import models
 import uuid
 import django.utils.timezone as timezone
 import time,datetime
-from django.db.models import Q, Sum, Count
+from django.db.models import Q, Sum, Count, Case, Value, When, IntegerField
 import traceback
 
 # from .serializers import UserSerializer, GroupSerializer
@@ -29,7 +29,7 @@ from adviser.views import sql_to_json
 from cashier.models import Expvstoll, Expense
 from adviser.models import Cardinfo
 from baseinfo.models import Cardtype
-from baseinfo.models import Goods,Empl,Serviece,Vip
+from baseinfo.models import Appoption,Goods,Empl,Serviece,Vip
 import common.constants
 import crm.crmsql
 
@@ -105,6 +105,20 @@ class VipViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = VipSerializer
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['vip_dicts'] = {
+            'viptype': dict(
+                Appoption.objects.filter(flag='Y', company='common', seg='viptype')
+                .values_list('itemname', 'itemvalues')
+            ),
+            'status': dict(
+                Appoption.objects.filter(flag='Y', company='common', seg='vipstatus')
+                .values_list('itemname', 'itemvalues')
+            ),
+        }
+        return context
+
     def get_queryset(self):
         company = self.request.GET.get('company') or self.request.META.get('HTTP_X_COMPANY', '')
         storecode = self.request.GET.get('storecode') or self.request.META.get('HTTP_X_STORECODE', '')
@@ -116,8 +130,14 @@ class VipViewSet(viewsets.ModelViewSet):
         search = self.request.GET.get('search', '').strip()
         if search:
             qs = qs.filter(
-                Q(vname__icontains=search) | Q(mtcode__icontains=search) | Q(vcode__icontains=search)
+                Q(vname__icontains=search)
+                | Q(mtcode__icontains=search)
+                | Q(vcode__icontains=search)
+                | Q(pinyin__icontains=search)
             )
+        pinyin = self.request.GET.get('pinyin', '').strip()
+        if pinyin:
+            qs = qs.filter(pinyin__istartswith=pinyin)
         viplevel = self.request.GET.get('viplevel', '').strip()
         if viplevel:
             qs = qs.filter(viplevel=viplevel)
@@ -143,7 +163,19 @@ class VipViewSet(viewsets.ModelViewSet):
         wechat = self.request.GET.get('wechat', '').strip()
         if wechat:
             qs = qs.filter(wechat__icontains=wechat)
-        return qs.order_by('-indate', 'vcode')
+        ordering = self.request.GET.get('ordering', 'pinyin').strip()
+        safe_fields = {f.name for f in Vip._meta.fields}
+        pinyin_empty_last = Case(
+            When(pinyin__isnull=True, then=Value(1)),
+            When(pinyin='', then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        )
+        if ordering.lstrip('-') in safe_fields and ordering.lstrip('-') != 'pinyin':
+            qs = qs.order_by(ordering, 'vcode')
+        else:
+            qs = qs.order_by(pinyin_empty_last, 'pinyin', 'vcode')
+        return qs
 
 def generatecrmcase(request):
     ps_date = request.GET['ps_date']
@@ -252,7 +284,7 @@ def get_vipcasedetail_byvipuuid(request):
     vipuuid = request.GET.get('vipuuid','').replace('-','')
     print('vipuuid=',vipuuid)
 
-    sql = "  select a.uuid , a.casetype , a.detail, a.ecode ,DATE(a.create_time) created_date, TIME (a.create_time) created_time,nextdate,nextecode,status"\
+    sql = "  select a.uuid , a.casetype , a.detail, a.detaildescription detaildescription, a.ecode ,DATE(a.create_time) created_date, TIME (a.create_time) created_time,nextdate,nextecode,status"\
           "  from vipcasedetail a"\
           "  where 1=1 and a.flag='Y' "\
           "  and a.company = %s AND a.vipuuid = %s " \
@@ -284,7 +316,7 @@ def get_planvipcasedetail_byecode(request):
     nextdate = datetime.datetime.strptime(nextdate_s,'%Y-%m-%d')
     print('nextdate',nextdate)
 
-    sql = "  select a.uuid , a.casetype , a.detail, a.ecode ,DATE(a.create_time) created_date, TIME (a.create_time) created_time,nextdate,nextecode,a.status," \
+    sql = "  select a.uuid , a.casetype , a.detail, a.detaildescription detaildescription, a.ecode ,DATE(a.create_time) created_date, TIME (a.create_time) created_time,nextdate,nextecode,a.status," \
           "  a.vipuuid, b.vcode,b.vname, b.mtcode "\
           "  from vipcasedetail a, vip b"\
           "  where 1=1 and a.flag='Y' and b.flag='Y' " \
@@ -301,7 +333,7 @@ def get_planvipcasedetail_byecode(request):
 
 def get_vipcasedetail(request):
     uuid = request.GET.get('uuid')
-    sql = "  select a.uuid , a.casetype , a.detail, a.ecode ,DATE(a.create_time) created_date, TIME (a.create_time) created_time,nextdate,nextecode,status"\
+    sql = "  select a.uuid , a.casetype , a.detail, a.detaildescription detaildescription, a.ecode ,DATE(a.create_time) created_date, TIME (a.create_time) created_time,nextdate,nextecode,status"\
           "  from vipcasedetail a"\
           "  where 1=1 and a.flag='Y' "\
           "  and a.uuid = %s  " \

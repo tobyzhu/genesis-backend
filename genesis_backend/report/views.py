@@ -1927,20 +1927,26 @@ def get_testdata(request):
 @csrf_exempt
 def card_balance_report_api(request):
     from report.card_balance_report import build_card_balance_report
+    from report.scope import resolve_report_store_scope
     '''卡余额汇总 API（JSON 版，替代 Django Admin）'''
-    company = request.GET.get('company', '')
-    storecode = request.GET.get('storecode', '')
+    company = (request.GET.get('company') or '').strip()
     comptype = request.GET.get('comptype', '')
     nature = request.GET.get('nature', '')
     keyword = request.GET.get('keyword', '')
     only_with_balance = request.GET.get('only_with_balance', '1') != '0'
 
     if not company:
-        return JsonResponse({'error': '缺少 company 参数'}, status=400)
+        return JsonResponse({'ok': False, 'error': '缺少 company 参数'}, status=400)
 
+    ok, scope = resolve_report_store_scope(request, company)
+    if not ok:
+        status = scope.pop('status', 400)
+        return JsonResponse(scope, status=status)
+
+    storecodes = scope['storecodes']
     result = build_card_balance_report(
         company=company,
-        storecode=storecode,
+        storecodes=storecodes,
         suptype='',
         comptype=comptype,
         nature=nature,
@@ -1958,7 +1964,47 @@ def card_balance_report_api(request):
             return float(obj)
         return obj
 
-    return JsonResponse(_to_json(result), safe=False)
+    data = _to_json(result)
+    rows = data.get('summary_rows') or []
+    grand = data.get('grand_totals') or {}
+    totals = {
+        'normal_count': sum(int(r.get('normal_count') or 0) for r in rows),
+        'normal_leftmoney': round(sum(float(r.get('normal_leftmoney') or 0) for r in rows), 2),
+        'normal_leftqty': sum(float(r.get('normal_leftqty') or 0) for r in rows),
+        'gift_count': sum(int(r.get('gift_count') or 0) for r in rows),
+        'gift_leftmoney': round(sum(float(r.get('gift_leftmoney') or 0) for r in rows), 2),
+        'gift_leftqty': sum(float(r.get('gift_leftqty') or 0) for r in rows),
+        'total_count': sum(int(r.get('total_count') or 0) for r in rows),
+        'total_leftmoney': round(sum(float(r.get('total_leftmoney') or 0) for r in rows), 2),
+        'total_leftqty': sum(float(r.get('total_leftqty') or 0) for r in rows),
+    }
+    kpis = {
+        'card_count': int(grand.get('card_count') or 0),
+        'normal_amount': float(grand.get('normal_amount') or 0),
+        'gift_amount': float(grand.get('gift_amount') or 0),
+        'total_amount': float(grand.get('total_amount') or 0),
+        'normal_times': float(grand.get('normal_times') or 0),
+        'gift_times': float(grand.get('gift_times') or 0),
+    }
+    return JsonResponse({
+        'ok': True,
+        'meta': {
+            'company': company,
+            'storecodes': storecodes,
+            'allowed_storecodes': scope['allowed_storecodes'],
+            'comptype': comptype,
+            'nature': nature,
+            'keyword': keyword,
+            'only_with_balance': only_with_balance,
+        },
+        'kpis': kpis,
+        'rows': rows,
+        'totals': totals,
+        # 兼容旧前端字段
+        'summary_rows': rows,
+        'grand_totals': grand,
+        'diagnostics': data.get('diagnostics'),
+    })
 
 @csrf_exempt
 def store_performance_api(request):
@@ -2006,3 +2052,153 @@ def store_performance_api(request):
         return JsonResponse(rows, safe=False)
     except Exception as exc:
         return JsonResponse({'error': str(exc)}, status=500)
+
+
+@csrf_exempt
+def business_daily_flow_api(request):
+    """营业流水表：默认明细行；也可店×日 / 按店合计。"""
+    from django.db import connection
+    from report.business_flow import build_business_line_flow
+    from report.scope import resolve_report_store_scope
+
+    company = (request.GET.get('company') or '').strip()
+    from_date = (request.GET.get('from_date') or '').strip()
+    to_date = (request.GET.get('to_date') or '').strip()
+    view = (request.GET.get('view') or 'line').strip().lower()
+    # detail 兼容旧前端：店×日汇总
+    if view == 'detail':
+        view = 'daily'
+    if view not in ('line', 'daily', 'by_store'):
+        view = 'line'
+
+    ok, scope = resolve_report_store_scope(request, company)
+    if not ok:
+        status = scope.pop('status', 400)
+        return JsonResponse(scope, status=status)
+
+    storecodes = scope['storecodes']
+
+    if view == 'line':
+        try:
+            limit = int(request.GET.get('limit') or 5000)
+        except (TypeError, ValueError):
+            limit = 5000
+        try:
+            result = build_business_line_flow(
+                company=company,
+                storecodes=storecodes,
+                from_date=from_date,
+                to_date=to_date,
+                limit=limit,
+            )
+            meta = {
+                'company': company,
+                'storecodes': storecodes,
+                'allowed_storecodes': scope['allowed_storecodes'],
+                'from_date': from_date,
+                'to_date': to_date,
+                **(result.get('meta') or {}),
+                'view': 'line',
+            }
+            return JsonResponse({
+                'ok': True,
+                'meta': meta,
+                'kpis': result.get('kpis') or {},
+                'rows': result.get('rows') or [],
+                'totals': result.get('totals') or {},
+            })
+        except Exception as exc:
+            return JsonResponse({'ok': False, 'error': str(exc)}, status=500)
+
+    placeholders = ','.join(['%s'] * len(storecodes))
+
+    if view == 'by_store':
+        select_dims = "e.storecode, MAX(s.storename) AS storename"
+        group_by = "e.storecode"
+        order_by = "e.storecode"
+    else:
+        select_dims = "e.vsdate, e.storecode, MAX(s.storename) AS storename"
+        group_by = "e.vsdate, e.storecode"
+        order_by = "e.vsdate DESC, e.storecode"
+
+    sql = f"""
+        SELECT {select_dims},
+               SUM(CASE WHEN x.TTYPE = 'S' THEN x.S_MOUNT ELSE 0 END) AS am_S,
+               SUM(CASE WHEN x.TTYPE = 'G' THEN x.S_MOUNT ELSE 0 END) AS am_G,
+               SUM(CASE WHEN x.TTYPE = 'C' THEN x.S_MOUNT ELSE 0 END) AS am_C,
+               SUM(CASE WHEN x.TTYPE = 'I' THEN x.S_MOUNT ELSE 0 END) AS am_I,
+               COUNT(DISTINCT e.uuid) AS trans_count
+        FROM expvstoll e
+        INNER JOIN expense x ON e.uuid = x.transuuid
+        LEFT JOIN storeinfo s
+               ON s.company = e.company AND s.storecode = e.storecode AND s.flag = 'Y'
+        WHERE e.company = %s
+          AND e.flag = 'Y' AND e.valiflag = 'Y' AND x.flag = 'Y'
+          AND e.storecode IN ({placeholders})
+    """
+    params = [company] + list(storecodes)
+    if from_date:
+        sql += " AND e.vsdate >= %s"
+        params.append(from_date)
+    if to_date:
+        sql += " AND e.vsdate <= %s"
+        params.append(to_date)
+    sql += f" GROUP BY {group_by} ORDER BY {order_by}"
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            cols = [d[0] for d in cursor.description]
+            rows = []
+            totals = {
+                'am_S': 0.0, 'am_G': 0.0, 'am_C': 0.0, 'am_I': 0.0,
+                'total': 0.0, 'trans_count': 0,
+            }
+            for row in cursor.fetchall():
+                d = dict(zip(cols, row))
+                d['am_S'] = float(d.get('am_S') or 0)
+                d['am_G'] = float(d.get('am_G') or 0)
+                d['am_C'] = float(d.get('am_C') or 0)
+                d['am_I'] = float(d.get('am_I') or 0)
+                d['trans_count'] = int(d.get('trans_count') or 0)
+                d['total'] = d['am_S'] + d['am_G'] + d['am_C'] + d['am_I']
+                if view == 'by_store':
+                    d['vsdate'] = ''
+                d['storename'] = d.get('storename') or d.get('storecode') or ''
+                rows.append(d)
+                totals['am_S'] += d['am_S']
+                totals['am_G'] += d['am_G']
+                totals['am_C'] += d['am_C']
+                totals['am_I'] += d['am_I']
+                totals['total'] += d['total']
+                totals['trans_count'] += d['trans_count']
+
+        kpis = {
+            'am_S': round(totals['am_S'], 2),
+            'am_G': round(totals['am_G'], 2),
+            'am_C': round(totals['am_C'], 2),
+            'am_I': round(totals['am_I'], 2),
+            'total': round(totals['total'], 2),
+            'trans_count': totals['trans_count'],
+            'store_count': len(storecodes),
+            'row_count': len(rows),
+        }
+        for key in ('am_S', 'am_G', 'am_C', 'am_I', 'total'):
+            totals[key] = round(totals[key], 2)
+
+        return JsonResponse({
+            'ok': True,
+            'meta': {
+                'company': company,
+                'storecodes': storecodes,
+                'allowed_storecodes': scope['allowed_storecodes'],
+                'from_date': from_date,
+                'to_date': to_date,
+                'view': view,
+            },
+            'kpis': kpis,
+            'rows': rows,
+            'totals': totals,
+        })
+    except Exception as exc:
+        return JsonResponse({'ok': False, 'error': str(exc)}, status=500)

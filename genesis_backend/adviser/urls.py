@@ -56,12 +56,15 @@ urlpatterns=[
     url(r'save_hung/?', views.save_hung_order),
     url(r'search_vip/', views.search_vip),
     url(r'update_hung_item_employees/', views.update_hung_item_employees),
+    url(r'update_hung_items_audit/', views.update_hung_items_audit),
     url(r"void_hung_order/", views.void_hung_order),
 
     url(r'cardtype_prices/?', views.cardtype_prices),
 
 
     url(r'active_promotions/?', views.active_promotions),
+    url(r'get_promotion_setup/?', views.get_promotion_setup),
+    url(r'save_promotion_setup/?', views.save_promotion_setup),
 
     url(r'categorized_items/?', views.categorized_items),
 

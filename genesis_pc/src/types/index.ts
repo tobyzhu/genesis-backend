@@ -149,19 +149,19 @@ export interface StatusChangeResult {
 
 /** 预约状态常量 */
 export const BOOKING_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  '100': { label: '未到店', color: '#E6A23C' },
-  '200': { label: '已到店', color: '#67C23A' },
-  '210': { label: '进房间', color: '#409EFF' },
-  '220': { label: '服务中', color: '#1890FF' },
-  '224': { label: '仪器开始', color: '#722ED1' },
-  '227': { label: '仪器结束', color: '#722ED1' },
-  '230': { label: '已完成', color: '#52C41A' },
-  '240': { label: '离房', color: '#13C2C2' },
-  '250': { label: '呼叫清洁', color: '#FA8C16' },
-  '260': { label: '清洁中', color: '#FA8C16' },
-  '270': { label: '清洁完成', color: '#52C41A' },
-  '290': { label: '离店', color: '#C0C4CC' },
-  '390': { label: '取消', color: '#F56C6C' },
+  '100': { label: '未到店', color: 'var(--g-color-warning)' },
+  '200': { label: '已到店', color: 'var(--g-color-success)' },
+  '210': { label: '进房间', color: 'var(--g-color-primary)' },
+  '220': { label: '服务中', color: 'var(--g-color-primary)' },
+  '224': { label: '仪器开始', color: 'var(--g-color-primary)' },
+  '227': { label: '仪器结束', color: 'var(--g-color-primary)' },
+  '230': { label: '已完成', color: 'var(--g-color-success)' },
+  '240': { label: '离房', color: 'var(--g-color-success)' },
+  '250': { label: '呼叫清洁', color: 'var(--g-color-warning)' },
+  '260': { label: '清洁中', color: 'var(--g-color-warning)' },
+  '270': { label: '清洁完成', color: 'var(--g-color-success)' },
+  '290': { label: '离店', color: 'var(--g-color-text-muted)' },
+  '390': { label: '取消', color: 'var(--g-color-danger)' },
 }
 
 // ====== 收银开单 ======

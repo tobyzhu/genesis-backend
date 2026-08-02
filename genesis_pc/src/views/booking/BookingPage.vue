@@ -246,7 +246,7 @@
         <template v-if="vipSuggestions.length">
 /* 排班管理 */
 .schedule-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.schedule-week-label { font-size: 14px; font-weight: 600; color: #303133; min-width: 130px; text-align: center; }
+.schedule-week-label { font-size: 14px; font-weight: 600; color: var(--g-color-text); min-width: 130px; text-align: center; }
           <div class="search-suggestions">
             <div
               v-for="v in vipSuggestions"
@@ -472,7 +472,7 @@ const statusFlow = computed(() => {
   return codes.map(c => ({
     code: c,
     label: BOOKING_STATUS_MAP[c]?.label ?? c,
-    color: BOOKING_STATUS_MAP[c]?.color ?? '#999',
+    color: BOOKING_STATUS_MAP[c]?.color ?? 'var(--g-color-text-muted)',
   }))
 })
 
@@ -518,7 +518,7 @@ function timeDiffPx(start: string, end: string): number {
 }
 
 function getStatusInfo(code: string) {
-  return BOOKING_STATUS_MAP[code] || { label: '未知', color: '#999' }
+  return BOOKING_STATUS_MAP[code] || { label: '未知', color: 'var(--g-color-text-muted)' }
 }
 
 // ====== 状态操作定义 ======
@@ -1068,46 +1068,46 @@ onUnmounted(() => {
 /* 工具栏 */
 .toolbar {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 16px; background: #fff; border-bottom: 1px solid #ebeef5;
+  padding: 12px 16px; background:var(--g-color-surface); border-bottom: 1px solid var(--g-color-border);
   flex-shrink: 0; gap: 12px; flex-wrap: wrap;
 }
 .toolbar-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .toolbar-right { display: flex; align-items: center; gap: 8px; }
 .date-picker { width: 140px; }
-.date-label { font-size: 14px; color: #606266; white-space: nowrap; }
+.date-label { font-size: 14px; color: var(--g-color-text-secondary); white-space: nowrap; }
 
 /* 时间线 */
 .timeline-wrapper { flex: 1; overflow: auto; position: relative; }
 .timeline-scroll { min-width: 100%; padding-bottom: 16px; }
 
 .timeline-header {
-  display: flex; border-bottom: 1px solid #e4e7ed;
-  position: sticky; top: 0; background: #fafafa; z-index: 10;
+  display: flex; border-bottom: 1px solid var(--g-color-border-strong);
+  position: sticky; top: 0; background: var(--g-color-surface-muted); z-index: 10;
 }
 .emp-header-cell {
   width: 140px; flex-shrink: 0; padding: 8px 12px;
-  font-size: 12px; color: #909399; font-weight: 600; text-align: center;
+  font-size: 12px; color: var(--g-color-text-muted); font-weight: 600; text-align: center;
 }
 .time-header-cell {
-  flex-shrink: 0; padding: 8px 0; font-size: 12px; color: #909399; text-align: center;
-  border-left: 1px solid #e4e7ed;
+  flex-shrink: 0; padding: 8px 0; font-size: 12px; color: var(--g-color-text-muted); text-align: center;
+  border-left: 1px solid var(--g-color-border-strong);
 }
 
 .timeline-body { }
 .timeline-row {
-  display: flex; border-bottom: 1px solid #f2f3f5;
+  display: flex; border-bottom: 1px solid var(--g-color-border);
   position: relative; transition: background 0.15s;
 }
-.timeline-row:hover { background: #f5f7fa; }
+.timeline-row:hover { background: var(--g-color-surface-muted); }
 .row-off { opacity: 0.5; }
 
 .emp-cell {
   width: 140px; flex-shrink: 0; padding: 6px 12px;
   display: flex; flex-direction: column; justify-content: center;
-  border-right: 1px solid #e4e7ed; background: #fff; z-index: 5;
+  border-right: 1px solid var(--g-color-border-strong); background:var(--g-color-surface); z-index: 5;
 }
-.emp-name { font-size: 14px; font-weight: 500; color: #303133; }
-.emp-schedule { font-size: 11px; color: #909399; margin-top: 1px; }
+.emp-name { font-size: 14px; font-weight: 500; color: var(--g-color-text); }
+.emp-schedule { font-size: 11px; color: var(--g-color-text-muted); margin-top: 1px; }
 .no-book-tag { margin-top: 2px; }
 
 .timeline-track {
@@ -1116,7 +1116,7 @@ onUnmounted(() => {
 
 .schedule-highlight {
   position: absolute; top: 2px; bottom: 2px;
-  background: #f0f5ff; border-radius: 2px; z-index: 0;
+  background: var(--g-color-primary-soft); border-radius: 2px; z-index: 0;
 }
 
 .booking-block {
@@ -1127,13 +1127,13 @@ onUnmounted(() => {
 .booking-block:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 20;
 }
-.booking-block.status-100 { background: #fdf6ec; border-top: 3px solid #E6A23C; }
-.booking-block.status-200 { background: #f0f9eb; border-top: 3px solid #67C23A; }
-.booking-block.status-210 { background: #ecf5ff; border-top: 3px solid #409EFF; }
-.booking-block.status-220 { background: #e6f7ff; border-top: 3px solid #1890FF; }
+.booking-block.status-100 { background: var(--g-color-warning-bg); border-top: 3px solid var(--g-color-warning); }
+.booking-block.status-200 { background: var(--g-color-success-soft); border-top: 3px solid var(--g-color-success); }
+.booking-block.status-210 { background: var(--g-color-primary-soft); border-top: 3px solid var(--g-color-primary); }
+.booking-block.status-220 { background: var(--g-color-primary-soft); border-top: 3px solid var(--g-color-primary); }
 .booking-block.status-230,
-.booking-block.status-290 { background: #f4f4f5; border-top: 3px solid #C0C4CC; }
-.booking-block.status-390 { background: #fef0f0; border-top: 3px solid #F56C6C; opacity: 0.7; }
+.booking-block.status-290 { background: var(--g-color-surface-muted); border-top: 3px solid var(--g-color-text-muted); }
+.booking-block.status-390 { background: var(--g-color-danger-bg); border-top: 3px solid var(--g-color-danger); opacity: 0.7; }
 .booking-block.status-390 .block-line-top,
 .booking-block.status-390 .block-line-bottom { opacity: 0.6; }
 
@@ -1147,19 +1147,19 @@ onUnmounted(() => {
 }
 .block-line-top { margin-bottom: 0; }
 .block-line-bottom { }
-.block-name { font-size: 11px; font-weight: 600; color: #303133; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
-.block-time { font-size: 9px; color: #909399; white-space: nowrap; margin-left: 4px; flex-shrink: 0; }
-.block-detail { font-size: 10px; color: #606266; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
-.block-emp { font-size: 9px; color: #909399; white-space: nowrap; margin-left: 4px; flex-shrink: 0; }
+.block-name { font-size: 11px; font-weight: 600; color: var(--g-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.block-time { font-size: 9px; color: var(--g-color-text-muted); white-space: nowrap; margin-left: 4px; flex-shrink: 0; }
+.block-detail { font-size: 10px; color: var(--g-color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.block-emp { font-size: 9px; color: var(--g-color-text-muted); white-space: nowrap; margin-left: 4px; flex-shrink: 0; }
 
 /* Hover 浮层 */
 .hover-popover {
-  position: fixed; z-index: 2000; background: #fff;
+  position: fixed; z-index: 2000; background:var(--g-color-surface);
   border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   padding: 12px; min-width: 200px; max-width: 320px;
 }
 .popover-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.popover-info { font-size: 12px; color: #606266; margin-bottom: 2px; }
+.popover-info { font-size: 12px; color: var(--g-color-text-secondary); margin-bottom: 2px; }
 .popover-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 
 /* 列表 */
@@ -1167,45 +1167,45 @@ onUnmounted(() => {
 
 /* Drawer */
 .drawer-status-section { margin-top: 20px; }
-.section-title { font-size: 14px; font-weight: 600; color: #303133; margin-bottom: 12px; }
+.section-title { font-size: 14px; font-weight: 600; color: var(--g-color-text); margin-bottom: 12px; }
 .status-progress { display: flex; gap: 4px; align-items: center; }
 .status-step {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   cursor: pointer; padding: 4px 8px; border-radius: 4px;
   transition: background 0.15s;
 }
-.status-step:hover { background: #f5f7fa; }
-.status-step.active .step-dot { transform: scale(1.3); box-shadow: 0 0 0 3px rgba(64,158,255,0.3); }
+.status-step:hover { background: var(--g-color-surface-muted); }
+.status-step.active .step-dot { transform: scale(1.3); box-shadow: 0 0 0 3px color-mix(in srgb, var(--g-color-primary) 30%, transparent); }
 .status-step.done { opacity: 0.6; }
 .step-dot { width: 12px; height: 12px; border-radius: 50%; transition: 0.15s; }
-.step-label { font-size: 11px; color: #606266; white-space: nowrap; }
+.step-label { font-size: 11px; color: var(--g-color-text-secondary); white-space: nowrap; }
 
 .drawer-actions { display: flex; gap: 8px; margin-top: 20px; }
 
 /* 搜索提示 */
 /* 排班管理 */
 .schedule-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.schedule-week-label { font-size: 14px; font-weight: 600; color: #303133; min-width: 130px; text-align: center; }
+.schedule-week-label { font-size: 14px; font-weight: 600; color: var(--g-color-text); min-width: 130px; text-align: center; }
 .search-suggestions {
-  border: 1px solid #e4e7ed; border-radius: 4px; max-height: 160px; overflow-y: auto;
+  border: 1px solid var(--g-color-border-strong); border-radius: 4px; max-height: 160px; overflow-y: auto;
   margin-bottom: 8px;
 }
 .suggestion-item { padding: 6px 12px; cursor: pointer; font-size: 13px; }
-.suggestion-item:hover { background: #f5f7fa; }
+.suggestion-item:hover { background: var(--g-color-surface-muted); }
 
 /* 统计摘要 */
 .stats-bar {
   display: flex; align-items: center; gap: 16px;
-  padding: 8px 16px; background: #fff;
-  border-bottom: 1px solid #ebeef5; flex-shrink: 0;
-  font-size: 13px; color: #606266;
+  padding: 8px 16px; background:var(--g-color-surface);
+  border-bottom: 1px solid var(--g-color-border); flex-shrink: 0;
+  font-size: 13px; color: var(--g-color-text-secondary);
 }
 .stat-item { white-space: nowrap; }
 .stat-num { font-size: 18px; font-weight: 700; margin-right: 4px; }
-.stat-instore .stat-num { color: #409EFF; }
-.stat-pending .stat-num { color: #E6A23C; }
-.stat-done .stat-num { color: #67C23A; }
-.stat-cancel .stat-num { color: #C0C4CC; }
+.stat-instore .stat-num { color: var(--g-color-primary); }
+.stat-pending .stat-num { color: var(--g-color-money); }
+.stat-done .stat-num { color: var(--g-color-success); }
+.stat-cancel .stat-num { color: var(--g-color-text-muted); }
 .stat-divider { flex: 1; }
 
 /* 半时刻度线 */
@@ -1214,20 +1214,20 @@ onUnmounted(() => {
   width: 1px; background: repeating-linear-gradient(
     to bottom,
     transparent 0px, transparent 4px,
-    #e8e8e8 4px, #e8e8e8 5px
+    var(--g-color-border-strong) 4px, var(--g-color-border-strong) 5px
   ); z-index: 1; pointer-events: none;
 }
 
 /* 当前时间指示线 */
 .current-time-line {
   position: absolute; top: 0; bottom: 0;
-  width: 2px; background: #F56C6C; z-index: 15;
+  width: 2px; background: var(--g-color-danger); z-index: 15;
   pointer-events: none;
 }
 .current-time-line::before {
   content: ''; position: absolute; top: 0; left: -4px;
   width: 10px; height: 10px; border-radius: 50%;
-  background: #F56C6C;
+  background: var(--g-color-danger);
 }
 
 </style>

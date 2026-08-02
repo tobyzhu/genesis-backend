@@ -32,7 +32,7 @@ from adviser.views import sql_to_json
 
 JSONEncoder_old_default = json.JSONEncoder.default
 def JSONEncoder_new_default(self, o):
-    if isinstance(o, UUID.UUID):
+    if isinstance(o, UUID):
         return str(o)
     if isinstance(o, datetime.datetime) or isinstance(o, datetime.date):
         dt_str = o.isoformat()
@@ -719,6 +719,21 @@ def get_empllist(request):
     params = (company+' '+ storecode ).split()
     json_data = sql_to_json(sql,params)
     return HttpResponse(json_data, content_type="application/json")
+
+
+@csrf_exempt
+def employees_list(request):
+    """GET /baseinfo/employees/ — 员工下拉列表（公司/门店作用域）。"""
+    company = request.GET.get('company') or request.META.get('HTTP_X_COMPANY', '')
+    storecode = request.GET.get('storecode') or request.META.get('HTTP_X_STORECODE', '')
+    qs = Empl.objects.filter(company=company, flag='Y')
+    if storecode:
+        qs = qs.filter(storecode=storecode)
+    results = [
+        {'ecode': e.ecode or '', 'ename': e.ename or ''}
+        for e in qs.order_by('ecode')
+    ]
+    return JsonResponse({'results': results})
 
 @csrf_exempt
 def get_pmcodelist(request):

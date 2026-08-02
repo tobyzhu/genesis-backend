@@ -1,73 +1,99 @@
 <template>
   <div class="vip-list">
-    <!-- 搜索区域 -->
-    <el-card shadow="never" class="search-card">
-      <el-form :inline="true" :model="query" size="default">
-        <el-form-item label="关键字">
-          <el-input
-            v-model="query.keyword"
-            placeholder="姓名 / 手机号 / 会员号"
-            clearable
-            style="width: 220px"
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="等级">
-          <el-select
-            v-model="query.viplevel"
-            placeholder="全部等级"
-            clearable
-            style="width: 140px"
-          >
-            <el-option
-              v-for="opt in viplevelSelectOptions"
-              :key="lv"
-              :label="lv"
-              :value="lv"
+    <!-- 搜索工具栏 -->
+    <div class="section filter-section">
+      <div class="filter-row">
+        <h3 class="filter-title">会员管理</h3>
+        <el-form :inline="true" :model="query" size="small">
+          <el-form-item label="关键字">
+            <el-input
+              v-model="query.keyword"
+              placeholder="姓名 / 手机号 / 会员号 / 拼音"
+              clearable
+              style="width: 220px"
+              @keyup.enter="handleSearch"
             />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="类型">
-          <el-select
-            v-model="query.viptype"
-            placeholder="全部"
-            clearable
-            style="width: 120px"
-          >
-            <el-option label="会员" value="10" />
-            <el-option label="散客" value="20" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          </el-form-item>
+          <el-form-item label="等级">
+            <el-select
+              v-model="query.viplevel"
+              placeholder="全部等级"
+              clearable
+              style="width: 140px"
+            >
+              <el-option
+                v-for="opt in viplevelSelectOptions"
+                :key="opt.itemname"
+                :label="opt.itemvalues"
+                :value="opt.itemname"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="类型">
+            <el-select
+              v-model="query.viptype"
+              placeholder="全部"
+              clearable
+              style="width: 120px"
+            >
+              <el-option v-for="opt in viptypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" size="small" @click="openAddDialog">新增会员</el-button>
+      </div>
+      <div class="section-body letter-wrap">
+        <div class="letter-bar">
+          <span class="letter-label">拼音</span>
+          <button
+            v-for="l in letters"
+            :key="l"
+            class="letter-btn"
+            :class="{ active: query.pinyin === l }"
+            @click="pickLetter(l)"
+          >{{ l }}</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 表格区域 -->
-    <el-card shadow="never" class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>会员列表</span>
-          <el-button type="primary" size="small" @click="openAddDialog">新增会员</el-button>
-        </div>
-      </template>
+    <div class="section table-section">
+      <div class="section-head">
+        <span>会员列表</span>
+        <span class="section-hint">{{ total }} 位会员</span>
+      </div>
 
-      <el-table :data="list" v-loading="loading" stripe highlight-current-row>
-        <el-table-column prop="vcode" label="会员号" width="120" />
-        <el-table-column prop="vname" label="姓名" min-width="100" show-overflow-tooltip />
-        <el-table-column prop="mtcode" label="手机号" width="130" />
-        <el-table-column prop="viplevel" label="等级" width="80" />
-        <el-table-column prop="sex" label="性别" width="60" />
-        <el-table-column label="来源" width="100">
+      <el-table :data="list" v-loading="loading" stripe highlight-current-row height="calc(100vh - 300px)">
+        <el-table-column label="会员" width="120">
           <template #default="{ row }">
-            {{ getSourceName(row.source) }}
+            <div class="member-cell">
+              <div class="member-avatar">{{ (row.vname || '?').slice(0, 1) }}</div>
+              <div class="member-info">
+                <div class="member-name">
+                  {{ row.vname || '--' }}
+                </div>
+              </div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="80" />
+        <el-table-column prop="vcode" label="会员号" width="110" show-overflow-tooltip />
+        <el-table-column prop="mtcode" label="手机号" width="130" show-overflow-tooltip />
+        <el-table-column label="类型" width="70">
+          <template #default="{ row }">{{ typeLabel(row) }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="90" show-overflow-tooltip>
+          <template #default="{ row }">{{ statusLabel(row) }}</template>
+        </el-table-column>
+        <el-table-column label="等级" width="90">
+          <template #default="{ row }">
+            <el-tag size="small" :type="levelType(row.viplevel)" effect="plain">{{ row.viplevel || '--' }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="indate" label="入会日期" width="110" />
-        <el-table-column prop="birth" label="生日" width="70" />
         <el-table-column prop="ecode" label="负责顾问" width="100" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
@@ -80,7 +106,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pagination-wrap">
+      <div class="pagination-bar">
         <el-pagination
           v-model:current-page="page"
           :page-size="pageSize"
@@ -89,7 +115,7 @@
           @current-change="fetchList"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 新增 / 编辑对话框 -->
     <el-dialog
@@ -218,7 +244,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { getVipList, createVip, updateVip, deleteVip, getVipFilterOptions, getAppoptionBySeg } from '@/api/vip'
+import { getVipList, createVip, updateVip, deleteVip, getVipFilterOptions, getAppoptionBySeg, getAppoptionBySegFor } from '@/api/vip'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import type { Vip } from '@/types'
 
@@ -233,7 +259,29 @@ const query = reactive({
   keyword: '',
   viplevel: '',
   viptype: '',
+  pinyin: '',
 })
+
+const letters = ['全部', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
+
+function pickLetter(l: string) {
+  query.pinyin = l === '全部' ? '' : l
+  page.value = 1
+  fetchList()
+}
+
+function levelType(level: string) {
+  const map: Record<string, any> = { A: 'success', B: 'primary', C: 'warning', D: 'info' }
+  return map[level] || 'info'
+}
+
+function typeLabel(row: any) {
+  return row.viptype_name || row.viptype || '--'
+}
+
+function statusLabel(row: any) {
+  return row.status_name || row.status || '--'
+}
 
 // ---- 来源渠道选项 ----
 const sourceOptions = ref<Array<{itemname: string, itemvalues: string}>>([])
@@ -252,6 +300,7 @@ function getSourceName(code: string): string {
 
 // ---- 会员等级选项 ----
 const viplevelSelectOptions = ref<Array<{itemname: string, itemvalues: string}>>([])
+const viptypeOptions = ref<Array<{label: string, value: string}>>([])
 const tagOptions = ref<Array<{itemname: string, itemvalues: string}>>([])
 const formTags = ref<string[]>([])
 async function fetchViplevelSelectOptions() {
@@ -260,6 +309,17 @@ async function fetchViplevelSelectOptions() {
     viplevelSelectOptions.value = res.data
   } catch {
     viplevelSelectOptions.value = []
+  }
+}
+async function fetchViptypeOptions() {
+  try {
+    const res = await getAppoptionBySegFor('common', 'viptype')
+    viptypeOptions.value = (Array.isArray(res.data) ? res.data : []).map((o: any) => ({
+      label: o.itemvalues,
+      value: o.itemname,
+    }))
+  } catch {
+    viptypeOptions.value = []
   }
 }
 async function fetchTagOptions() {
@@ -307,6 +367,7 @@ onMounted(() => {
   fetchList()
   fetchSourceOptions()
   fetchViplevelSelectOptions()
+  fetchViptypeOptions()
   fetchTagOptions()
 })
 
@@ -316,6 +377,7 @@ function buildParams(): Record<string, any> {
   if (query.keyword) params.search = query.keyword
   if (query.viplevel) params.viplevel = query.viplevel
   if (query.viptype) params.viptype = query.viptype
+  if (query.pinyin) params.pinyin = query.pinyin
   return params
 }
 
@@ -339,6 +401,7 @@ function resetQuery() {
   query.keyword = ''
   query.viplevel = ''
   query.viptype = ''
+  query.pinyin = ''
   page.value = 1
   fetchList()
 }
@@ -427,8 +490,29 @@ function handleDelete(row: Vip) {
   padding: 0;
 }
 
-.search-card {
-  margin-bottom: 12px;
+.filter-section {
+  margin-bottom: 8px;
+}
+.filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--g-color-border);
+}
+.filter-row .el-form {
+  margin-bottom: 0;
+}
+.filter-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--g-color-text);
+}
+.letter-wrap {
+  padding: 6px 12px 10px;
 }
 
 .card-header {
@@ -442,4 +526,19 @@ function handleDelete(row: Vip) {
   display: flex;
   justify-content: flex-end;
 }
+.status-dot.dot-ok { background: var(--g-color-success); }
+.status-dot.dot-muted { background: var(--g-color-text-muted); }
+.letter-bar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.letter-label { font-size: 12px; color: var(--g-color-text-muted); margin-right: 4px; }
+.letter-btn { min-width: 26px; height: 24px; padding: 0 6px; border: 1px solid var(--g-color-border); border-radius: var(--g-radius-sm); background: var(--g-color-surface); color: var(--g-color-text-secondary); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+.letter-btn:hover { border-color: var(--g-color-primary-border); color: var(--g-color-primary); }
+.letter-btn.active { background: var(--g-color-primary); border-color: var(--g-color-primary); color: #fff; font-weight: 600; }
+.member-cell { display: flex; align-items: center; gap: 8px; }
+.member-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--g-color-primary-soft); color: var(--g-color-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.member-info { min-width: 0; }
+.member-name { font-weight: 600; color: var(--g-color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-section .section-head { padding: 8px 12px; }
+.section-hint { font-size: 12px; font-weight: 400; color: var(--g-color-text-muted); }
+.vip-list :deep(.el-table) { font-size: 12.5px; }
+.vip-list :deep(.el-table .cell) { padding: 0 6px; }
 </style>

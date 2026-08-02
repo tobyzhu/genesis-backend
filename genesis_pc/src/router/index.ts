@@ -40,9 +40,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'adviser/billing',
-        name: 'Billing',
-        component: () => import('@/views/adviser/BillingPage.vue'),
-        meta: { title: '手工开单', icon: 'Ticket' },
+        redirect: 'adviser/billing-v2',
       },
       {
         path: 'adviser/billing-v2',
@@ -110,6 +108,12 @@ const routes: RouteRecordRaw[] = [
         name: 'StorePerformance',
         component: () => import('@/views/report/StorePerformancePage.vue'),
         meta: { title: '门店业绩', icon: 'DataAnalysis' },
+      },
+      {
+        path: 'report/business-flow',
+        name: 'BusinessDailyFlow',
+        component: () => import('@/views/report/BusinessDailyFlowPage.vue'),
+        meta: { title: '营业流水表', icon: 'DataAnalysis' },
       },
       {
         path: '/crm',

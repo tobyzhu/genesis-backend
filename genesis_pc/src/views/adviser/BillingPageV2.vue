@@ -38,7 +38,7 @@
           </div>
         </el-card>
         <el-card v-if="selectedVip && vipCards.length" shadow="never" class="section-card card-list-card">
-          <template #header>名下卡片 <span style="color:#909399;font-weight:400;font-size:12px">({{ vipCards.length }})</span></template>
+          <template #header>名下卡片 <span style="color:var(--g-color-text-muted);font-weight:400;font-size:12px">({{ vipCards.length }})</span></template>
           <el-collapse v-model="activeCardGroups" class="card-collapse">
             <el-collapse-item v-for="(g, pi) in cardGroups" :key="pi" :title="g.promotionName" :name="pi">
               <div v-for="(ctg, ci) in g.comptypeGroups" :key="ci">
@@ -75,7 +75,7 @@
                 <el-radio-button value="G">商品</el-radio-button>
                 <el-radio-button value="C">售卡</el-radio-button>
                 <el-radio-button value="I">充值</el-radio-button>
-                <el-radio-button value="P">🎯 活动</el-radio-button>
+                <el-radio-button value="P">活动</el-radio-button>
               </el-radio-group>
               <template v-if="itemTab === 'C'">
                 <el-radio-group v-model="cardSaleMode" size="small">
@@ -92,16 +92,16 @@
             <template v-if="itemTab !== 'I'">
               <div class="item-selector-body">
                 <div class="category-tree-panel">
-                  <div class="cat-node" :class="{ active: selectedCategory === '' }" @click="selectedCategory = ''">📂 全部</div>
+                  <div class="cat-node" :class="{ active: selectedCategory === '' }" @click="selectedCategory = ''">全部</div>
                   <template v-for="cat in categories" :key="cat.code">
-                    <div class="cat-node" :class="{ active: selectedCategory === cat.code }" @click="selectedCategory = cat.code">📁 {{ cat.name }}</div>
+                    <div class="cat-node" :class="{ active: selectedCategory === cat.code }" @click="selectedCategory = cat.code">{{ cat.name }}</div>
                     <div v-if="cat.children && cat.children.length" class="cat-children">
-                      <div v-for="child in cat.children" :key="child.code" class="cat-node cat-child" :class="{ active: selectedCategory === child.code }" @click="selectedCategory = child.code">📁 {{ child.name }}</div>
+                      <div v-for="child in cat.children" :key="child.code" class="cat-node cat-child" :class="{ active: selectedCategory === child.code }" @click="selectedCategory = child.code">{{ child.name }}</div>
                     </div>
                   </template>
                 </div>
                <div class="item-grid-panel">
-                  <div v-if="selectedCard?.comptype === 'times'" class="times-card-hint">💡 已选计次卡，双击计次卡添加关联项目</div>
+                  <div v-if="selectedCard?.comptype === 'times'" class="times-card-hint">已选计次卡，双击计次卡添加关联项目</div>
                  <div class="item-grid">
                     <div v-for="item in filteredItems" :key="item.code" class="item-card" :class="{ 'item-disabled': selectedCard?.comptype === 'times' }" @click="selectedCard?.comptype === 'times' ? null : (itemTab === 'C' ? addCardSale(item) : addToCart(item))">
                      <div class="item-name">{{ item.name }}</div>
@@ -131,7 +131,7 @@
                     </div>
                     <div class="rc-actions">
                      <el-input-number v-model="rechargeAmounts[card.ccode]" :min="0" :step="rechargeMode === 'refund' && card.comptype === 'times' ? 1 : 100" size="small" :controls="false" style="width:80px" />
-                      <span v-if="rechargeMode === 'refund' && card.comptype === 'times' && (rechargeAmounts[card.ccode] || 0) > 0" style="font-size:12px;color:#e6a23c;font-weight:600">
+                      <span v-if="rechargeMode === 'refund' && card.comptype === 'times' && (rechargeAmounts[card.ccode] || 0) > 0" style="font-size:12px;color:var(--g-color-money);font-weight:600">
                         = ¥{{ (parseFloat(rechargeAmounts[card.ccode] || 0) * parseFloat(card.s_price ?? 0)).toFixed(0) }}
                       </span>
                      <el-button v-if="rechargeMode === 'recharge'" size="small" type="primary" @click="addRecharge(card)">充值</el-button>
@@ -161,7 +161,7 @@
                   </div>
                 </template>
                 <el-empty v-if="!promotions.length && !promotionsLoading" description="暂无有效活动" :image-size="50" />
-                <div v-if="promotionsLoading" style="text-align:center;padding:12px;color:#909399;font-size:13px">加载中...</div>
+                <div v-if="promotionsLoading" style="text-align:center;padding:12px;color:var(--g-color-text-muted);font-size:13px">加载中...</div>
               </div>
               <div class="promo-item-panel">
                 <template v-if="selectedPromotion">
@@ -183,7 +183,7 @@
                       </div>
                       <div class="combo-items" @click="addComboToCart(selectedPromotion)">
                         <div v-for="gi in selectedPromotion.group_items" :key="gi.sgcode" class="combo-item">
-                          <span class="ci-code">{{ gi.ttype === 'S' ? '💆' : '🧴' }}</span>
+                          <span class="ci-code">{{ gi.ttype === 'S' ? '服' : '品' }}</span>
                           <span class="ci-name">{{ gi.itemname }}</span>
                           <span class="ci-qty">×{{ gi.qty }}</span>
                           <span class="ci-price">¥{{ (gi.price || 0).toFixed(0) }}</span>
@@ -279,8 +279,8 @@
               <span style="font-weight:600">开单明细</span>
               <div style="display:flex;align-items:center;gap:10px">
                 <span v-if="selectedCard" class="selected-card-chip">已选: {{ selectedCard.cardname }}({{ selectedCard.ccode }})</span>
-                <span style="font-size:13px;color:#606266">合计: </span>
-                <span style="font-size:18px;font-weight:700;color:#e6a23c">¥{{ cartTotal.toFixed(2) }}</span>
+                <span style="font-size:13px;color:var(--g-color-text-secondary)">合计: </span>
+                <span style="font-size:18px;font-weight:700;color:var(--g-color-money)">¥{{ cartTotal.toFixed(2) }}</span>
                 <el-button type="primary" size="small" :loading="saving" :disabled="!cart.length" @click="saveHung">保存挂账</el-button>
                 <el-button text type="danger" size="small" :disabled="!cart.length" @click="clearCart">清空</el-button>
               </div>
@@ -302,48 +302,60 @@
                 <span class="ci-refund">正/退</span>
                 <span class="ci-pay">扣款方式</span>
                 <span class="ci-cardno">付款卡号</span>
-                <span class="ci-pmcode">开单</span>
-                <span class="ci-ass1">美疗师1</span>
-                <span class="ci-ass2">美疗师2</span>
+                <span class="ci-pmcode">{{ empTitles.pmname }}</span>
+                <span class="ci-ass1">{{ empTitles.secname }}</span>
+                <span class="ci-spec" :title="'是否指定' + empTitles.secname">指定</span>
+                <span class="ci-ass2">{{ empTitles.thrname }}</span>
                 <span class="ci-reason">卡限制</span>
                 <span class="ci-action">操作</span>
               </div>
-              <div v-for="(row, idx) in group.items" :key="row.code + '-' + idx" class="cart-item-row" :class="{ 'refund-row': row.qty < 0 }">
-                <div class="ci-name">{{ row.name }}</div>
-                <div class="ci-stype"><el-select v-model="row.stype" size="small"><el-option label="正常" value="N" /><el-option label="赠送" value="P" /></el-select></div>
-                <div class="ci-qty">{{ row.qty }}</div>
-                <div class="ci-price">¥{{ row.price.toFixed(2) }}</div>
+              <div
+                v-for="row in group.items"
+                :key="row.source + '-' + row.index + '-' + row.item.code"
+                class="cart-item-row"
+                :class="{ 'refund-row': row.item.qty < 0 }"
+              >
+                <div class="ci-name">{{ row.item.name }}</div>
+                <div class="ci-stype"><el-select v-model="row.item.stype" size="small"><el-option label="正常" value="N" /><el-option label="赠送" value="P" /></el-select></div>
+                <div class="ci-qty">{{ row.item.qty }}</div>
+                <div class="ci-price">¥{{ row.item.price.toFixed(2) }}</div>
                 <div class="ci-disc">
-                  <el-input-number v-model="row.secdisc" :min="0" :max="1" :step="0.05" size="small" :controls="false" style="width:55px"
+                  <el-input-number v-model="row.item.secdisc" :min="0" :max="1" :step="0.05" size="small" :controls="false" style="width:55px"
                     :formatter="(val: any) => Math.round(Number(val || 0) * 100) + '%'"
                     :parser="(val) => (parseInt(val.replace('%', '')) / 100) as any" />
                 </div>
-                <div class="ci-mondisc"><el-input-number v-model="row.srvmondisc" :min="0" :step="1" size="small" :controls="false" style="width:65px" /></div>
-                <div class="ci-subtotal">¥{{ (row.price * row.qty * row.secdisc - row.srvmondisc).toFixed(2) }}</div>
+                <div class="ci-mondisc"><el-input-number v-model="row.item.srvmondisc" :min="0" :step="1" size="small" :controls="false" style="width:65px" /></div>
+                <div class="ci-subtotal">¥{{ (row.item.price * row.item.qty * row.item.secdisc - row.item.srvmondisc).toFixed(2) }}</div>
                 <div class="ci-refund">
                   <el-button
-                    :type="row.qty < 0 ? 'danger' : 'primary'"
+                    :type="row.item.qty < 0 ? 'danger' : 'primary'"
                     size="small"
                     circle
-                    :icon="row.qty < 0 ? Close : Check"
-                    @click="toggleRefund(idx)"
+                    :icon="row.item.qty < 0 ? Close : Check"
+                    @click="toggleRefund(row.index, row.source)"
                   />
                 </div>
                 <div class="ci-pay">
-                  <el-select v-model="row.payMethod" size="small">
+                  <el-select v-model="row.item.payMethod" size="small" @change="(v: any) => changeCartItemPayMethod(row.index, v, row.source)">
                     <el-option label="现金" value="cash" />
-                    <el-option v-for="c in row.availableCards" :key="c.ccode"
+                    <el-option v-for="c in row.item.availableCards" :key="c.ccode"
                       :label="c.cardname + '(' + c.ccode + ')' + (c.comptype==='times'?'('+c.leftqty+'次)':'')"
                       :value="'card:'+c.ccode" />
                     <el-option label="储值卡余额" value="balance" />
                   </el-select>
                 </div>
-                <div class="ci-cardno"><template v-if="row.payMethod?.startsWith('card:')">{{ row.payMethod.slice(5) }}</template><span v-else style="color:#c0c4cc">--</span></div>
-                <div class="ci-pmcode"><el-select v-model="row.pmcode" size="small" filterable><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
-                <div class="ci-ass1"><el-select v-model="row.asscode1" size="small" filterable><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
-                <div class="ci-ass2"><el-select v-model="row.asscode2" size="small" filterable><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
-                <div class="ci-reason"><el-tag v-if="row.cardReason" size="small" type="danger">{{ row.cardReason }}</el-tag></div>
-                <div class="ci-action"><el-button type="danger" size="small" circle :icon="Delete" @click="removeFromCart(idx)" /></div>
+                <div class="ci-cardno"><template v-if="row.item.payMethod?.startsWith('card:')">{{ row.item.payMethod.slice(5) }}</template><span v-else style="color:var(--g-color-text-muted)">--</span></div>
+                <div class="ci-pmcode"><el-select v-model="row.item.pmcode" size="small" filterable :placeholder="empTitles.pmname"><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
+                <div class="ci-ass1"><el-select v-model="row.item.asscode1" size="small" filterable :placeholder="empTitles.secname"><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
+                <div class="ci-spec">
+                  <el-checkbox
+                    :model-value="row.item.secoldcustflag === 'Y'"
+                    @change="(v: any) => { row.item.secoldcustflag = v ? 'Y' : 'N' }"
+                  />
+                </div>
+                <div class="ci-ass2"><el-select v-model="row.item.asscode2" size="small" filterable :placeholder="empTitles.thrname"><el-option v-for="emp in employees" :key="emp.ecode" :label="emp.ename" :value="emp.ecode" /></el-select></div>
+                <div class="ci-reason"><el-tag v-if="row.item.cardReason" size="small" type="danger">{{ row.item.cardReason }}</el-tag></div>
+                <div class="ci-action"><el-button type="danger" size="small" circle :icon="Delete" @click="removeFromCart(row.index, row.source)" /></div>
               </div>
             </div>
           </div>
@@ -357,15 +369,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Check, Close, Delete } from '@element-plus/icons-vue'
 import { useBillingEngine } from '@/composables/useBillingEngine'
 import type { VipCard, CartableItem } from '@/types'
 import VipProfileDrawer from '@/components/VipProfileDrawer.vue'
 import { getCardtypeServiceItems } from '@/api/cashier'
 import { useVipProfile } from '@/composables/useVipProfile'
+import { getAppoptionBySeg } from '@/api/vip'
 
 const refundTab = ref<'checked' | 'void'>('checked')
+const empTitles = ref({ pmname: '开单', secname: '美疗师1', thrname: '美疗师2' })
+
+async function loadEmpTitles() {
+  try {
+    const res = await getAppoptionBySeg('common')
+    const raw: any = res.data
+    const list: any[] = Array.isArray(raw) ? raw : (raw?.results || [])
+    const map: Record<string, string> = {}
+    for (const it of list) {
+      if (it.itemname) map[it.itemname] = it.itemvalues || it.itemname
+    }
+    empTitles.value = {
+      pmname: map.pmname || '开单',
+      secname: map.secname || '美疗师1',
+      thrname: map.thrname || '美疗师2',
+    }
+  } catch { /* keep defaults */ }
+}
+onMounted(() => { loadEmpTitles() })
 
 const {
   company, storecode,
@@ -376,7 +408,7 @@ const {
   employees, cart, cartGroups, cartTotal, saving,
   searchVip, selectVip, fetchVipCards, fetchPromotions,
   selectCard, addToCart, removeFromCart, toggleRefund, autoAddCardItems,
-  updateCartItem, clearCart, saveHung,
+  updateCartItem, changeCartItemPayMethod, clearCart, saveHung,
   ttypeLabel, formatDate, empName,
   billingMode, switchBillingMode,
   refundDateRange, checkedOutOrders, checkedOutSelections, checkedOutLoading,
@@ -404,8 +436,8 @@ const vipProfile = useVipProfile()
 .billing-v2 { height:100%; display:flex; flex-direction:column; gap:8px; }
 .header-bar { display:flex; align-items:center; gap:12px; flex-shrink:0; }
 .page-title { margin:0; font-size:18px; font-weight:600; }
-.header-vip { margin-left:auto; font-size:14px; color:#409eff; font-weight:500; }
-.header-vip-code { color:#909399; font-weight:400; }
+.header-vip { margin-left:auto; font-size:14px; color:var(--g-color-primary); font-weight:500; }
+.header-vip-code { color:var(--g-color-text-muted); font-weight:400; }
 .v2-layout { display:flex; gap:12px; flex:1; min-height:0; }
 .v2-left { width:380px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; min-height:0; }
 .v2-right { flex:1; display:flex; flex-direction:column; gap:10px; min-width:0; min-height:0; }
@@ -415,140 +447,142 @@ const vipProfile = useVipProfile()
 .section-card :deep(.el-card__body) { flex:1; overflow:auto; padding:8px 12px; }
 .section-card :deep(.el-card__header) { padding:6px 12px; font-size:13px; font-weight:600; }
 .search-card :deep(.el-card__body) { overflow:visible; }
-.search-results { margin-top:8px; border:1px solid #ebeef5; border-radius:6px; max-height:260px; overflow-y:auto; }
-.sr-item { padding:8px 10px; cursor:pointer; border-bottom:1px solid #f0f0f0; }
-.sr-item:hover { background:#ecf5ff; }
+.search-results { margin-top:8px; border:1px solid var(--g-color-border); border-radius:6px; max-height:260px; overflow-y:auto; }
+.sr-item { padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--g-color-border); }
+.sr-item:hover { background:var(--g-color-primary-soft); }
 .sr-name { font-weight:500; font-size:14px; display:flex; align-items:center; gap:6px; }
-.sr-detail { font-size:12px; color:#909399; margin-top:2px; display:flex; gap:12px; }
-.vip-card { margin-top:6px; padding:8px 10px; background:linear-gradient(135deg,#f0f9ff,#e6f7ff); border-radius:8px; }
+.sr-detail { font-size:12px; color:var(--g-color-text-muted); margin-top:2px; display:flex; gap:12px; }
+.vip-card { margin-top:6px; padding:8px 10px; background:linear-gradient(135deg,var(--g-color-primary-soft),var(--g-color-primary-soft)); border-radius:8px; }
 .vip-card-name { font-weight:600; font-size:14px; margin-bottom:2px; display:flex; align-items:center; gap:8px; }
-.vip-card-info { font-size:12px; color:#666; display:flex; gap:12px; }
-.vip-card-emp { font-size:12px; color:#409eff; margin-top:4px; display:flex; gap:12px; }
+.vip-card-info { font-size:12px; color:var(--g-color-text-secondary); display:flex; gap:12px; }
+.vip-card-emp { font-size:12px; color:var(--g-color-primary); margin-top:4px; display:flex; gap:12px; }
 .card-list-card { flex:1; min-height:0; }
 .card-list-card :deep(.el-card__body) { padding:4px 8px; }
 .card-collapse { border-top:none; }
 .card-collapse :deep(.el-collapse-item__header) { font-size:12px; font-weight:600; padding:4px 8px; height:auto; line-height:1.4; }
 .card-collapse :deep(.el-collapse-item__content) { padding-bottom:2px; }
-.cg-sub-title { font-size:11px; font-weight:500; color:#606266; padding:2px 8px; margin-bottom:2px; background:#f5f7fa; border-radius:4px; }
-.cg-card { display:flex; justify-content:space-between; align-items:center; padding:4px 8px; margin-bottom:3px; border:1px solid #ebeef5; border-radius:5px; cursor:pointer; transition:.1s; background:#fff; }
-.cg-card:hover { border-color:#409eff; background:#ecf5ff; }
-.cg-card.selected { border-color:#409eff; background:#d9ecff; }
-.cg-card.status-p { border-color:#e6a23c; background:#fef7e0; }
+.cg-sub-title { font-size:11px; font-weight:500; color:var(--g-color-text-secondary); padding:2px 8px; margin-bottom:2px; background:var(--g-color-surface-muted); border-radius:4px; }
+.cg-card { display:flex; justify-content:space-between; align-items:center; padding:4px 8px; margin-bottom:3px; border:1px solid var(--g-color-border); border-radius:5px; cursor:pointer; transition:.1s; background:var(--g-color-surface); }
+.cg-card:hover { border-color:var(--g-color-primary); background:var(--g-color-primary-soft); }
+.cg-card.selected { border-color:var(--g-color-primary); background:var(--g-color-primary-border); }
+.cg-card.status-p { border-color:var(--g-color-warning); background:var(--g-color-warning-bg); }
 .cg-card-left { flex:1; min-width:0; }
-.cg-card-code { font-size:12px; font-weight:500; color:#303133; }
-.cg-card-name { font-size:11px; color:#909399; margin-top:1px; }
+.cg-card-code { font-size:12px; font-weight:500; color:var(--g-color-text); }
+.cg-card-name { font-size:11px; color:var(--g-color-text-muted); margin-top:1px; }
 .cg-card-right { text-align:right; flex-shrink:0; }
-.cg-card-amount { font-size:13px; font-weight:600; color:#e6a23c; }
-.cg-card-expire { font-size:10px; color:#c0c4cc; }
+.cg-card-amount { font-size:13px; font-weight:600; color:var(--g-color-money); }
+.cg-card-expire { font-size:10px; color:var(--g-color-text-muted); }
 .item-selector-header { display:flex; gap:12px; align-items:center; }
 .item-selector-body { display:flex; gap:8px; height:100%; min-height:0; }
-.category-tree-panel { width:160px; flex-shrink:0; overflow-y:auto; border-right:1px solid #ebeef5; padding-right:8px; }
+.category-tree-panel { width:160px; flex-shrink:0; overflow-y:auto; border-right:1px solid var(--g-color-border); padding-right:8px; }
 .cat-node { padding:6px 8px; font-size:12px; cursor:pointer; border-radius:4px; margin-bottom:2px; transition:.1s; }
-.cat-node:hover { background:#ecf5ff; color:#409eff; }
-.cat-node.active { background:#d9ecff; color:#409eff; font-weight:600; }
+.cat-node:hover { background:var(--g-color-primary-soft); color:var(--g-color-primary); }
+.cat-node.active { background:var(--g-color-primary-border); color:var(--g-color-primary); font-weight:600; }
 .cat-children { padding-left:16px; }
 .cat-child { font-size:11px; }
 .item-grid-panel { flex:1; overflow-y:auto; min-width:0; }
-.item-count { font-size:12px; color:#909399; margin-left:auto; }
+.item-count { font-size:12px; color:var(--g-color-text-muted); margin-left:auto; }
 .item-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px; }
-.item-card { padding:8px 6px; border:1px solid #ebeef5; border-radius:6px; cursor:pointer; text-align:center; transition:.12s; }
-.item-card:hover { border-color:#409eff; background:#ecf5ff; transform:translateY(-1px); }
-.item-card.item-disabled { opacity:0.38; cursor:not-allowed; border-color:#e4e7ed; }
-.item-card.item-disabled:hover { border-color:#e4e7ed; background:#fff; transform:none; }
-.times-card-hint { font-size:12px; color:#e6a23c; background:#fef7e0; padding:8px 12px; border-radius:6px; margin-bottom:8px; text-align:center; }
+.item-card { padding:8px 6px; border:1px solid var(--g-color-border); border-radius:6px; cursor:pointer; text-align:center; transition:.12s; }
+.item-card:hover { border-color:var(--g-color-primary); background:var(--g-color-primary-soft); transform:translateY(-1px); }
+.item-card.item-disabled { opacity:0.38; cursor:not-allowed; border-color:var(--g-color-border-strong); }
+.item-card.item-disabled:hover { border-color:var(--g-color-border-strong); background:var(--g-color-surface); transform:none; }
+.times-card-hint { font-size:12px; color:var(--g-color-warning-text); background:var(--g-color-warning-bg); padding:8px 12px; border-radius:6px; margin-bottom:8px; text-align:center; }
 .item-name { font-size:12px; margin-bottom:4px; }
-.item-price { font-size:13px; font-weight:600; color:#e6a23c; }
+.item-price { font-size:13px; font-weight:600; color:var(--g-color-money); }
 .recharge-panel { padding:4px; height:100%; overflow-y:auto; }
 .recharge-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; }
-.recharge-card { border:1px solid #ebeef5; border-radius:6px; padding:10px; background:#fff; }
+.recharge-card { border:1px solid var(--g-color-border); border-radius:6px; padding:10px; background:var(--g-color-surface); }
 .rc-name { font-size:13px; font-weight:600; }
-.rc-code { font-size:11px; color:#909399; margin:2px 0; }
-.rc-balance { font-size:13px; color:#e6a23c; font-weight:600; margin-bottom:6px; }
+.rc-code { font-size:11px; color:var(--g-color-text-muted); margin:2px 0; }
+.rc-balance { font-size:13px; color:var(--g-color-money); font-weight:600; margin-bottom:6px; }
 .rc-actions { display:flex; gap:4px; align-items:center; }
 .refund-card { flex:3; min-height:0; }
 .refund-body { height:100%; overflow-y:auto; padding:2px; }
-.refund-order { border:1px solid #ebeef5; border-radius:6px; margin-bottom:6px; overflow:hidden; }
-.refund-order-head { display:flex; align-items:center; gap:8px; padding:4px 10px; background:#f5f7fa; font-size:12px; border-bottom:1px solid #ebeef5; }
+.refund-order { border:1px solid var(--g-color-border); border-radius:6px; margin-bottom:6px; overflow:hidden; }
+.refund-order-head { display:flex; align-items:center; gap:8px; padding:4px 10px; background:var(--g-color-surface-muted); font-size:12px; border-bottom:1px solid var(--g-color-border); }
 .ro-serno { font-family:monospace; font-weight:600; }
-.ro-date { color:#909399; }
-.ro-amount { margin-left:auto; font-weight:600; color:#e6a23c; }
+.ro-date { color:var(--g-color-text-muted); }
+.ro-amount { margin-left:auto; font-weight:600; color:var(--g-color-money); }
 .refund-items { padding:2px 0; }
-.refund-item-row { display:flex; align-items:center; gap:8px; padding:3px 10px; font-size:12px; border-bottom:1px solid #f5f5f5; }
+.refund-item-row { display:flex; align-items:center; gap:8px; padding:3px 10px; font-size:12px; border-bottom:1px solid var(--g-color-border); }
 .refund-item-row:last-child { border-bottom:none; }
 .ri-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ri-qty { color:#909399; }
-.ri-amount { font-weight:600; color:#e6a23c; }
+.ri-qty { color:var(--g-color-text-muted); }
+.ri-amount { font-weight:600; color:var(--g-color-money); }
 .promo-selector-body { display:flex; gap:8px; height:100%; min-height:0; }
-.promo-list-panel { width:200px; flex-shrink:0; overflow-y:auto; border-right:1px solid #ebeef5; padding-right:8px; }
-.promo-card { padding:8px 10px; border:1px solid #ebeef5; border-radius:6px; cursor:pointer; margin-bottom:6px; transition:.1s; }
-.promo-card:hover { border-color:#409eff; background:#ecf5ff; }
-.promo-card.selected { border-color:#409eff; background:#d9ecff; }
+.promo-list-panel { width:200px; flex-shrink:0; overflow-y:auto; border-right:1px solid var(--g-color-border); padding-right:8px; }
+.promo-card { padding:8px 10px; border:1px solid var(--g-color-border); border-radius:6px; cursor:pointer; margin-bottom:6px; transition:.1s; }
+.promo-card:hover { border-color:var(--g-color-primary); background:var(--g-color-primary-soft); }
+.promo-card.selected { border-color:var(--g-color-primary); background:var(--g-color-primary-border); }
 .promo-card-name { font-size:13px; font-weight:600; margin-bottom:4px; }
 .promo-card-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.promo-card-date { font-size:10px; color:#909399; }
-.promo-card-price { font-size:12px; color:#e6a23c; font-weight:600; margin-top:4px; }
-.promo-group-title { font-size:11px; font-weight:600; color:#606266; padding:6px 2px 4px; border-bottom:1px solid #ebeef5; margin-bottom:6px; }
+.promo-card-date { font-size:10px; color:var(--g-color-text-muted); }
+.promo-card-price { font-size:12px; color:var(--g-color-money); font-weight:600; margin-top:4px; }
+.promo-group-title { font-size:11px; font-weight:600; color:var(--g-color-text-secondary); padding:6px 2px 4px; border-bottom:1px solid var(--g-color-border); margin-bottom:6px; }
 .promo-item-panel { flex:1; overflow-y:auto; min-width:0; }
-.promo-placeholder { padding:40px; text-align:center; color:#c0c4cc; font-size:14px; }
-.promo-item-card { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border:1px solid #ebeef5; border-radius:6px; cursor:pointer; margin-bottom:4px; transition:.1s; }
-.promo-item-card:hover { border-color:#409eff; background:#ecf5ff; }
+.promo-placeholder { padding:40px; text-align:center; color:var(--g-color-text-muted); font-size:14px; }
+.promo-item-card { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border:1px solid var(--g-color-border); border-radius:6px; cursor:pointer; margin-bottom:4px; transition:.1s; }
+.promo-item-card:hover { border-color:var(--g-color-primary); background:var(--g-color-primary-soft); }
 .pi-name { font-size:13px; }
 .pi-price { display:flex; align-items:center; gap:6px; }
-.pi-original { font-size:12px; color:#c0c4cc; text-decoration:line-through; }
-.pi-promo { font-size:15px; font-weight:700; color:#f56c6c; }
-.pi-disc { font-size:11px; color:#fff; background:#f56c6c; padding:1px 4px; border-radius:3px; }
-.combo-card { border:2px solid #e6a23c; border-radius:8px; padding:12px; background:linear-gradient(135deg,#fffbf0,#fff8e1); }
-.combo-header { display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px dashed #e6a23c; margin-bottom:8px; }
-.combo-name { font-size:15px; font-weight:700; color:#e6a23c; }
-.combo-total { font-size:18px; font-weight:700; color:#f56c6c; }
+.pi-original { font-size:12px; color:var(--g-color-text-muted); text-decoration:line-through; }
+.pi-promo { font-size:15px; font-weight:700; color:var(--g-color-danger); }
+.pi-disc { font-size:11px; color:#fff; background:var(--g-color-danger); padding:1px 4px; border-radius:3px; }
+.combo-card { border:2px solid var(--g-color-money); border-radius:8px; padding:12px; background:linear-gradient(135deg,var(--g-color-warning-bg),var(--g-color-money-soft)); }
+.combo-header { display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px dashed var(--g-color-money); margin-bottom:8px; }
+.combo-name { font-size:15px; font-weight:700; color:var(--g-color-money); }
+.combo-total { font-size:18px; font-weight:700; color:var(--g-color-danger); }
 .combo-items { display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
 .combo-item { display:flex; align-items:center; gap:6px; font-size:12px; padding:3px 6px; background:rgba(255,255,255,0.7); border-radius:4px; }
 .combo-item .ci-name { flex:1; }
-.combo-item .ci-qty { color:#909399; }
-.combo-item .ci-price { font-weight:600; color:#e6a23c; }
-.combo-hint { text-align:center; font-size:11px; color:#c0c4cc; padding:6px 0 2px; }
+.combo-item .ci-qty { color:var(--g-color-text-muted); }
+.combo-item .ci-price { font-weight:600; color:var(--g-color-money); }
+.combo-hint { text-align:center; font-size:11px; color:var(--g-color-text-muted); padding:6px 0 2px; }
 .profile-cards { display:flex; flex-direction:column; gap:6px; }
-.profile-card { display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid #ebeef5; border-radius:6px; flex-wrap:wrap; }
-.profile-card.status-p { background:#fef7e0; }
+.profile-card { display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--g-color-border); border-radius:6px; flex-wrap:wrap; }
+.profile-card.status-p { background:var(--g-color-warning-bg); }
 .pc-left { flex:1; }
 .pc-name { font-size:13px; font-weight:500; }
-.pc-code { font-size:11px; color:#909399; }
+.pc-code { font-size:11px; color:var(--g-color-text-muted); }
 .pc-right { text-align:right; }
-.pc-bal { font-size:14px; font-weight:600; color:#e6a23c; display:block; }
-.pc-expire { font-size:10px; color:#c0c4cc; }
+.pc-bal { font-size:14px; font-weight:600; color:var(--g-color-money); display:block; }
+.pc-expire { font-size:10px; color:var(--g-color-text-muted); }
 .profile-list { display:flex; flex-direction:column; gap:4px; }
-.profile-list-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-bottom:1px solid #f5f5f5; font-size:12px; }
-.pli-date { width:90px; color:#909399; flex-shrink:0; }
+.profile-list-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-bottom:1px solid var(--g-color-border); font-size:12px; }
+.pli-date { width:90px; color:var(--g-color-text-muted); flex-shrink:0; }
 .pli-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pli-amount { width:80px; text-align:right; font-weight:600; }
 .pli-type { width:60px; flex-shrink:0; }
-.pli-content { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#606266; }
-.selected-card-chip { font-size:12px; color:#409eff; background:#ecf5ff; padding:2px 8px; border-radius:4px; }
+.pli-content { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--g-color-text-secondary); }
+.selected-card-chip { font-size:12px; color:var(--g-color-primary); background:var(--g-color-primary-soft); padding:2px 8px; border-radius:4px; }
 
 
 .cart-tree { display:flex; flex-direction:column; gap:4px; }
-.cart-group { border:1px solid #ebeef5; border-radius:6px; overflow:hidden; }
-.cart-group-header { display:flex; align-items:center; gap:6px; padding:4px 10px; background:#fafafa; font-size:13px; font-weight:600; border-bottom:1px solid #ebeef5; }
-.cart-header-row { display:flex; align-items:center; padding:3px 8px; font-size:11px; font-weight:600; color:#909399; background:#fafafa; border-bottom:1px solid #ebeef5; }
-.cart-item-row { display:flex; align-items:center; padding:4px 8px; border-bottom:1px solid #f5f5f5; font-size:12px; gap:4px; }
-.cart-item-row.refund-row { background:#fef0f0; }
+.cart-group { border:1px solid var(--g-color-border); border-radius:6px; overflow:hidden; }
+.cart-group-header { display:flex; align-items:center; gap:6px; padding:4px 10px; background:var(--g-color-surface-muted); font-size:13px; font-weight:600; border-bottom:1px solid var(--g-color-border); }
+.cart-header-row { display:flex; align-items:center; padding:3px 8px; font-size:11px; font-weight:600; color:var(--g-color-text-muted); background:var(--g-color-surface-muted); border-bottom:1px solid var(--g-color-border); }
+.cart-item-row { display:flex; align-items:center; padding:4px 8px; border-bottom:1px solid var(--g-color-border); font-size:12px; gap:4px; }
+.cart-item-row.refund-row { background:var(--g-color-danger-bg); }
 .cart-item-row:last-child { border-bottom:none; }
 .cart-item-row :deep(.el-select .el-input__inner) { height:28px; font-size:12px; }
 .cart-item-row :deep(.el-input-number .el-input__inner) { height:28px; font-size:12px; }
 .ci-name { min-width:90px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
 .ci-stype { width:60px; }
 .ci-qty { width:40px; text-align:center; font-weight:500; }
-.ci-price { width:90px; text-align:right; color:#606266; }
+.ci-price { width:90px; text-align:right; color:var(--g-color-text-secondary); }
 .ci-disc { width:60px; }
 .ci-mondisc { width:65px; }
-.ci-subtotal { width:95px; text-align:right; font-weight:600; color:#e6a23c; }
+.ci-subtotal { width:95px; text-align:right; font-weight:600; color:var(--g-color-money); }
 .ci-refund { width:40px; text-align:center; }
 .ci-pay { width:130px; }
-.ci-cardno { width:90px; color:#409eff; font-size:11px; }
+.ci-cardno { width:90px; color:var(--g-color-primary); font-size:11px; }
 .ci-pmcode { width:95px; }
 .ci-ass1 { width:95px; }
+.ci-spec { width:40px; text-align:center; flex-shrink:0; }
+.cart-header-row .ci-spec { font-size:11px; }
 .ci-ass2 { width:95px; }
-.ci-reason { width:110px; color:#f56c6c; font-size:11px; }
+.ci-reason { width:110px; color:var(--g-color-danger); font-size:11px; }
 .ci-action { width:35px; text-align:center; }
 .ci-stype :deep(.el-select), .ci-disc :deep(.el-input-number), .ci-mondisc :deep(.el-input-number),
 .ci-pay :deep(.el-select), .ci-pmcode :deep(.el-select), .ci-ass1 :deep(.el-select), .ci-ass2 :deep(.el-select) { width:100%; }

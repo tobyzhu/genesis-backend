@@ -87,9 +87,13 @@ class TestGetHungList:
         first_line = first['item_details'][0]
         assert first_line['secdisc'] == 0.8
         assert first_line['mondisc'] == 10
+        assert first_line.get('uuid')
+        assert first_line.get('ditem')
+        assert first_line.get('stype') in ('N', 'P', 'E')
 
         pay_order = next(d for d in data if d['paycode'] == 'C001')
         assert pay_order['cardtypename'] == '测试卡'
+        assert pay_order.get('paycard_status') == 'O'
 
     def test_query_count_bounded(
         self, client, db, test_company, test_storecode, hung_data,

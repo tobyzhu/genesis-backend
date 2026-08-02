@@ -41,8 +41,8 @@
       <el-main class="list-main">
         <div class="list-toolbar">
           <h3 style="margin:0;font-size:15px;font-weight:600">
-            {{ selectedCategory || '全部' }} <span style="font-size:12px;color:#909399;font-weight:400">服务项目</span>
-            <span style="font-weight:400;color:#909399;font-size:13px;margin-left:8px">共 {{ total }} 项</span>
+            {{ selectedCategory || '全部' }} <span style="font-size:12px;color:var(--g-color-text-muted);font-weight:400">服务项目</span>
+            <span style="font-weight:400;color:var(--g-color-text-muted);font-size:13px;margin-left:8px">共 {{ total }} 项</span>
           </h3>
           <div style="display:flex;gap:8px;align-items:center">
             <el-select v-model="brandFilter" placeholder="品牌" clearable size="default" style="width:130px" @change="() => fetchItems(true)">
@@ -97,10 +97,16 @@
             <template #default="{row}">{{ row.qty || '-' }}</template>
           </el-table-column>
           <el-table-column label="可销售" width="65" align="center">
-            <template #default="{row}">{{ row.saleflag === 'Y' ? '✅' : '❌' }}</template>
+            <template #default="{row}">
+              <el-icon v-if="row.saleflag === 'Y'" class="ok-icon"><CircleCheck /></el-icon>
+              <el-icon v-else class="bad-icon"><CircleClose /></el-icon>
+            </template>
           </el-table-column>
           <el-table-column label="有效" width="65" align="center">
-            <template #default="{row}">{{ row.valiflag === 'Y' ? '✅' : '❌' }}</template>
+            <template #default="{row}">
+              <el-icon v-if="row.valiflag === 'Y'" class="ok-icon"><CircleCheck /></el-icon>
+              <el-icon v-else class="bad-icon"><CircleClose /></el-icon>
+            </template>
           </el-table-column>
           <el-table-column label="操作" width="100" fixed="right">
             <template #default="{row}">
@@ -117,7 +123,7 @@
           :total="total"
           layout="total, prev, pager, next"
           @current-change="() => fetchItems()"
-          style="margin-top:12px;justify-content:flex-end"
+          class="pagination-bar"
         />
       </el-main>
     </el-container>
@@ -244,7 +250,7 @@
         <!-- Tab 3: 多档价位 -->
         <el-tab-pane label="疗程价" name="tiers">
           <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;color:#909399">不同购买次数的价格设定</span>
+            <span style="font-size:13px;color:var(--g-color-text-muted)">不同购买次数的价格设定</span>
             <el-button size="small" type="primary" :icon="Plus" @click="addPriceTier">添加价位</el-button>
           </div>
           <el-table :data="priceTiers" border size="small">
@@ -507,7 +513,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Refresh, Edit, Delete, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import {
   getSrvtoptyTree, getServieceList, getServieceMeta,
   saveSrvtopty, deleteSrvtopty, getAppOptionList,
@@ -902,13 +908,15 @@ onMounted(async () => {
 
 <style scoped>
 .serviece-admin { height: 100%; display: flex; }
-.tree-sidebar { background: #fff; border-right: 1px solid #ebeef5; overflow-y: auto; }
-.sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px 0; font-size: 14px; font-weight: 600; color: #303133; }
-.list-main { background: #f5f7fa; display: flex; flex-direction: column; }
+.tree-sidebar { background:var(--g-color-surface); border-right: 1px solid var(--g-color-border); overflow-y: auto; }
+.sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px 0; font-size: 14px; font-weight: 600; color: var(--g-color-text); }
+.list-main { background: var(--g-color-surface-muted); display: flex; flex-direction: column; }
 .list-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; flex-wrap: wrap; gap: 8px; }
 .tree-node-row { display: flex; justify-content: space-between; align-items: center; width: 100%; padding-right: 4px; flex: 1; }
-.code-link { color: #409EFF; cursor: pointer; text-decoration: none; }
+.code-link { color: var(--g-color-primary); cursor: pointer; text-decoration: none; }
 .code-link:hover { text-decoration: underline; }
 .tree-node-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tree-node-actions { display: flex; gap: 2px; }
+.ok-icon { color: var(--g-color-success); font-size: 16px; }
+.bad-icon { color: var(--g-color-danger); font-size: 16px; }
 </style>

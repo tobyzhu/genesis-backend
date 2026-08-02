@@ -21,7 +21,7 @@ class VipHealthRecordTest(TestCase):
             'company': 'yiren', 'vipuuid': str(self.vip.uuid),
             'skin_type': '混合性', 'allergies': '花粉',
             'body_concerns': '肩颈酸痛', 'contraindications': '',
-        })
+        }, format='json')
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
         self.assertEqual(data['skin_type'], '混合性')
@@ -29,7 +29,7 @@ class VipHealthRecordTest(TestCase):
     def test_list_health_records(self):
         from crm.models import VipHealthRecord
         VipHealthRecord.objects.create(company='yiren', vipuuid=self.vip, skin_type='干性')
-        resp = self.client.get('/crm/health_records/', {'vipuuid': str(self.vip.uuid)})
+        resp = self.client.get('/crm/health_records/', {'company': 'yiren', 'vipuuid': str(self.vip.uuid)})
         self.assertEqual(resp.status_code, 200)
         self.assertGreaterEqual(len(resp.json()), 1)
 
@@ -38,7 +38,7 @@ class VipHealthRecordTest(TestCase):
         rec = VipHealthRecord.objects.create(company='yiren', vipuuid=self.vip, skin_type='干性')
         resp = self.client.put(f'/crm/health_records/{rec.uuid}/', {
             'company': 'yiren', 'skin_type': '油性',
-        }, content_type='application/json')
+        }, format='json')
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()['skin_type'], '油性')
 

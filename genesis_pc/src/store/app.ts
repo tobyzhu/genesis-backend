@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getUser, setUser, setToken, clearAuth } from '@/utils/storage'
+import {
+  applyTheme,
+  loadStoredTheme,
+  THEME_OPTIONS,
+  THEME_STORAGE_KEY,
+  type ThemeId,
+} from '@/styles/theme'
 
 export const useAppStore = defineStore('app', () => {
   const user = ref<Record<string, any> | null>(getUser())
@@ -11,7 +18,11 @@ const cashierName = ref<string>(localStorage.getItem('genesis_pc_cashier_name') 
   const currentCompany = ref<string>(localStorage.getItem('genesis_pc_company') ?? '')
   const currentStorecode = ref<string>(localStorage.getItem('genesis_pc_storecode') ?? '')
   const currentStoreName = ref<string>(localStorage.getItem('genesis_pc_storename') ?? '')
-  const allowedStores = ref<Array<{ storecode: string; storename: string }>>([])
+  const allowedStores = ref<Array<{ storecode: string; storename: string }>>(
+    Array.isArray(user.value?.stores) ? user.value!.stores : [],
+  )
+  const themeId = ref<ThemeId>(loadStoredTheme())
+  const themeOptions = THEME_OPTIONS
 
   const isLoggedIn = computed(() => !!user.value && !!currentCompany.value)
   const userName = computed(() => user.value?.username ?? '')
@@ -94,6 +105,14 @@ function resetCashier() {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
 
+  function setTheme(id: ThemeId | string) {
+    const next = applyTheme(id)
+    themeId.value = next
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, next)
+    } catch { /* ignore */ }
+  }
+
   return {
     user,
     sidebarCollapsed,
@@ -103,6 +122,8 @@ function resetCashier() {
     currentStorecode,
     currentStoreName,
     allowedStores,
+    themeId,
+    themeOptions,
     isLoggedIn,
     userName,
     displayName,
@@ -117,5 +138,6 @@ function resetCashier() {
     setAllowedStores,
     logout,
     toggleSidebar,
+    setTheme,
   }
 })

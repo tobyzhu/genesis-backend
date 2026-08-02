@@ -23,7 +23,7 @@
           <template #default="{row}">¥{{ Number(row.price ?? 0).toFixed(2) }}</template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrap" style="margin-top:8px">
+      <div class="pagination-bar">
         <el-pagination
           v-model:current-page="productPickerPage"
           :page-size="20"
@@ -106,7 +106,7 @@
               </template>
             </el-table-column>
           </el-table>
-          <div class="pagination-wrap">
+          <div class="pagination-bar">
             <el-pagination
               v-model:current-page="docPage"
               :page-size="docPageSize"
@@ -464,7 +464,7 @@
             <el-table-column prop="gnote" label="备注" width="140" show-overflow-tooltip />
           </el-table>
 
-          <div class="pagination-wrap">
+          <div class="pagination-bar">
             <el-pagination
               v-model:current-page="tlPage"
               :page-size="tlPageSize"
@@ -920,8 +920,8 @@ onMounted(() => {
 .items-title { font-weight: 600; font-size: 14px; }
 .submit-bar { margin-top: 12px; display: flex; justify-content: flex-end; }
 .pagination-wrap { margin-top: 12px; display: flex; justify-content: flex-end; }
-.alert-low { color: #f56c6c; font-weight: 700; }
-.alert-high { color: #e6a23c; font-weight: 700; }
-.qty-in { color: #67c23a; font-weight: 600; }
-.qty-out { color: #f56c6c; font-weight: 600; }
+.alert-low { color: var(--g-color-danger); font-weight: 700; }
+.alert-high { color: var(--g-color-money); font-weight: 700; }
+.qty-in { color: var(--g-color-success); font-weight: 600; }
+.qty-out { color: var(--g-color-danger); font-weight: 600; }
 </style>

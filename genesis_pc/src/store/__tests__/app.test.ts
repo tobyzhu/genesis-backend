@@ -182,3 +182,13 @@ describe('appStore — setAllowedStores', () => {
     expect(store.allowedStores).toEqual(stores)
   })
 })
+
+describe('appStore — setTheme', () => {
+  it('should persist theme and apply data-theme', () => {
+    const store = useAppStore()
+    store.setTheme('salon')
+    expect(store.themeId).toBe('salon')
+    expect(localStorage.getItem('genesis_pc_theme')).toBe('salon')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('salon')
+  })
+})

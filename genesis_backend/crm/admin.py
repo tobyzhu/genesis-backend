@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CrmSubReport,CrmInfoItem,CrmInfoItemChoice
+from .models import CrmSubReport,CrmInfoItem,CrmInfoItemChoice,CrmRule
 from baseinfo.admin import AdminModel
 # Register your models here.
 
@@ -30,3 +30,19 @@ class CrmInfoItemChoiceAdmin(AdminModel):
     list_filter = ['crminfoitem',]
 
 admin.site.register(CrmInfoItemChoice, CrmInfoItemChoiceAdmin)
+
+
+@admin.register(CrmRule)
+class CrmRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        'rule_name',
+        'rule_type',
+        'casetype',
+        'assignee_policy',
+        'enabled',
+        'company',
+        'storecode',
+        'last_run_at',
+    )
+    list_filter = ('rule_type', 'enabled', 'company')
+    search_fields = ('rule_name', 'casedesc_template', 'fixed_ecode')

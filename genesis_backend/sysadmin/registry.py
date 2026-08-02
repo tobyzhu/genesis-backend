@@ -33,8 +33,9 @@ register('baseinfo', 'cardsupertype', '卡大类', 'Collection', '核心业务')
 register('baseinfo', 'cardsvsdi', '卡类项目关联', 'Link', '核心业务')
 
 # ===== 营销 =====
-register('adviser', 'promotions', '活动管理', 'Promotion', '营销')
-register('adviser', 'promotionsdetail', '活动明细', 'List', '营销')
+# Promotions/Promotionsdetail 模型定义在 baseinfo app，注册路径必须与 apps.get_model 一致
+register('baseinfo', 'promotions', '活动管理', 'Promotion', '营销')
+register('baseinfo', 'promotionsdetail', '活动明细', 'List', '营销')
 
 # ===== 工具 =====
 def get_registry():

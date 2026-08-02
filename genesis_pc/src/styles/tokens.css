@@ -1,0 +1,194 @@
+/**
+ * Genesis PC 语义色 token + 多主题预设（精修版）。
+ * 业务样式请使用 var(--g-color-*)，勿再写业务相关裸十六进制。
+ * 切换：document.documentElement.setAttribute('data-theme', 'azure'|'salon'|'moss')
+ *
+ * 设计原则：
+ * - money / warning 色相与明度拉开：金额=实色字、提醒=浅底条
+ * - 侧栏与背景低饱和，主色克制，避免霓虹感
+ */
+
+:root,
+[data-theme='azure'] {
+  /* 静海蓝：专业、冷静，偏 slate-indigo */
+  --g-color-primary: #3a6ea5;
+  --g-color-primary-soft: #eef4f9;
+  --g-color-primary-border: #c5d7e8;
+
+  /* 金额：深青铜，扫一眼可辨且不抢提醒 */
+  --g-color-money: #9a5b2e;
+  --g-color-money-soft: #faf4ee;
+
+  /* 提醒：柔琥珀底 + 深字 */
+  --g-color-warning: #b8860b;
+  --g-color-warning-bg: #fbf7ec;
+  --g-color-warning-border: #ead9a8;
+  --g-color-warning-text: #7a5a12;
+
+  --g-color-danger: #c44b4b;
+  --g-color-danger-bg: #fbf1f1;
+  --g-color-danger-border: #efd0d0;
+  --g-color-danger-text: #8f2f2f;
+
+  --g-color-success: #3f8f5a;
+  --g-color-success-soft: #eef7f1;
+
+  --g-color-text: #1f2933;
+  --g-color-text-secondary: #52606d;
+  --g-color-text-muted: #8292a2;
+  --g-color-border: #e4e9ef;
+  --g-color-border-strong: #d3dce6;
+  --g-color-surface: #ffffff;
+  --g-color-surface-muted: #f7f9fb;
+  --g-color-bg: #eef1f5;
+
+  --g-color-sidebar: #243447;
+  --g-color-sidebar-text: rgba(255, 255, 255, 0.86);
+  --g-color-sidebar-active: #3a6ea5;
+  --g-color-sidebar-border: rgba(255, 255, 255, 0.08);
+  --g-color-auth-grad-from: #4a7fb5;
+  --g-color-auth-grad-to: #2a4f78;
+
+  --layout-bg: var(--g-color-bg);
+
+  --el-color-primary: var(--g-color-primary);
+  --el-color-primary-light-3: #6d92bb;
+  --el-color-primary-light-5: #93afcc;
+  --el-color-primary-light-7: #b9cddd;
+  --el-color-primary-light-8: #d4e1ec;
+  --el-color-primary-light-9: #eef4f9;
+  --el-color-primary-dark-2: #2e5884;
+  --el-color-warning: var(--g-color-warning);
+  --el-color-warning-light-3: #c9a03c;
+  --el-color-warning-light-5: #d6b566;
+  --el-color-warning-light-7: #e4c994;
+  --el-color-warning-light-8: #efdeb8;
+  --el-color-warning-light-9: var(--g-color-warning-bg);
+  --el-color-warning-dark-2: #936c09;
+  --el-color-danger: var(--g-color-danger);
+  --el-color-danger-light-3: #d27878;
+  --el-color-danger-light-5: #dea0a0;
+  --el-color-danger-light-7: #ebc7c7;
+  --el-color-danger-light-8: #f3dcdc;
+  --el-color-danger-light-9: var(--g-color-danger-bg);
+  --el-color-danger-dark-2: #9d3c3c;
+  --el-color-success: var(--g-color-success);
+  --el-color-success-light-3: #6faa82;
+  --el-color-success-light-5: #96c1a5;
+  --el-color-success-light-7: #bdd8c8;
+  --el-color-success-light-8: #d6e8dd;
+  --el-color-success-light-9: var(--g-color-success-soft);
+  --el-color-success-dark-2: #327248;
+}
+
+[data-theme='salon'] {
+  /* 雾玫瑰：美业质感，偏干玫瑰/灰粉，避免高饱和桃红与奶油陶土套路 */
+  --g-color-primary: #a66d78;
+  --g-color-primary-soft: #f8f1f3;
+  --g-color-primary-border: #e5ced3;
+
+  /* 金额：香槟金棕 */
+  --g-color-money: #8a6a3d;
+  --g-color-money-soft: #f7f2e9;
+
+  --g-color-warning: #b07a3a;
+  --g-color-warning-bg: #f9f3ea;
+  --g-color-warning-border: #e5d2b6;
+  --g-color-warning-text: #6e4a22;
+
+  --g-color-danger: #b84a57;
+  --g-color-danger-bg: #f9eef0;
+  --g-color-danger-border: #e8c9ce;
+  --g-color-danger-text: #7d2e38;
+
+  --g-color-success: #5a8f74;
+  --g-color-success-soft: #eef6f2;
+
+  --g-color-text: #2e2628;
+  --g-color-text-secondary: #5c5154;
+  --g-color-text-muted: #95888c;
+  --g-color-border: #ebe3e5;
+  --g-color-border-strong: #ddd1d4;
+  --g-color-surface: #ffffff;
+  --g-color-surface-muted: #faf7f8;
+  --g-color-bg: #f4f0f1;
+
+  --g-color-sidebar: #3a2a2e;
+  --g-color-sidebar-text: rgba(255, 255, 255, 0.88);
+  --g-color-sidebar-active: #a66d78;
+  --g-color-sidebar-border: rgba(255, 255, 255, 0.09);
+  --g-color-auth-grad-from: #b8848e;
+  --g-color-auth-grad-to: #6e4a52;
+
+  --layout-bg: var(--g-color-bg);
+
+  --el-color-primary: var(--g-color-primary);
+  --el-color-primary-light-3: #bd9199;
+  --el-color-primary-light-5: #ceb0b6;
+  --el-color-primary-light-7: #dfcfd3;
+  --el-color-primary-light-8: #ebe0e3;
+  --el-color-primary-light-9: #f8f1f3;
+  --el-color-primary-dark-2: #855760;
+  --el-color-warning: var(--g-color-warning);
+  --el-color-warning-light-9: var(--g-color-warning-bg);
+  --el-color-danger: var(--g-color-danger);
+  --el-color-danger-light-9: var(--g-color-danger-bg);
+  --el-color-success: var(--g-color-success);
+  --el-color-success-light-9: var(--g-color-success-soft);
+}
+
+[data-theme='moss'] {
+  /* 松烟绿：低饱和鼠尾草 / 松针，避免荧光青绿 */
+  --g-color-primary: #3d7a68;
+  --g-color-primary-soft: #eef5f2;
+  --g-color-primary-border: #c5dbd2;
+
+  /* 金额：更深墨绿，与主色同系但更深更沉 */
+  --g-color-money: #245649;
+  --g-color-money-soft: #e9f2ee;
+
+  --g-color-warning: #a67c2a;
+  --g-color-warning-bg: #f8f4ea;
+  --g-color-warning-border: #e2d4b0;
+  --g-color-warning-text: #6b5018;
+
+  --g-color-danger: #b54a4a;
+  --g-color-danger-bg: #f8efef;
+  --g-color-danger-border: #e6cccc;
+  --g-color-danger-text: #7c3030;
+
+  --g-color-success: #3d8a5a;
+  --g-color-success-soft: #edf6f0;
+
+  --g-color-text: #1c2b28;
+  --g-color-text-secondary: #4a5c57;
+  --g-color-text-muted: #7d918a;
+  --g-color-border: #dde6e2;
+  --g-color-border-strong: #c8d5cf;
+  --g-color-surface: #ffffff;
+  --g-color-surface-muted: #f5f8f6;
+  --g-color-bg: #eef2f0;
+
+  --g-color-sidebar: #1c3530;
+  --g-color-sidebar-text: rgba(255, 255, 255, 0.88);
+  --g-color-sidebar-active: #4e9a84;
+  --g-color-sidebar-border: rgba(255, 255, 255, 0.09);
+  --g-color-auth-grad-from: #4e9a84;
+  --g-color-auth-grad-to: #245649;
+
+  --layout-bg: var(--g-color-bg);
+
+  --el-color-primary: var(--g-color-primary);
+  --el-color-primary-light-3: #6e9b8d;
+  --el-color-primary-light-5: #96b7ac;
+  --el-color-primary-light-7: #bed3cb;
+  --el-color-primary-light-8: #d7e4df;
+  --el-color-primary-light-9: #eef5f2;
+  --el-color-primary-dark-2: #316253;
+  --el-color-warning: var(--g-color-warning);
+  --el-color-warning-light-9: var(--g-color-warning-bg);
+  --el-color-danger: var(--g-color-danger);
+  --el-color-danger-light-9: var(--g-color-danger-bg);
+  --el-color-success: var(--g-color-success);
+  --el-color-success-light-9: var(--g-color-success-soft);
+}

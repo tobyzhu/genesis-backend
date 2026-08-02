@@ -33,6 +33,7 @@ urlpatterns=[
     url(r'get_testdata/', views.get_testdata),
     url(r'card_balance_report_api/', views.card_balance_report_api),
     url(r'store_performance_api/', views.store_performance_api),
+    url(r'business_daily_flow_api/', views.business_daily_flow_api),
 
     # url(r'QueryBookingStatus/',views.QueryBookingStatus)
     url(r'^images/?',views.read_img)

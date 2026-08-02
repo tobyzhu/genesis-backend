@@ -1,42 +1,45 @@
 <template>
   <div class="goods-page">
-    <!-- 搜索区域 -->
-    <el-card shadow="never" class="search-card">
-      <el-form :inline="true" :model="query" size="default">
-        <el-form-item label="关键字">
-          <el-input
-            v-model="query.keyword"
-            placeholder="编码 / 名称 / 条码"
-            clearable
-            style="width: 200px"
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="品牌">
-          <el-select v-model="query.brand" placeholder="全部品牌" clearable style="width: 140px" @change="handleSearch">
-            <el-option v-for="b in brandOptions" :key="b.code" :label="b.name" :value="b.code" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="query.displayclass1" placeholder="全部分类" clearable style="width: 140px" @change="handleSearch">
-            <el-option v-for="d in displayClassOptions" :key="d.code" :label="d.name" :value="d.code" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <div class="page-header" style="margin-bottom:12px">
+      <h3 class="page-title">商品管理</h3>
+    </div>
+    <!-- 搜索工具栏 -->
+    <div class="section filter-section">
+      <div class="section-body">
+        <el-form :inline="true" :model="query" size="default">
+          <el-form-item label="关键字">
+            <el-input
+              v-model="query.keyword"
+              placeholder="编码 / 名称 / 条码"
+              clearable
+              style="width: 200px"
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="品牌">
+            <el-select v-model="query.brand" placeholder="全部品牌" clearable style="width: 140px" @change="handleSearch">
+              <el-option v-for="b in brandOptions" :key="b.code" :label="b.name" :value="b.code" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="分类">
+            <el-select v-model="query.displayclass1" placeholder="全部分类" clearable style="width: 140px" @change="handleSearch">
+              <el-option v-for="d in displayClassOptions" :key="d.code" :label="d.name" :value="d.code" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
 
     <!-- 表格区域 -->
-    <el-card shadow="never" class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>商品列表</span>
-          <el-button type="primary" size="small" @click="openAddDialog">新增商品</el-button>
-        </div>
-      </template>
+    <div class="section table-section">
+      <div class="section-head">
+        <span>商品列表</span>
+        <el-button type="primary" size="small" @click="openAddDialog">新增商品</el-button>
+      </div>
 
       <el-table :data="list" v-loading="loading" stripe highlight-current-row class="goods-table">
         <el-table-column prop="gcode" label="编码" width="120" />
@@ -50,6 +53,7 @@
         <el-table-column prop="unit" label="单位" width="60" />
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
+            <span class="status-dot" :class="row.saleflag === 'Y' ? 'dot-ok' : 'dot-muted'"></span>
             <el-tag :type="row.saleflag === 'Y' ? 'success' : 'info'" size="small">
               {{ row.saleflag === 'Y' ? '上架' : '下架' }}
             </el-tag>
@@ -63,7 +67,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pagination-wrap">
+      <div class="pagination-bar">
         <el-pagination
           v-model:current-page="page"
           :page-size="pageSize"
@@ -72,7 +76,7 @@
           @current-change="fetchList"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 新增 / 编辑对话框 -->
     <el-dialog
@@ -498,16 +502,19 @@ function handleDelete(row: Goods) {
 
 <style scoped>
 .goods-page { padding: 0; }
-.search-card { margin-bottom: 12px; }
+.filter-section { margin-bottom: 12px; }
+.filter-section .section-body { padding: 10px 14px; }
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.goods-table { height: calc(100vh - 320px); width: 100%; }
+.goods-table { height: calc(100vh - 360px); width: 100%; }
 .pagination-wrap {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
 }
+.status-dot.dot-ok { background: var(--g-color-success); }
+.status-dot.dot-muted { background: var(--g-color-text-muted); }
 </style>

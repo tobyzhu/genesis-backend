@@ -1,5 +1,7 @@
 # PC 前端收银结账 — 付款分配逻辑
 
+> 完整 PC 开单/收银流程见 [pc-manual-billing.md](pc-manual-billing.md)；本文件只讲付款分配交互。
+
 ## 数据模型
 
 | 表 | 字段 | 说明 |
@@ -35,18 +37,20 @@
   └─ 若只剩1行不可移除，否则移除后自动调平
 ```
 
-## 关键函数（HungOrdersPage.vue）
+## 关键函数（HungOrdersPage.vue / CheckoutPage.vue）
 
 | 函数 | 作用 |
 |------|------|
-| `rebalancePayments()` | 核心调平逻辑：校验合计=待付，超付警告，少付时补充默认行 |
-| `custOnPmChange(idx)` | 付款方式改变：取消默认标记，不新增行 |
+| `rebalancePayments()`（HungOrdersPage） | 客户结账核心调平：合计=待付，超付警告，少付补默认行或自动新增 |
+| `custOnPmChange(idx)` | 改付款方式：取消默认标记，不新增行 |
 | `custOnAmountChange()` | 金额改变：调用 rebalancePayments |
-| `custAddPayment()` | 添加付款行：查找可用现金类付款方式，填入剩余金额 |
+| `custAddPayment()` | 添加付款行：填入剩余金额 |
 | `custRemovePayment(idx)` | 移除付款行：移除后调平 |
-| `custPendingTotal` | computed：待付总额 |
-| `custPaidTotal` | computed：已分配金额合计 |
-| `custRemaining` | computed：剩余待分配金额 |
+| `initAuditSplitsForOrder()`（CheckoutPage） | 审核结账初始化拆分：paycode 卡先扣余额，剩余补默认现金行 |
+| `rebalanceAuditSplits(o)`（CheckoutPage） | 审核拆分配平：超付截断非默认行、少付调默认行/自动新增 |
+| `addAuditSplit` / `removeAuditSplit`（CheckoutPage） | 审核拆分增删行 |
+| `onAuditSplitAmountChange` / `onAuditSplitMethodChange`（CheckoutPage） | 金额上限（卡余额）与卡号联动 |
+| `custPendingTotal` / `custPaidTotal` / `custRemaining` | computed：待付总额 / 已分配合计 / 剩余待分配 |
 
 ## 后端接口
 

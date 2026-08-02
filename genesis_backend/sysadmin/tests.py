@@ -28,7 +28,7 @@ class TestRegistry(unittest.TestCase):
         self.assertIn(('baseinfo', 'serviece'), models)
         self.assertIn(('baseinfo', 'goods'), models)
         self.assertIn(('baseinfo', 'cardtype'), models)
-        self.assertIn(('adviser', 'promotions'), models)
+        self.assertIn(('baseinfo', 'promotions'), models)
 
     def test_get_registry_groups(self):
         """get_registry 返回分组字典"""

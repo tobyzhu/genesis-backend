@@ -36,8 +36,8 @@
               :indent="20"
               @node-click="handleCardNodeClick">
               <template #default="{ data }">
-                <span v-if="data.level === 'promotions'" style="font-weight:700;font-size:14px;padding:4px 0;color:#303133">{{ data.label }}</span>
-                <span v-else-if="data.level === 'comptype'" style="font-weight:500;font-size:13px;padding:3px 0;color:#606266">{{ data.label }}</span>
+                <span v-if="data.level === 'promotions'" style="font-weight:700;font-size:14px;padding:4px 0;color:var(--g-color-text)">{{ data.label }}</span>
+                <span v-else-if="data.level === 'comptype'" style="font-weight:500;font-size:13px;padding:3px 0;color:var(--g-color-text-secondary)">{{ data.label }}</span>
                 <div v-else style="display:flex;align-items:center;gap:16px;font-size:13px;padding:6px 0;width:100%">
                   <span style="min-width:100px;font-weight:500">{{ data.card.ccode }}</span>
                   <span style="min-width:120px">{{ data.card.cardname }}</span>
@@ -47,12 +47,12 @@
                   <span style="min-width:90px">{{ data.card.valdate ? formatDate(data.card.valdate) : '' }}</span>
                   <span style="min-width:60px">{{ getStatusLabel(data.card.status) }}</span>
                   <span style="min-width:80px;text-align:right">¥{{ parseFloat(data.card.s_price ?? 0).toFixed(2) }}</span>
-                  <span style="min-width:200px;color:#909399;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ data.card.carddesc || '' }}</span>
+                  <span style="min-width:200px;color:var(--g-color-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ data.card.carddesc || '' }}</span>
                 </div>
               </template>
             </el-tree>
 
-            <div v-if="selectedCard" style="margin-top:16px;border-top:1px solid #ebeef5;padding-top:16px">
+            <div v-if="selectedCard" style="margin-top:16px;border-top:1px solid var(--g-color-border);padding-top:16px">
               <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600">{{ selectedCard.ccode }} - {{ selectedCard.cardname }} 消费记录</h4>
               <el-table :data="cardConsumptions" v-loading="cardConsLoading" stripe max-height="400"
 >

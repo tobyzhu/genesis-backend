@@ -3,7 +3,7 @@
     <div v-loading="loading" style="min-height:200px">
       <template v-if="basicInfo">
         <template v-if="!basicInfo.uuid && !basicInfo.vname">
-          <div style="padding:40px;text-align:center;color:#c0c4cc">暂无数据（API 返回空）</div>
+          <div style="padding:40px;text-align:center;color:var(--g-color-text-muted)">暂无数据（API 返回空）</div>
         </template>
         <template v-else>
         <!-- 基本信息 -->
@@ -123,25 +123,25 @@ function formatBirth(birth: string): string {
 .profile-cards { display:flex; flex-direction:column; gap:6px; }
 .profile-card {
   display:flex; align-items:center; gap:10px; padding:8px 10px;
-  border:1px solid #ebeef5; border-radius:6px; flex-wrap:wrap;
+  border:1px solid var(--g-color-border); border-radius:6px; flex-wrap:wrap;
 }
-.profile-card.status-p { background:#fef7e0; }
+.profile-card.status-p { background:var(--g-color-warning-bg); }
 .pc-left { flex:1; }
 .pc-name { font-size:13px; font-weight:500; }
-.pc-code { font-size:11px; color:#909399; }
+.pc-code { font-size:11px; color:var(--g-color-text-muted); }
 .pc-right { text-align:right; }
-.pc-bal { font-size:14px; font-weight:600; color:#e6a23c; display:block; }
-.pc-expire { font-size:10px; color:#c0c4cc; }
+.pc-bal { font-size:14px; font-weight:600; color:var(--g-color-money); display:block; }
+.pc-expire { font-size:10px; color:var(--g-color-text-muted); }
 
 .profile-list { display:flex; flex-direction:column; gap:4px; }
 .profile-list-item {
   display:flex; align-items:center; gap:8px; padding:6px 8px;
-  border-bottom:1px solid #f5f5f5; font-size:12px;
+  border-bottom:1px solid var(--g-color-border); font-size:12px;
 }
-.pli-date { width:90px; color:#909399; flex-shrink:0; }
+.pli-date { width:90px; color:var(--g-color-text-muted); flex-shrink:0; }
 .pli-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pli-amount { width:80px; text-align:right; font-weight:600; }
 .pli-type { width:60px; flex-shrink:0; }
-.pli-content { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#606266; }
-.pli-emp { width:60px; color:#909399; }
+.pli-content { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--g-color-text-secondary); }
+.pli-emp { width:60px; color:var(--g-color-text-muted); }
 </style>

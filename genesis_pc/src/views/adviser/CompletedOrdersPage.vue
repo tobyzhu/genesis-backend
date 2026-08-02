@@ -1,6 +1,8 @@
 <template>
   <div class="completed-orders-page">
-    <h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600">已完成开单</h2>
+    <div class="page-header" style="margin-bottom:12px">
+      <h3 class="page-title">已完成开单</h3>
+    </div>
 
     <!-- 搜索栏 -->
     <el-card shadow="never" class="search-card">
@@ -61,7 +63,7 @@
         </el-table-column>
         <el-table-column label="总金额" width="120" align="right">
           <template #default="{ row }">
-            <span style="font-weight:600;color:#e6a23c">¥{{ row.totmount.toFixed(2) }}</span>
+            <span style="font-weight:600;color:var(--g-color-money)">¥{{ row.totmount.toFixed(2) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="员工" width="100">
@@ -146,7 +148,7 @@
           </el-table-column>
           <el-table-column label="小计" width="100" align="right">
             <template #default="{ row }">
-              <span style="font-weight:600;color:#e6a23c">¥{{ row.amount.toFixed(2) }}</span>
+              <span style="font-weight:600;color:var(--g-color-money)">¥{{ row.amount.toFixed(2) }}</span>
             </template>
           </el-table-column>
         </el-table>
@@ -277,15 +279,15 @@ onMounted(() => {
 
 .vip-cell { display: flex; flex-direction: column; }
 .vip-name { font-weight: 500; font-size: 13px; }
-.vip-code { font-size: 11px; color: #909399; }
+.vip-code { font-size: 11px; color: var(--g-color-text-muted); }
 
 .detail-header { padding: 0 4px; }
 .dh-row { margin-bottom: 6px; font-size: 13px; }
-.dh-label { color: #909399; }
-.dh-value { color: #303133; font-weight: 500; }
+.dh-label { color: var(--g-color-text-muted); }
+.dh-value { color: var(--g-color-text); font-weight: 500; }
 
 .detail-total { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 12px; font-size: 16px; }
-.total-amount { font-size: 20px; font-weight: 700; color: #e6a23c; }
+.total-amount { font-size: 20px; font-weight: 700; color: var(--g-color-money); }
 
-.detail-loading { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px; color: #909399; }
+.detail-loading { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px; color: var(--g-color-text-muted); }
 </style>

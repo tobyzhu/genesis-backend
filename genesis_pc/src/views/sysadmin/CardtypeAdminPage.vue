@@ -41,10 +41,16 @@
         <template #default="{row}">{{ row.validays ?? '-' }}</template>
       </el-table-column>
       <el-table-column label="可销售" width="70" align="center">
-        <template #default="{row}">{{ row.saleflag === 'Y' ? '✅' : '❌' }}</template>
+        <template #default="{row}">
+          <el-icon v-if="row.saleflag === 'Y'" class="ok-icon"><CircleCheck /></el-icon>
+          <el-icon v-else class="bad-icon"><CircleClose /></el-icon>
+        </template>
       </el-table-column>
       <el-table-column label="有效" width="65" align="center">
-        <template #default="{row}">{{ row.valiflag === 'Y' ? '✅' : '❌' }}</template>
+        <template #default="{row}">
+          <el-icon v-if="row.valiflag === 'Y'" class="ok-icon"><CircleCheck /></el-icon>
+          <el-icon v-else class="bad-icon"><CircleClose /></el-icon>
+        </template>
       </el-table-column>
       <el-table-column label="操作" width="110" fixed="right">
         <template #default="{row}">
@@ -61,7 +67,7 @@
       :total="total"
       layout="total, prev, pager, next"
       @current-change="fetchCardtypes()"
-      style="margin-top:12px;justify-content:flex-end"
+      class="pagination-bar"
     />
 
     <!-- 卡类编辑弹窗 -->
@@ -315,7 +321,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Refresh, Edit, Delete, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import {
   getCardtypeFastList, getRulerList, saveRuler,
   getCardtypeDiscountRules, saveCardtypeDiscountRules,
@@ -604,7 +610,9 @@ onMounted(async () => {
 <style scoped>
 .cardtype-admin { padding: 4px; }
 .list-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-.rule-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; color: #606266; }
-.code-link { color: #409EFF; cursor: pointer; }
+.rule-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; color: var(--g-color-text-secondary); }
+.code-link { color: var(--g-color-primary); cursor: pointer; }
 .code-link:hover { text-decoration: underline; }
+.ok-icon { color: var(--g-color-success); font-size: 16px; }
+.bad-icon { color: var(--g-color-danger); font-size: 16px; }
 </style>

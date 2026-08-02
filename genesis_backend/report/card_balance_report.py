@@ -101,6 +101,7 @@ def _resolve_brand_display(comptype, brand_code, brand_names):
 def build_card_balance_queryset(
     company,
     storecode='',
+    storecodes=None,
     suptype='',
     comptype='',
     nature='',
@@ -111,6 +112,7 @@ def build_card_balance_queryset(
     stype: N=正常购买, P=赠送。
     有效卡：flag='Y' 且 status='O'。
     余额：Cardinfo.leftmoney；余次：Cardinfo.leftqty（疗程/计次卡）。
+    storecodes: 多店列表；优先于单个 storecode。
     """
     qs = Cardinfo.objects.filter(
         company=company, flag='Y', status='O'
@@ -173,7 +175,10 @@ def build_card_balance_queryset(
         ),
     )
 
-    if storecode:
+    codes = [str(c).strip() for c in (storecodes or []) if str(c).strip()]
+    if codes:
+        qs = qs.filter(storecode__in=codes)
+    elif storecode:
         qs = qs.filter(storecode=storecode)
     if suptype:
         qs = qs.filter(eff_suptype=suptype)
@@ -227,6 +232,7 @@ def collect_diagnostics(company, params, qs, elapsed_ms, error=None):
 def build_card_balance_report(
     company,
     storecode='',
+    storecodes=None,
     suptype='',
     comptype='',
     nature='',
@@ -237,11 +243,13 @@ def build_card_balance_report(
     t0 = time.time()
     suptype_names = _suptype_name_map(company)
     brand_names = _brand_name_map(company)
+    codes = [str(c).strip() for c in (storecodes or []) if str(c).strip()]
 
     try:
         qs = build_card_balance_queryset(
             company=company,
             storecode=storecode,
+            storecodes=codes or None,
             suptype=suptype,
             comptype=comptype,
             nature=nature,
@@ -350,6 +358,7 @@ def build_card_balance_report(
             company,
             {
                 'storecode': storecode,
+                'storecodes': codes,
                 'suptype': suptype,
                 'comptype': comptype,
                 'nature': nature,
@@ -391,6 +400,7 @@ def build_card_balance_report(
                 company,
                 {
                     'storecode': storecode,
+                    'storecodes': codes,
                     'suptype': suptype,
                     'comptype': comptype,
                     'nature': nature,
